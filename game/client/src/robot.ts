@@ -1,10 +1,10 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
-// The player: your city's executive robot. A glossy white shell head with a visor-screen face, a
-// tailored navy two-piece suit (notched lapels, a white shirt, a yellow tie, a pocket square
-// and a lapel pin), and polished oxfords with heel thrusters in the soles. Built from
-// primitives on a simple joint hierarchy and animated procedurally.
+// The player: a designer-toy figure. A big round vinyl head with glossy eyes and pink cheeks under a
+// gold knit beanie, a black hoodie with a gold AGENT print and drawstrings, black joggers and chunky
+// white sneakers with thrusters in the soles. Built from primitives on a simple joint hierarchy and
+// animated procedurally.
 
 export type RobotState = 'idle' | 'walk' | 'run' | 'jump' | 'fall' | 'fly' | 'land' | 'roll' | 'sit' | 'wave'
   | 'crouch' | 'sprawl'
@@ -43,35 +43,33 @@ type Pose = Record<Key, number>;
 const zero = (): Pose => Object.fromEntries(KEYS.map((k) => [k, 0])) as Pose;
 
 // About 1.6 m tall to the hat brim, a head roughly a sixth of that, slim limbs in work clothes.
-const HIP_Y = 0.81;
+/** Toy proportions: short legs and arms under a big head. */
+const LEG = 0.27, ARM_UP = -0.21, ARM_LOW = -0.2;
+const HIP_Y = 0.04 + 2 * LEG + 0.09;
 /** Hip height of the previous, smaller body; the seated poses below keep their old hip height above the seat. */
 const SEAT_DROP = HIP_Y - 0.71;
 
 export function makeRobot(): Robot {
+  const vinyl = (color: number, roughness = 0.42) => new THREE.MeshPhysicalMaterial({ color, roughness, clearcoat: 0.5, clearcoatRoughness: 0.35 });
   const mats = {
-    // Glazed ceramic: a clear lacquer over the white shell, and a glass visor.
-    shell: new THREE.MeshPhysicalMaterial({ color: 0xf1f3f5, roughness: 0.35, metalness: 0.02, clearcoat: 1, clearcoatRoughness: 0.08 }),
-    shellDark: new THREE.MeshStandardMaterial({ color: 0xb9c2cc, roughness: 0.45, metalness: 0.2 }),
-    visor: new THREE.MeshPhysicalMaterial({ color: 0x0a1120, roughness: 0.18, metalness: 0.4, clearcoat: 1, clearcoatRoughness: 0.02 }),
-    eyeGlow: new THREE.MeshBasicMaterial({ color: 0x8fe0ff, toneMapped: false }),
-    // Worsted wool: a soft sheen across the cloth.
-    jacket: new THREE.MeshPhysicalMaterial({ color: 0x1c2740, roughness: 0.78, sheen: 1, sheenRoughness: 0.5, sheenColor: 0x3b4a6b }),
-    jacketDark: new THREE.MeshStandardMaterial({ color: 0x131b2d, roughness: 0.8 }),
-    lapel: new THREE.MeshPhysicalMaterial({ color: 0x151d31, roughness: 0.55, sheen: 1, sheenRoughness: 0.35, sheenColor: 0x56688f }),
-    shirt: new THREE.MeshPhysicalMaterial({ color: 0xf6f7f9, roughness: 0.7, sheen: 0.6, sheenColor: 0xffffff }),
-    tie: new THREE.MeshPhysicalMaterial({ color: 0xf2bd1c, roughness: 0.45, sheen: 1, sheenRoughness: 0.3, sheenColor: 0xffe28a }),
-    pocket: new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.5, sheen: 1, sheenColor: 0xffffff }),
-    pants: new THREE.MeshPhysicalMaterial({ color: 0x1c2740, roughness: 0.8, sheen: 1, sheenRoughness: 0.5, sheenColor: 0x3b4a6b }),
-    belt: new THREE.MeshStandardMaterial({ color: 0x1a1412, roughness: 0.35 }),
-    buckle: new THREE.MeshStandardMaterial({ color: 0xd4d7db, roughness: 0.2, metalness: 1 }),
-    button: new THREE.MeshStandardMaterial({ color: 0x0e1118, roughness: 0.3 }),
-    // Polished calf leather.
-    boot: new THREE.MeshPhysicalMaterial({ color: 0x141416, roughness: 0.28, clearcoat: 0.8, clearcoatRoughness: 0.15 }),
-    sole: new THREE.MeshStandardMaterial({ color: 0x2a1c14, roughness: 0.75 }),
-    dark: new THREE.MeshStandardMaterial({ color: 0x23272d, roughness: 0.6 }),
+    // Soft-touch vinyl, like a designer toy: skin, a gold knit beanie, a black hoodie and joggers.
+    skin: vinyl(0xffdcc2, 0.45),
+    cheek: new THREE.MeshBasicMaterial({ color: 0xf59a9a, transparent: true, opacity: 0.55 }),
+    eye: new THREE.MeshPhysicalMaterial({ color: 0x15161a, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.02 }),
+    shine: new THREE.MeshBasicMaterial({ color: 0xffffff }),
+    mouth: new THREE.MeshStandardMaterial({ color: 0x6e3528, roughness: 0.6 }),
+    hair: vinyl(0x241a14, 0.5),
+    beanie: new THREE.MeshPhysicalMaterial({ color: 0xf0b90b, roughness: 0.85, sheen: 1, sheenRoughness: 0.6, sheenColor: 0xffe08a }),
+    beanieRib: new THREE.MeshPhysicalMaterial({ color: 0xd9a405, roughness: 0.9, sheen: 1, sheenRoughness: 0.6, sheenColor: 0xffd75e }),
+    hoodie: new THREE.MeshPhysicalMaterial({ color: 0x1c1e23, roughness: 0.85, sheen: 1, sheenRoughness: 0.55, sheenColor: 0x50545e }),
+    rib: new THREE.MeshStandardMaterial({ color: 0x2c2f36, roughness: 0.9 }),
+    gold: new THREE.MeshStandardMaterial({ color: 0xf0b90b, roughness: 0.3, metalness: 0.7 }),
+    print: new THREE.MeshStandardMaterial({ map: printTexture(), roughness: 0.6 }),
+    pants: new THREE.MeshPhysicalMaterial({ color: 0x24262c, roughness: 0.85, sheen: 1, sheenRoughness: 0.6, sheenColor: 0x4a4e57 }),
+    shoe: vinyl(0xf6f6f3, 0.35),
+    sole: vinyl(0xe4e2dc, 0.6),
     metal: new THREE.MeshStandardMaterial({ color: 0xa3abb3, roughness: 0.3, metalness: 0.8 }),
     thruster: new THREE.MeshBasicMaterial({ color: 0x6cc6ff, toneMapped: false }),
-    logo: new THREE.MeshStandardMaterial({ map: logoTexture(), roughness: 0.55, transparent: true }),
   };
   const geos: THREE.BufferGeometry[] = [];
   const g = <T extends THREE.BufferGeometry>(x: T) => { geos.push(x); return x; };
@@ -91,120 +89,90 @@ export function makeRobot(): Robot {
     parent.add(j);
     return j;
   };
-  /** Cylinder hanging down from the joint (top at 0, bottom at -len). */
-  const limb = (r0: number, r1: number, len: number, seg = 12) => g(new THREE.CylinderGeometry(r0, r1, len, seg).translate(0, -len / 2, 0));
-  const sphere = (r: number, w = 14, h = 10) => g(new THREE.SphereGeometry(r, w, h));
+  /** A rounded limb hanging down from the joint (top at 0, bottom at -len). */
+  const capsule = (r0: number, len: number, r1 = r0) => {
+    const geo = new THREE.CapsuleGeometry(r0, Math.max(0.001, len - 2 * r0), 6, 20).translate(0, -len / 2, 0);
+    if (r1 !== r0) {
+      const p = geo.attributes.position as THREE.BufferAttribute;
+      for (let i = 0; i < p.count; i++) { const k = 1 + (r1 / r0 - 1) * THREE.MathUtils.clamp(-p.getY(i) / len, 0, 1); p.setX(i, p.getX(i) * k); p.setZ(i, p.getZ(i) * k); }
+      geo.computeVertexNormals();
+    }
+    return g(geo);
+  };
+  const sphere = (r: number, w = 24, h = 16) => g(new THREE.SphereGeometry(r, w, h));
+  const ring = (r: number, tube: number) => g(new THREE.TorusGeometry(r, tube, 10, 28).rotateX(Math.PI / 2));
 
   const root = new THREE.Group();
   root.name = 'robot';
   const hips = joint(root, 0, HIP_Y, 0);
 
-  // ---- Pelvis: suit trousers and a slim leather belt (mostly under the jacket) ----
-  part(g(new THREE.CylinderGeometry(0.14, 0.152, 0.16, 20).scale(1, 1, 0.7)), mats.pants, hips, 0, -0.07, 0);
-  part(g(new THREE.CylinderGeometry(0.163, 0.163, 0.03, 24).scale(1, 1, 0.71)), mats.belt, hips, 0, -0.025, 0);
-  part(g(new RoundedBoxGeometry(0.04, 0.028, 0.012, 2, 0.004)), mats.buckle, hips, 0, -0.025, 0.117);
+  // ---- Pelvis: the joggers' seat and the hoodie's ribbed hem ----
+  part(sphere(0.15).scale(1.05, 0.75, 0.85), mats.pants, hips, 0, -0.04, 0);
 
-  // ---- Torso: a tailored suit jacket with notched lapels, open over a white shirt and a tie ----
+  // ---- Torso: a roomy black hoodie with a gold AGENT print, gold drawstrings, the hood behind ----
   const spine = joint(hips, 0, 0.05, 0);
-  const torsoGeo = g(new RoundedBoxGeometry(0.33, 0.5, 0.23, 4, 0.07));
-  {
-    // Broader at the shoulders, a little chest at the front.
-    const p = torsoGeo.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < p.count; i++) {
-      const y = p.getY(i), z = p.getZ(i);
-      p.setX(i, p.getX(i) * (1 + 0.1 * y / 0.25));
-      if (z > 0) p.setZ(i, z * (1 + 0.07 * Math.exp(-(((y - 0.1) / 0.1) ** 2))));
-    }
-    torsoGeo.computeVertexNormals();
+  part(g(new RoundedBoxGeometry(0.36, 0.36, 0.25, 5, 0.11)), mats.hoodie, spine, 0, 0.15, 0);
+  part(ring(0.16, 0.03).scale(1.05, 1, 0.74), mats.rib, spine, 0, -0.02, 0); // hem
+  part(g(new RoundedBoxGeometry(0.17, 0.09, 0.012, 3, 0.02)), mats.print, spine, 0, 0.13, 0.126);
+  for (const sd of [-1, 1]) {
+    part(capsule(0.007, 0.12), mats.gold, spine, sd * 0.035, 0.31, 0.12, 0.05, 0, sd * -0.04);
+    part(sphere(0.012, 10, 8), mats.gold, spine, sd * 0.04, 0.19, 0.127);
   }
-  part(torsoGeo, mats.jacket, spine, 0, 0.13, 0);
-  /**
-   * A flat piece laid on the jacket front (lapels, the shirt, the tie): an outline in spine space,
-   * each corner pushed onto the jacket's front, which bulges at the chest and rounds back at the top.
-   */
-  const TOP = 0.38, RAD = 0.07, FRONT = 0.115;
-  const frontZ = (y: number) => {
-    const dy = y - (TOP - RAD);
-    const recess = dy > 0 ? RAD - Math.sqrt(Math.max(0, RAD * RAD - dy * dy)) : 0;
-    return FRONT * (1 + 0.07 * Math.exp(-(((y - 0.23) / 0.1) ** 2))) - recess;
-  };
-  const onChest = (pts: [number, number][], off: number, mat: THREE.Material, thick = 0.004) => {
-    const geo = g(new THREE.ExtrudeGeometry(new THREE.Shape(pts.map(([x, y]) => new THREE.Vector2(x, y))), { depth: thick, bevelEnabled: false }));
-    const p = geo.attributes.position as THREE.BufferAttribute;
-    for (let i = 0; i < p.count; i++) p.setZ(i, frontZ(p.getY(i)) + off + p.getZ(i) - thick);
-    geo.computeVertexNormals();
-    return part(geo, mat, spine);
-  };
-  const V_TOP = 0.375, V_BOT = 0.12;
-  onChest([[-0.05, V_TOP], [0.05, V_TOP], [0, V_BOT - 0.01]], 0.002, mats.shirt); // the shirt in the V
-  // The tie: a knot under the collar and a blade down to the button.
-  onChest([[-0.02, V_TOP + 0.002], [0.02, V_TOP + 0.002], [0.013, V_TOP - 0.032], [-0.013, V_TOP - 0.032]], 0.008, mats.tie, 0.012);
-  onChest([[-0.012, V_TOP - 0.03], [0.012, V_TOP - 0.03], [0.034, V_BOT + 0.05], [0, V_BOT + 0.02], [-0.034, V_BOT + 0.05]], 0.006, mats.tie);
-  // Notched lapels, wide over the chest, meeting at the button.
-  for (const s of [-1, 1]) {
-    const pts: [number, number][] = [[0.05, V_TOP], [0.078, V_TOP + 0.004], [0.092, 0.33], [0.079, 0.317], [0.113, 0.295], [0.014, V_BOT], [0.002, V_BOT]];
-    onChest(pts.map(([x, y]) => [x * s, y]), 0.007, mats.lapel, 0.006);
-  }
-  for (const y of [V_BOT - 0.012, V_BOT - 0.09]) part(g(new THREE.CylinderGeometry(0.009, 0.009, 0.005, 12).rotateX(Math.PI / 2)), mats.button, spine, 0.003, y, frontZ(y) + 0.006);
-  // Breast pocket with a white pocket square, the pin on the left lapel, flap pockets.
-  onChest([[0.05, 0.255], [0.115, 0.26], [0.115, 0.25], [0.05, 0.245]], 0.004, mats.jacketDark, 0.002);
-  onChest([[0.056, 0.256], [0.068, 0.284], [0.08, 0.266], [0.092, 0.288], [0.106, 0.258]], 0.006, mats.pocket);
-  part(g(new THREE.CircleGeometry(0.012, 18)), mats.logo, spine, 0.088, 0.325, frontZ(0.325) + 0.016);
-  for (const s of [-1, 1]) part(g(new RoundedBoxGeometry(0.095, 0.028, 0.012, 2, 0.004)), mats.jacketDark, spine, s * 0.095, -0.05, FRONT + 0.003);
-  // Shirt collar round the neck, its points folded down over the tie knot.
-  part(g(new THREE.CylinderGeometry(0.058, 0.064, 0.06, 20, 1, true).scale(1, 1, 0.9)), mats.shirt, spine, 0, 0.405, -0.01);
-  for (const s of [-1, 1]) onChest([[0.008 * s, V_TOP + 0.012], [0.05 * s, V_TOP + 0.03], [0.046 * s, V_TOP - 0.03]], 0.014, mats.shirt, 0.003);
-  // The jacket's skirt: it hangs over the seat of the trousers.
-  part(g(new THREE.CylinderGeometry(0.168, 0.176, 0.13, 24, 1, true).scale(1, 1, 0.74)), mats.jacket, hips, 0, -0.09, 0);
+  part(g(new THREE.TorusGeometry(0.1, 0.045, 12, 24, Math.PI * 1.2).rotateZ(-Math.PI * 0.1).rotateY(Math.PI / 2).rotateX(-0.25)), mats.hoodie, spine, 0, 0.33, -0.06); // the hood, folded down
 
-  // ---- Back: no pack, the heel thrusters do the flying (a hidden mount keeps the old riding API) ----
+  // ---- Back: no pack, the sneaker thrusters do the flying (a hidden mount keeps the old riding API) ----
   const board = joint(spine, 0, 0, 0);
   board.visible = false;
 
-  // ---- Neck + head: a glossy white shell head with a dark glass visor for a face ----
-  const neck = joint(spine, 0, 0.43, 0.0);
-  part(limb(0.034, 0.04, 0.11).translate(0, 0.11, 0), mats.dark, neck);
-  for (const y of [0.03, 0.065]) part(limb(0.042, 0.042, 0.01).translate(0, y, 0), mats.shellDark, neck); // segment rings
-  const head = joint(neck, 0, 0.1, 0.012);
-  head.scale.setScalar(1.18); // a big, friendly head reads from behind at the follow camera
-  part(g(new RoundedBoxGeometry(0.235, 0.215, 0.225, 5, 0.08)), mats.shell, head, 0, 0.125, 0);
-  part(g(new RoundedBoxGeometry(0.2, 0.115, 0.03, 3, 0.028)), mats.visor, head, 0, 0.115, 0.1);
-  for (const s of [-1, 1]) for (const dy of [-0.02, 0.02]) part(g(new THREE.BoxGeometry(0.01, 0.012, 0.07)), mats.shellDark, head, s * 0.118, 0.12 + dy, -0.01); // side vents
-  // Eyes on the visor: rounded bars that blink, widen in a fast fall and turn into ^ ^ on a wave.
-  const eyeOpen = g(new THREE.CapsuleGeometry(0.011, 0.028, 3, 8));
-  const eyeHappy = g(new THREE.TorusGeometry(0.019, 0.0065, 6, 12, Math.PI));
-  const eyes: { open: THREE.Mesh; happy: THREE.Mesh }[] = [-1, 1].map((s) => ({
-    open: part(eyeOpen, mats.eyeGlow, head, s * 0.045, 0.118, 0.117),
-    happy: part(eyeHappy, mats.eyeGlow, head, s * 0.045, 0.108, 0.117),
-  }));
+  // ---- Neck + head: the big round toy head, a gold beanie, big glossy eyes, pink cheeks ----
+  const neck = joint(spine, 0, 0.34, 0.0);
+  part(capsule(0.05, 0.08).translate(0, 0.08, 0), mats.skin, neck);
+  const head = joint(neck, 0, 0.05, 0.01);
+  part(sphere(0.205, 36, 28).scale(1.06, 0.96, 1), mats.skin, head, 0, 0.19, 0);
+  for (const sd of [-1, 1]) part(sphere(0.045, 16, 12).scale(0.5, 1, 0.8), mats.skin, head, sd * 0.212, 0.17, -0.01); // ears
+  // Hair peeking out under the beanie at the sides and a little fringe.
+  part(g(new THREE.SphereGeometry(0.21, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.4)).scale(1.06, 0.98, 1.02), mats.hair, head, 0, 0.2, -0.012);
+  // Beanie: a knit dome over the crown, a turned-up ribbed cuff, a little black label at the front.
+  part(g(new THREE.SphereGeometry(0.222, 32, 16, 0, Math.PI * 2, 0, Math.PI * 0.42)).scale(1.06, 1.18, 1.03), mats.beanie, head, 0, 0.215, -0.008);
+  part(g(new THREE.CylinderGeometry(0.205, 0.218, 0.07, 36, 1, true).scale(1.06, 1, 1.03)), mats.beanieRib, head, 0, 0.29, -0.008, -0.12, 0, 0);
+  part(g(new THREE.CylinderGeometry(0.205, 0.205, 0.004, 36).scale(1.06, 1, 1.03)), mats.beanieRib, head, 0, 0.325, -0.012, -0.12, 0, 0);
+  part(g(new RoundedBoxGeometry(0.06, 0.03, 0.01, 2, 0.006)), mats.eye, head, 0, 0.29, 0.222, -0.3, 0, 0);
+  // Cheeks, a small smile.
+  for (const sd of [-1, 1]) {
+    const c = part(g(new THREE.CircleGeometry(0.03, 20)), mats.cheek, head, sd * 0.118, 0.12, 0.178, 0, sd * 0.55, 0);
+    c.scale.set(1.3, 0.8, 1);
+    c.castShadow = false;
+  }
+  part(g(new THREE.TorusGeometry(0.022, 0.0045, 8, 16, Math.PI).rotateZ(Math.PI)), mats.mouth, head, 0, 0.105, 0.2, -0.25, 0, 0).castShadow = false;
+  // Eyes: big glossy black ovals with highlights that blink, widen in a fast fall and turn into ^ ^ on a wave.
+  const eyeOpen = g(new THREE.SphereGeometry(0.04, 20, 16).scale(0.85, 1.15, 0.4));
+  const eyeHappy = g(new THREE.TorusGeometry(0.03, 0.008, 8, 16, Math.PI));
+  const eyes: { open: THREE.Mesh; happy: THREE.Mesh }[] = [-1, 1].map((sd) => {
+    const open = part(eyeOpen, mats.eye, head, sd * 0.074, 0.17, 0.19, -0.1, sd * 0.34, 0);
+    part(sphere(0.01, 10, 8), mats.shine, open, sd * -0.01, 0.018, 0.014).castShadow = false;
+    part(sphere(0.005, 8, 6), mats.shine, open, sd * 0.01, -0.015, 0.014).castShadow = false;
+    const happy = part(eyeHappy, mats.eye, head, sd * 0.074, 0.16, 0.195, -0.1, sd * 0.34, 0);
+    return { open, happy };
+  });
   for (const e of eyes) { e.open.castShadow = e.happy.castShadow = false; e.happy.visible = false; }
 
-  // ---- Arms: suit sleeves with a white shirt cuff showing, and white shell hands ----
+  // ---- Arms: hoodie sleeves with ribbed cuffs, round little hands ----
   type Arm = { sh: THREE.Group; el: THREE.Group; wr: THREE.Group };
-  const arm = (s: number): Arm => {
-    const sh = joint(spine, s * 0.168, 0.355, -0.005);
-    part(sphere(0.06, 18, 12).scale(1, 0.72, 0.95), mats.jacket, sh, 0, 0.0, 0); // padded shoulder
-    part(limb(0.058, 0.053, 0.26, 16), mats.jacket, sh);
-    const el = joint(sh, 0, -0.26, 0);
-    part(sphere(0.052, 16, 10), mats.jacket, el);
-    part(limb(0.052, 0.047, 0.205, 16), mats.jacket, el);
-    for (let b = 0; b < 3; b++) part(sphere(0.005, 6, 4), mats.button, el, s * 0.012, -0.17 - b * 0.012, -0.044); // sleeve buttons
-    part(limb(0.042, 0.042, 0.03, 14), mats.shirt, el, 0, -0.2, 0); // shirt cuff
-    const wr = joint(el, 0, -0.26, 0);
-    part(limb(0.034, 0.034, 0.03).translate(0, 0.02, 0), mats.dark, wr);
-    part(g(new RoundedBoxGeometry(0.04, 0.075, 0.07, 2, 0.015)), mats.shell, wr, 0, -0.045, 0);
-    for (let f = 0; f < 4; f++) {
-      const z = -0.024 + f * 0.016;
-      part(limb(0.0085, 0.008, 0.028, 6), mats.shell, wr, 0, -0.082, z);
-      part(sphere(0.0085, 6, 4), mats.dark, wr, 0, -0.11, z);
-      part(limb(0.0078, 0.007, 0.026, 6), mats.shell, wr, 0, -0.112, z);
-    }
-    part(limb(0.011, 0.009, 0.045, 6), mats.shell, wr, s * -0.014, -0.03, 0.036, -0.5, 0, s * 0.5);
+  const arm = (sd: number): Arm => {
+    const sh = joint(spine, sd * 0.19, 0.27, -0.005);
+    part(sphere(0.068), mats.hoodie, sh);
+    part(capsule(0.066, 0.23, 0.06), mats.hoodie, sh);
+    const el = joint(sh, 0, ARM_UP, 0);
+    part(capsule(0.06, 0.2, 0.056), mats.hoodie, el);
+    part(ring(0.05, 0.016), mats.rib, el, 0, -0.18, 0); // cuff
+    const wr = joint(el, 0, ARM_LOW, 0);
+    part(sphere(0.055, 20, 14).scale(0.85, 1.05, 1), mats.skin, wr, 0, -0.035, 0.005);
+    part(sphere(0.022, 12, 10), mats.skin, wr, sd * -0.032, -0.012, 0.03); // thumb
     return { sh, el, wr };
   };
   const armL = arm(1), armR = arm(-1);
 
-  // ---- Legs: suit trousers with pressed creases, polished oxfords with heel thrusters ----
+  // ---- Legs: black joggers gathered at the ankle, chunky white sneakers with a gold stripe ----
   type Leg = { th: THREE.Group; kn: THREE.Group; an: THREE.Group; flame: THREE.Group };
   const flameOuterMat = new THREE.MeshBasicMaterial({ color: 0x4fb4ff, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
   const flameInnerMat = new THREE.MeshBasicMaterial({ color: 0xeaf7ff, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
@@ -214,21 +182,17 @@ export function makeRobot(): Robot {
   // Afterburner plume: a wide, faint sheath that only shows on a hard burn.
   const plumeMat = new THREE.MeshBasicMaterial({ color: 0x3d6dff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
   const plumeGeo = g(new THREE.ConeGeometry(0.09, 1, 14, 1, true).rotateX(Math.PI).translate(0, -0.5, 0));
-  const leg = (s: number): Leg => {
-    const th = joint(hips, s * 0.085, -0.04, 0);
-    part(limb(0.088, 0.078, 0.36, 18), mats.pants, th, 0, 0.02, 0);
-    part(g(new THREE.BoxGeometry(0.006, 0.34, 0.004)), mats.jacketDark, th, 0, -0.15, 0.082); // crease
-    const kn = joint(th, 0, -0.34, 0);
-    part(sphere(0.07, 16, 10), mats.pants, kn);
-    part(limb(0.074, 0.07, 0.33, 18), mats.pants, kn, 0, -0.01, 0); // a straight leg breaking over the shoe
-    part(g(new THREE.BoxGeometry(0.006, 0.3, 0.004)), mats.jacketDark, kn, 0, -0.17, 0.073);
-    const an = joint(kn, 0, -0.34, 0);
-    part(sphere(0.045, 10, 8), mats.boot, an);
-    // Oxford, toe toward +Z: a sleek polished upper with a toe cap, a leather sole and the heel thruster.
-    part(limb(0.052, 0.056, 0.05, 16), mats.boot, an, 0, 0.0, 0);
-    part(g(new THREE.CapsuleGeometry(0.056, 0.17, 4, 16).rotateX(Math.PI / 2).scale(1, 0.72, 1)), mats.boot, an, 0, -0.045, 0.045);
-    part(g(new THREE.SphereGeometry(0.05, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1.05, 0.7, 1.1)), mats.boot, an, 0, -0.055, 0.12); // toe cap
-    part(g(new RoundedBoxGeometry(0.118, 0.022, 0.29, 2, 0.008)), mats.sole, an, 0, -0.081, 0.045);
+  const leg = (sd: number): Leg => {
+    const th = joint(hips, sd * 0.085, -0.04, 0);
+    part(capsule(0.08, LEG + 0.03, 0.068), mats.pants, th, 0, 0.02, 0);
+    const kn = joint(th, 0, -LEG, 0);
+    part(capsule(0.068, LEG - 0.02, 0.058), mats.pants, kn, 0, 0.01, 0);
+    part(ring(0.05, 0.017), mats.rib, kn, 0, -LEG + 0.075, 0); // gathered ankle cuff
+    const an = joint(kn, 0, -LEG, 0);
+    // Sneaker, toe toward +Z: a chunky rounded upper, a gold side stripe, a thick sole with the thruster.
+    part(g(new RoundedBoxGeometry(0.13, 0.1, 0.26, 4, 0.05)), mats.shoe, an, 0, -0.025, 0.045);
+    for (const s2 of [-1, 1]) part(g(new RoundedBoxGeometry(0.004, 0.026, 0.13, 1, 0.002)), mats.gold, an, s2 * 0.066, -0.03, 0.04, 0.25, 0, 0);
+    part(g(new RoundedBoxGeometry(0.14, 0.04, 0.28, 3, 0.016)), mats.sole, an, 0, -0.07, 0.045);
     part(g(new THREE.TorusGeometry(0.034, 0.01, 8, 18)), mats.metal, an, 0, -0.092, 0, Math.PI / 2, 0, 0);
     part(g(new THREE.CircleGeometry(0.026, 16)), mats.thruster, an, 0, -0.094, 0, Math.PI / 2, 0, 0);
     const flame = joint(an, 0, -0.088, 0.0);
@@ -248,7 +212,7 @@ export function makeRobot(): Robot {
 
   // Wingsuit membranes: arm wings (shoulder–wrist–knee–hip) and a tail wing between the legs. Their
   // corners follow the joints every frame, so they stretch and fold with the pose.
-  const wingMat = new THREE.MeshStandardMaterial({ color: 0x1c2740, roughness: 0.75, side: THREE.DoubleSide });
+  const wingMat = new THREE.MeshStandardMaterial({ color: 0x1c1e23, roughness: 0.75, side: THREE.DoubleSide });
   const wingGeo = g(new THREE.BufferGeometry());
   const WING_TRIS = 7;
   wingGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(WING_TRIS * 9), 3));
@@ -354,7 +318,7 @@ export function makeRobot(): Robot {
     },
     dispose() {
       geos.forEach((x) => x.dispose());
-      mats.logo.map?.dispose();
+      mats.print.map?.dispose();
       Object.values(mats).forEach((m) => m.dispose());
       flameOuterMat.dispose(); flameInnerMat.dispose(); plumeMat.dispose(); wingMat.dispose();
       exhaust.dispose();
@@ -725,19 +689,17 @@ function makeExhaust() {
 }
 
 /** Chest, back and hat mark: "AC" in navy on a rounded yellow tile. */
-function logoTexture() {
+function printTexture() {
   const c = document.createElement('canvas');
-  c.width = c.height = 128;
+  c.width = 256; c.height = 128;
   const x = c.getContext('2d')!;
-  x.fillStyle = '#f6c21c';
-  x.beginPath();
-  x.roundRect(6, 6, 116, 116, 26);
-  x.fill();
-  x.fillStyle = '#1f3358';
-  x.font = '800 62px system-ui, -apple-system, Helvetica, Arial, sans-serif';
+  x.fillStyle = '#f0b90b';
+  x.fillRect(0, 0, 256, 128);
+  x.fillStyle = '#1c1e23';
+  x.font = '900 64px system-ui, -apple-system, Helvetica, Arial, sans-serif';
   x.textAlign = 'center';
   x.textBaseline = 'middle';
-  x.fillText('AC', 64, 68);
+  x.fillText('AGENT', 128, 68);
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 4;
