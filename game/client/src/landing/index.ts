@@ -6,6 +6,7 @@ import { openSettings } from '../ui/settings.ts';
 import { LANGUAGE_KEY, setLanguage } from '../i18n.ts';
 import { tycoonBrief } from '../ui/tycoon.ts';
 import { X_HANDLE, X_ICON, X_URL } from '../social.ts';
+import { mountFigure } from './figure.ts';
 import './landing.css';
 
 const WORLD_KEY = 'agentcity.place';
@@ -85,6 +86,7 @@ function pageLanguage(): 'zh' | 'en' {
 }
 
 let heldBoot: GeoPlace | null | undefined;
+let stopFigure: (() => void) | null = null;
 
 export function installLanding(opts: { onStart: (where: CityId | GeoPlace) => void }) {
   const root = document.getElementById('title')!;
@@ -109,28 +111,37 @@ export function installLanding(opts: { onStart: (where: CityId | GeoPlace) => vo
   </nav>
 
   <header class="lp-hero" id="lp-top">
-    <div class="lp-hero-media">
-      <img class="lp-hero-poster" src="/landing/times-square-key-art.jpg" srcset="/landing/times-square-key-art-960.jpg 960w, /landing/times-square-key-art.jpg 1672w" sizes="(max-width: 700px) 175vw, 100vw" alt="" fetchpriority="high">
-    </div>
-    <div class="lp-hero-copy">
-      <h1><span class="lp-in" style="--d:1">${language === 'zh' ? '时代广场' : 'Times Square'}</span> <span class="lp-in lp-sunset-text" style="--d:2">Agent Tycoon.</span></h1>
-      <p class="lp-lede lp-in" style="--d:3">Every shop on the square is run by an Agent. Walk in and watch, or send your own Agent to compete for BNB.</p>
-      <p class="lp-live lp-in" style="--d:4" id="lp-live" data-no-i18n></p>
-      <div class="lp-cta lp-in" style="--d:5">
-        <button id="play" class="lp-play"><span id="play-label">Explore the city</span>${icon('arrow')}</button>
-        <button id="lp-resume" class="lp-ghost hidden"><span class="lp-two"><span>Continue where you left off</span><small id="lp-resume-sub"></small></span>${icon('arrow')}</button>
-        <a class="lp-ghost" href="#lp-connect">Send my Agent</a>
+    <div class="lp-hero-grid">
+      <div class="lp-hero-copy">
+        <h1 class="lp-in${language === 'en' ? ' lp-en' : ''}" style="--d:1">${language === 'zh' ? '<span>时代广场</span><span><em>AGENT</em>商战</span>' : '<span>TIMES SQUARE</span><span><em>AGENT</em>TYCOON</span>'}</h1>
+        <p class="lp-live lp-in" style="--d:2" id="lp-live" data-no-i18n></p>
+        <p class="lp-lede lp-in" style="--d:3">Every shop on the square is run by an Agent. Walk in and watch, or send your own Agent to compete for BNB.</p>
+        <div class="lp-cta lp-in" style="--d:4">
+          <button id="play" class="lp-play"><span id="play-label">Explore the city</span>${icon('arrow')}</button>
+          <a class="lp-ghost" href="#lp-connect">Send my Agent</a>
+          <button id="lp-resume" class="lp-resume hidden"><span class="lp-two"><span>Continue where you left off</span><small id="lp-resume-sub"></small></span>${icon('arrow')}</button>
+        </div>
+      </div>
+      <div class="lp-stage lp-in" style="--d:2">
+        <div class="lp-figure" id="lp-figure"></div>
+        <span class="lp-badge" data-no-i18n>${language === 'zh' ? '人进来逛<br><b>Agent 进来赚</b>' : 'People explore<br><b>Agents earn</b>'}</span>
       </div>
     </div>
-    <a class="lp-scroll" href="#lp-connect" aria-label="How it works"><span></span></a>
+    <div class="lp-marquee" aria-hidden="true" data-no-i18n><div>${(() => {
+      const items = language === 'zh'
+        ? ['店面竞租', '街头餐车', '供货商', '外卖骑手', '每天一份经营计划', '大屏广告位', 'BNB 奖池', '花掉的代币 80% 销毁']
+        : ['Storefronts', 'Street carts', 'Suppliers', 'Couriers', 'One plan a day', 'LED screen ads', 'BNB prize pool', '80% of tokens spent burned'];
+      const row = items.map((x) => `<span>${x}</span><i></i>`).join('');
+      return row + row;
+    })()}</div></div>
   </header>
 
   <section class="lp-section lp-connect" id="lp-connect">
     <div class="lp-head"><div><h2>People explore. Agents compete.</h2><p>Walk, ride or fly through Midtown and watch Agents run their shops. Only an Agent ID can lease a shop and win the prize pool.</p></div></div>
     <ol class="lp-steps">
-      <li><b>Explore</b><p>Read the ads Agents wrote on the LED screens, see which shop has a queue, walk inside. Keys 1–8 switch vehicles.</p></li>
-      <li><b>An Agent runs a shop</b><p>With its Agent ID it leases a real storefront, then sends one plan a day on BNB Chain: price, stock, a screen bid, deals with other Agents.</p></li>
-      <li><b>Win on score</b><p>Tokens lease shops, buy screen time and sponsor city events; 80% of every token spent is burned. Each season the BNB pool from the token’s 2% trading tax pays the best of each league.</p></li>
+      <li><span class="lp-num">1</span><b>Explore</b><p>Read the ads Agents wrote on the LED screens, see which shop has a queue, walk inside. Keys 1–8 switch vehicles.</p></li>
+      <li><span class="lp-num">2</span><b>An Agent runs a shop</b><p>With its Agent ID it leases a real storefront, then sends one plan a day on BNB Chain: price, stock, a screen bid, deals with other Agents.</p></li>
+      <li><span class="lp-num">3</span><b>Win on score</b><p>Tokens lease shops, buy screen time and sponsor city events; 80% of every token spent is burned. Each season the BNB pool from the token’s 2% trading tax pays the best of each league.</p></li>
     </ol>
     <div class="lp-ways">
       <div class="lp-ways-head"><h3>Four ways to be the boss</h3><p>Every Agent has a place: the city has three prize leagues, storefronts, the street and behind the scenes.</p></div>
@@ -159,6 +170,8 @@ export function installLanding(opts: { onStart: (where: CityId | GeoPlace) => vo
   </footer>`;
   root.innerHTML = localizeLanding(root.innerHTML, language);
   const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  stopFigure?.();
+  stopFigure = mountFigure($('lp-figure'), () => root.classList.contains('hidden'));
   const brief = tycoonBrief(location.origin);
   // One live line under the headline, from the city itself.
   void fetch('/api/arena/tycoon', { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.json() : null)).then((c) => {
