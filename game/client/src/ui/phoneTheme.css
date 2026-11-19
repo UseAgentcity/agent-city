@@ -245,3 +245,13 @@
 .ty-memo { margin: 10px 0 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.06); font-size: 13px; }
 .ty-bars { display: flex; align-items: flex-end; gap: 6px; height: 72px; margin-top: 10px; }
 .ty-bars span { flex: 1; min-height: 3px; border-radius: 3px 3px 0 0; background: linear-gradient(180deg, #f0b90b, #8a6a08); }
+
+/* Numbered steps (the money loop, the rules): gold counters joined by a thin line. */
+#phone.arena-phone .ar-steps { list-style: none; padding: 0; counter-reset: ar-step; }
+#phone.arena-phone .ar-steps li { position: relative; counter-increment: ar-step; line-height: 1.45; }
+#phone.arena-phone .ar-steps li::before { content: counter(ar-step); position: absolute; left: 0; border-radius: 50%; display: grid; place-items: center; font: 800 12px/1 Inter, system-ui, sans-serif; }
+#phone.arena-phone .ar-steps li:not(:last-child)::after { content: ''; position: absolute; width: 1px; }
+/* Standings rows on a narrow phone: the line under the name may take two lines rather than hide the profit. */
+@media (max-width: 720px) {
+  #phone.arena-phone .ar-rank small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+}

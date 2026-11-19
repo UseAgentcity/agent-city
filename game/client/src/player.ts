@@ -806,7 +806,9 @@ export class Player {
     const vs = this.vel.length();
     const flyBack = r ? Math.min(4, Math.abs(r.speed) / 15) : this.mode === 'fly' ? 1.3 + Math.min(4.5, vs / 14) : this.mode === 'air' ? 0.4 + Math.min(2.4, vs / 20) : 0;
     // The launch shot also stands back a few meters so the ground and the blast stay in frame.
-    const dist = Math.max(1.5, (r ? r.cam.dist : this.distance) + flyBack + this.zoom + this.launchCam * (r ? 35 : 3.5));
+    // A portrait phone screen is narrow: stand back further so you aren't half the picture.
+    const portrait = !r && this.camera.aspect < 0.8 ? 1.75 : 1;
+    const dist = Math.max(1.5, (r ? r.cam.dist : this.distance * portrait) + flyBack + this.zoom + this.launchCam * (r ? 35 : 3.5));
     const back = new THREE.Vector3(
       -Math.sin(this.yaw) * Math.cos(this.pitch),
       Math.sin(this.pitch),
