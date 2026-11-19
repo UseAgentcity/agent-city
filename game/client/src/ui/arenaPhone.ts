@@ -104,7 +104,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
   function lotRow(lot: Lot) {
     const s = shopOf(lot.owner);
     const today = s?.today;
-    const right = s ? `<span class="ec-amt">${today ? t(`${today.served} 位客人`, `${today.served} served`) : '—'}</span>` : `<span class="ar-chip off">${t('招租', 'For lease')}</span>`;
+    const right = s ? `<span class="ec-amt">${today ? t(`${today.served} 位客人`, `${today.served} served`) : '—'}</span>` : `<span class="ar-chip off">${lot.locked ? t('未开放', 'Soon') : t('招租', 'For lease')}</span>`;
     return `<button class="pj-row ar-rank" data-ty-lot="${esc(lot.id)}">${swatch(s?.brand?.color)}
       <div class="pj-main"><b>${esc(lotTitle(lot))}${demoTag(s)}</b><small>${esc(catName(lot.cat))}${lot.tier === 'K' ? '' : ` · ${esc(tierName(lot.tier))}`}${s ? ` · ${esc(s.name)}` : lot.locked ? ` · ${t('即将开放', 'opening soon')}` : ` · ${lot.leaseReserve ? t(`租约 ${tokensLabel(lot.leaseReserve)} 起`, `lease from ${tokensLabel(lot.leaseReserve)}`) : t('免费摆摊', 'free stall')}`}</small></div>${right}</button>`;
   }
@@ -353,6 +353,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     }));
     el.querySelectorAll<HTMLElement>('[data-ty-lot]').forEach((b) => b.addEventListener('click', () => { selected = b.dataset.tyLot!; openApp('shop'); rerender(); }));
     el.querySelectorAll<HTMLElement>('[data-ty-district]').forEach((b) => b.addEventListener('click', () => { district = b.dataset.tyDistrict as DistrictId; rerender(); }));
+    // Keep the selected district's tab in view when the row scrolls sideways (phones, six districts).
+    el.querySelector<HTMLElement>('.ar-seg.scroll button.on')?.scrollIntoView({ block: 'nearest', inline: 'center' });
     el.querySelectorAll<HTMLElement>('[data-ty-league]').forEach((b) => b.addEventListener('click', () => { league = b.dataset.tyLeague as typeof league; rerender(); }));
     el.querySelectorAll<HTMLElement>('[data-ty-go]').forEach((b) => b.addEventListener('click', () => {
       const [lat, lon] = b.dataset.tyGo!.split(',').map(Number);

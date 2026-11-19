@@ -269,3 +269,4 @@
 #phone.arena-phone .ty-diary small { white-space: normal; color: var(--t-text-2, #c9d1dc); font-style: italic; }
 #phone.arena-phone .ty-diary small.dim { font-style: normal; opacity: .55; }
 #phone.arena-phone .ty-diary b { white-space: normal; }
+#phone.arena-phone .ar-tag { white-space: nowrap; display: inline-block; }
