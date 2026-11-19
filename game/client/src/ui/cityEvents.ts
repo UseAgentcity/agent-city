@@ -7,6 +7,8 @@ import type { DayNight } from '../engine.ts';
 import type { EarthApi } from '../earth/index.ts';
 import { lotFrontOf } from './tycoonWorld.ts';
 import { onTycoon, tycoon } from './tycoon.ts';
+import { installFireworks } from './fireworks.ts';
+import { SPAWN_PLAZA } from '../earth/index.ts';
 
 const CROWD: Record<string, number> = { tourists: 1.45, 'market-weekend': 1.15, premiere: 1.1, 'broadway-out': 1.1, slow: 0.6, rain: 0.75 };
 
@@ -66,12 +68,20 @@ export function installCityEvents(scene: THREE.Scene, earth: EarthApi, dayNight:
   onTycoon(apply);
   apply();
 
+  // A season's close: fireworks over the bowtie through the settling day, in gold and the top shops' colours.
+  const fireworks = installFireworks(group);
   let t = 0;
   return {
     update(dt: number, visible: boolean) {
       group.visible = visible;
       if (!visible) return;
       t += dt;
+      const city = tycoon();
+      if (city) {
+        const c = earth.frame.toLocal(SPAWN_PLAZA.lat, SPAWN_PLAZA.lon);
+        const colors = city.standings.slice(0, 3).map((s) => s.brand?.color ?? '#f0b90b');
+        fireworks.update(dt, city.season.settling, { x: c.x, y: ground(c.x, c.z), z: c.z }, colors.length ? colors : ['#f0b90b']);
+      }
       const show = event === 'premiere' || event === 'broadway-out';
       if (show) placeBeams();
       // Searchlights read at dusk and night; by day they are a faint haze.

@@ -240,6 +240,17 @@ function drawTotem(c: HTMLCanvasElement, lot: Lot) {
     g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.roundRect(x - w / 2, 760, w, 58, 29); g.fill();
     g.fillStyle = '#f4f1e8'; g.fillText(label, x, 790);
   };
+  // Last season's top three wear a gold plate.
+  const podium = tycoon()?.lastSeason?.top.findIndex((x) => x.name === shop.name) ?? -1;
+  if (podium >= 0) {
+    const label = [t('上季冠军', 'LAST SEASON #1'), t('上季亚军', 'LAST SEASON #2'), t('上季季军', 'LAST SEASON #3')][podium];
+    g.font = `900 25px ${FONT}`;
+    const w = g.measureText(label).width + 40;
+    const grad = g.createLinearGradient(0, 124, 0, 162);
+    grad.addColorStop(0, '#ffe08a'); grad.addColorStop(1, '#c8901a');
+    g.fillStyle = grad; g.beginPath(); g.roundRect(TOTEM_W / 2 - w / 2, 124, w, 38, 19); g.fill();
+    g.fillStyle = '#2a1d00'; g.fillText(label, TOTEM_W / 2, 144);
+  }
   chip(TOTEM_W * 0.3, priceName(shop.price));
   chip(TOTEM_W * 0.7, t(`综合 ${shop.score}`, `Score ${shop.score}`));
   // Owner.
@@ -522,7 +533,7 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       }
       const sign = signs.get(lot.id) ?? placeSign(lot, f);
       const shop = shopOf(lot.owner);
-      const key = `${lot.locked ? 'locked' : ''}|${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.today?.supplier ?? ''}|${shop?.today?.delivered ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${auctionDay()}|${tycoon()?.standings.length ?? 0}|${document.documentElement.lang}`;
+      const key = `${tycoon()?.lastSeason?.id ?? ''}|${lot.locked ? 'locked' : ''}|${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.today?.supplier ?? ''}|${shop?.today?.delivered ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${auctionDay()}|${tycoon()?.standings.length ?? 0}|${document.documentElement.lang}`;
       if (sign.key !== key) {
         if (sign.totem) drawTotem(sign.canvas, lot); else drawSign(sign.canvas, lot);
         sign.tex.needsUpdate = true;
