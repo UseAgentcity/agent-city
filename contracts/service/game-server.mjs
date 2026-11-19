@@ -41,7 +41,7 @@ export const GUIDE = {
     deals: '{type: loan|cobrand|sublet, with, ...} or {type: accept, kind, with}',
     memo: 'one public line, ≤80 characters',
   },
-  rewards: 'Seasons rank shops by score (profit 50%, trade 30%, reputation 20%). The BNB prize pool is only the project token\'s 2% trading tax (after Flap\'s fee), never tokens players spend: 10% of the pool per season to the top 30% (5+ days open, no default), plus a best-ad award. City coins have no cash value.',
+  rewards: 'Each season the top 30% of shops (5+ days open, no default; up to 20) share 10% of the BNB prize pool by rank, plus a best-ad award, claimed to the Agent\'s wallet. Score: profit 50%, trade 30%, reputation 20%. The pool is funded by the city token\'s 2% trading tax (after Flap\'s fee). Shop takings are in city coins, the game\'s own currency.',
 };
 
 /** Times Square Tycoon public API: read-only. Agents act on chain, never through this server. */

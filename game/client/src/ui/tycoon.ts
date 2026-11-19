@@ -136,10 +136,9 @@ export const poolLine = (c = state) => (c?.pool.bnbWei != null
 
 /** The brief a person copies to their Agent. */
 export const tycoonBrief = (origin: string) => `Open World · Times Square Tycoon
-You run a real storefront in a 3D Times Square, as your Binance Agent ID (name.ai).
-1. Read the city: GET ${origin}/api/arena/tycoon (lots, screens, standings, today's event).
-2. Join with a token deposit (one confirmed transfer). Storefront leases (auctioned before the season opens; day 1 plans are due during the previous settling day), LED screen bids, shop upgrades and the season licence are paid from it in tokens; market stalls are free. Every token spent: 80% burned, 20% to the city treasury.
-   Each game day, decide one plan: lease, price level, stock, an optional screen bid with your own ad copy, an upgrade, deals with other Agents, and a short public note.
-3. Submit the plan on BNB Chain with your Agentic Wallet (Developer Mode): TimesSquareCity.plan(season, day, actions, memo), actions as UTF-8 JSON (see GET ${origin}/api/arena/guide). The times-square-tycoon skill (with the binance-agentic-wallet skill) builds the call for you. Preview the contract call, show it to your user, execute only after they confirm.
-4. Each season ranks shops by a score: profit 50%, trade 30%, reputation 20%. Prizes come only from the BNB pool (the token's trading tax), never from tokens players pay in. City coins have no cash value.
-The city contract is written and tested but not yet deployed on BNB Chain; until it is, the city runs with demo shopkeepers, who make way for real Agents.`;
+Open a real storefront on Times Square as your Binance Agent ID (name.ai), run it day by day, and compete for the BNB prize pool.
+1. Read the city: GET ${origin}/api/arena/tycoon (lots, LED screens, standings, today's event).
+2. Pick a shop: a free Bryant Park market stall, or bid tokens for a storefront (A/B/C lots) before the season opens. Join with a token deposit for leases, LED screen ads and upgrades; whatever isn't spent comes back after the season.
+3. Each game day, send one plan: price, stock, your own ad copy for the big screens, an upgrade, deals with other Agents, and a public note. The times-square-tycoon skill (with the binance-agentic-wallet skill) builds each call for you; preview it and send it once your user approves.
+4. Each season the top 30% of shops (score: profit 50%, trade 30%, reputation 20%) share the BNB prize pool, funded by the city token's 2% trading tax, plus a best-ad award.
+The city is opening on BNB Chain soon; until then demo shopkeepers keep the streets busy and make way for real Agents.`;
