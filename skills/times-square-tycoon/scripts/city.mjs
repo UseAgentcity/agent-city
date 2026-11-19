@@ -23,7 +23,8 @@ const SELECTOR = {
 const EVENTS = ['normal', 'broadway-out', 'premiere', 'tourists', 'rain', 'market-weekend', 'supply-up', 'slow'];
 const PRICES = ['discount', 'standard', 'premium', 'luxury'];
 const UPGRADES = ['signage', 'decor', 'hours'];
-const ACTION_KEYS = new Set(['lease', 'price', 'stock', 'brand', 'promo', 'upgrade', 'ad', 'deals']);
+const ACTION_KEYS = new Set(['lease', 'price', 'stock', 'brand', 'promo', 'upgrade', 'ad', 'deals', 'supply', 'deliver', 'delivery']);
+const TRADES = ['coffee', 'gifts', 'dining', 'apparel', 'theatre', 'bar', 'stall', 'cart'];
 const MAX_ACTIONS = 1024, MAX_MEMO = 160;
 const WEI = 10n ** 18n;
 
@@ -78,6 +79,10 @@ export function checkPlan(actions, memo = '') {
   if (actions.upgrade != null && !UPGRADES.includes(actions.upgrade)) bad.push(`upgrade must be one of ${UPGRADES.join(', ')}`);
   if (actions.lease != null && (!Array.isArray(actions.lease) || actions.lease.length > 3 || actions.lease.some((x) => typeof x?.lot !== 'string'))) bad.push('lease must be up to 3 {lot, bid} picks');
   if (actions.brand != null && (typeof actions.brand.name !== 'string' || actions.brand.name.length > 18)) bad.push('brand.name is required, at most 18 characters');
+  if (actions.supply != null && (!TRADES.includes(actions.supply.cat) || !(actions.supply.price >= 0.7 && actions.supply.price <= 1))) bad.push(`supply needs {cat: one of ${TRADES.join(', ')}, price: 0.7-1.0 of the city's stock price}`);
+  if (actions.deliver != null && !(actions.deliver.fee >= 0.05 && actions.deliver.fee <= 0.25)) bad.push('deliver needs {fee: 0.05-0.25 of each delivered order}');
+  if (actions.supply != null && actions.deliver != null) bad.push('pick one role a day: supply or deliver');
+  if (actions.delivery != null && typeof actions.delivery !== 'boolean') bad.push('delivery is true or false');
   if (actions.ad != null) {
     const ad = actions.ad;
     if (!Number.isInteger(ad.screen) || ad.screen < 0 || ad.screen > 11) bad.push('ad.screen must be 0-11');

@@ -117,9 +117,36 @@ const fakeRich = { ...street, standings: street.standings.map((s, i) => (s.agent
 const deps = Object.fromEntries(fakeRich.standings.filter((s) => s.agent.startsWith('0x')).map((s) => [s.agent, BigInt(s.deposit) * 10n ** 18n]));
 const split = settleSeason(fakeRich, { season: 1, budgetWei: 10n ** 18n, depositsWei: deps });
 const paid = (league) => split.claims.filter((c) => leagueOf(fakeRich.standings.find((s) => s.agent === c.agent)) === league).reduce((a, c) => a + c.bnb, 0n);
-assert.ok(paid('street') > 0n && paid('street') <= (10n ** 18n * 3000n) / 10000n + 1n, 'the street league takes at most 30%');
+assert.ok(paid('street') > 0n && paid('street') <= (10n ** 18n * 2500n) / 10000n + 1n, 'the street league takes at most 25%');
 assert.ok(paid('storefront') > 0n, 'storefronts still win');
 assert.ok(split.claims.filter((c) => leagueOf(fakeRich.standings.find((s) => s.agent === c.agent)) === 'street').length <= 10, 'at most 10 street winners');
+
+// Roles without a shop: a supplier undercuts the city's stock price and earns the margin; a courier carries extra
+// orders for shops that take delivery and earns its commission; both rank in their own league.
+const roleEvents = [
+  { type: 'enter', agent: 'shop', name: 'shop.ai', deposit: 1_000_000 }, { type: 'enter', agent: 'sup', name: 'sup.ai', deposit: 0 },
+  { type: 'enter', agent: 'cour', name: 'cour.ai', deposit: 0 }, { type: 'enter', agent: 'solo', name: 'solo.ai', deposit: 1_000_000 },
+];
+const coffeeA = LOTS.find((l) => l.cat === 'coffee' && l.tier === 'A'), coffeeB = LOTS.find((l) => l.cat === 'coffee' && l.tier === 'B');
+for (let d = 1; d <= DAYS; d++) {
+  roleEvents.push({ type: 'plan', agent: 'shop', day: d, actions: { ...(d === 1 ? { lease: [{ lot: coffeeA.id, bid: TIERS.A.lease }], delivery: true } : {}), price: 'standard', stock: 2000 } });
+  roleEvents.push({ type: 'plan', agent: 'solo', day: d, actions: { ...(d === 1 ? { lease: [{ lot: coffeeB.id, bid: TIERS.B.lease }] } : {}), price: 'standard', stock: 1500 } });
+  roleEvents.push({ type: 'plan', agent: 'sup', day: d, actions: { supply: { cat: 'coffee', price: 0.8 } } });
+  roleEvents.push({ type: 'plan', agent: 'cour', day: d, actions: { deliver: { fee: 0.1 } } });
+}
+const roles = runSeason({ seed: 'roles', lots: LOTS, events: roleEvents });
+const R = (id) => roles.standings.find((s) => s.agent === id);
+assert.ok(R('sup').role.supplied > 0 && R('sup').profit > 0, 'the supplier sells and earns its margin');
+assert.equal(R('sup').cat, 'supplier');
+assert.ok(R('cour').role.delivered > 0 && R('cour').role.commission > 0 && R('cour').profit === R('cour').role.commission, 'the courier earns exactly its commission');
+assert.ok(R('cour').role.delivered <= 250 * DAYS, 'a courier carries at most 250 orders a day');
+assert.ok(R('shop').today.delivered > 0 && R('solo').today.delivered === undefined, 'only shops that take delivery get delivery orders');
+assert.ok(R('sup').daysOpen === DAYS && R('cour').daysOpen === DAYS, 'a day of offering counts as a day open');
+assert.equal(leagueOf(R('sup')), 'trade');
+assert.equal(leagueOf(R('cour')), 'trade');
+// Without the supplier, the same stock costs the shops more.
+const noSup = runSeason({ seed: 'roles', lots: LOTS, events: roleEvents.filter((e) => e.agent !== 'sup') });
+assert.ok(noSup.standings.find((s) => s.agent === 'solo').profit < R('solo').profit, 'cheaper stock lifts the shops');
 
 // The public snapshot follows the clock: day 1 first, settling after day 7.
 let t = Date.UTC(2026, 10, 19);
@@ -133,4 +160,4 @@ t += 4000;
 assert.equal(city.snapshot().season.settling, true);
 assert.ok(city.snapshot().standings.every((s) => !('wallet' in s)), 'no wallets in the public snapshot');
 
-console.log('PASS: deterministic season, token lease auction and licence, opening auction, unlimited street carts, two award leagues, free stalls, 80/20 burn split, upgrades, event sponsorship, composite score, daily rent, loan default, ad filter, public clock');
+console.log('PASS: deterministic season, token lease auction and licence, opening auction, unlimited street carts, suppliers and couriers, three award leagues, free stalls, 80/20 burn split, upgrades, event sponsorship, composite score, daily rent, loan default, ad filter, public clock');

@@ -33,6 +33,11 @@ export const DEMO_AGENTS = [
   { agent: 'demo:halo', name: 'halo.demo', cat: 'cart', bid: 1.0, price: 'discount', ad: 0, brand: ['Halo Halal', '鸡肉饭加白酱', '#2bb673'] },
   { agent: 'demo:dogo', name: 'dogo.demo', cat: 'cart', bid: 1.0, price: 'standard', ad: 0, brand: ['Dog Day', '一美元热狗', '#e5484d'] },
   { agent: 'demo:nuts', name: 'nuts.demo', cat: 'cart', bid: 1.0, price: 'premium', ad: 0, brand: ['Nutty Nook', '焦糖坚果', '#a0522d'] },
+  // Behind the scenes (no shop): two suppliers and two couriers, invented names.
+  { agent: 'demo:bean', name: 'bean.demo', role: 'supplier', cat: 'coffee', quote: 0.84, bid: 0, ad: 0, brand: ['Bean Barge', '咖啡豆批发，当天送到', '#8b5a2b'] },
+  { agent: 'demo:crate', name: 'crate.demo', role: 'supplier', cat: 'dining', quote: 0.9, bid: 0, ad: 0, brand: ['Fresh Crate', '餐厅食材直送', '#4caf7a'] },
+  { agent: 'demo:zip', name: 'zip.demo', role: 'courier', fee: 0.12, bid: 0, ad: 0, brand: ['Zip Riders', '十分钟送到', '#22c3ee'] },
+  { agent: 'demo:owl', name: 'owl.demo', role: 'courier', fee: 0.16, bid: 0, ad: 0, brand: ['Night Owl', '散场后也送', '#8b5cf6'] },
   { agent: 'demo:bo', name: 'bo.demo', cat: 'stall', bid: 1.0, price: 'premium', ad: 0.05, brand: ['Bo Crafts', '手作礼物', '#d08a4f'] },
   { agent: 'demo:ivy', name: 'ivy.demo', cat: 'coffee', bid: 1.15, price: 'standard', ad: 0.3, brand: ['Ivy Roasters', '慢一点的咖啡', '#3ddc97'] },
 ];
@@ -65,6 +70,19 @@ export function demoPlan(bot, day, city, seed, lots, events = []) {
   const ev = eventFor(seed, day, events);
   const tokens = me?.tokens ?? depositOf(bot);
   const actions = {};
+  if (bot.role === 'supplier') {
+    // Undercut a little more when yesterday's orders were thin.
+    const thin = me?.today && me.today.served < 400;
+    return { type: 'plan', agent: bot.agent, day, actions: { supply: { cat: bot.cat, price: +(bot.quote - (thin ? 0.04 : 0) + r() * 0.03).toFixed(2) }, brand: { name: bot.brand[0], slogan: bot.brand[1], color: bot.brand[2] } }, memo: ['今天的货已经装车', '老客户再让一点价', '早上六点开始配送'][Math.floor(r() * 3)] };
+  }
+  if (bot.role === 'courier') {
+    // Cut the fee when yesterday's runs were few, raise it when the bikes were full.
+    const y = me?.today?.served ?? 0;
+    const fee = +(bot.fee + (y >= 240 ? 0.02 : y < 120 ? -0.02 : 0) + r() * 0.01).toFixed(2);
+    return { type: 'plan', agent: bot.agent, day, actions: { deliver: { fee }, brand: { name: bot.brand[0], slogan: bot.brand[1], color: bot.brand[2] } }, memo: ['今天的骑手都上线了', '午饭高峰最忙', '雨天单量翻倍'][Math.floor(r() * 3)] };
+  }
+  // Food shops with a healthy margin take delivery orders.
+  if (day === 1 && ['coffee', 'dining', 'cart'].includes(bot.cat) && bot.price !== 'discount') actions.delivery = true;
   if ((day === 1 || !me?.lot) && bot.cat === 'cart') {
     actions.lease = [{ lot: 'cart', bid: 0 }];
     actions.brand = { name: bot.brand[0], slogan: bot.brand[1], color: bot.brand[2] };
@@ -122,7 +140,7 @@ export function demoPlan(bot, day, city, seed, lots, events = []) {
 }
 
 /** Token deposit per temperament: bolder bidders bring more. */
-export const depositOf = (bot) => (bot.cat === 'stall' ? 0 : Math.round((bot.bid * 500_000 + bot.ad * 500_000) / 10_000) * 10_000);
+export const depositOf = (bot) => (bot.role || bot.cat === 'stall' || bot.cat === 'cart' ? 0 : Math.round((bot.bid * 500_000 + bot.ad * 500_000) / 10_000) * 10_000);
 
 /** Demo spectators who sometimes sponsor tomorrow's city event with tokens (always labelled as demo). */
 export const DEMO_SPONSORS = [

@@ -78,6 +78,19 @@ const SCREEN_WEIGHT = { main: 3, street: 2, side: 1 };
 const OUTSIDE = 1.0; // weight of "not buying here": high prices lose people, not just shift them
 const COBRAND_SHARE = 0.1;
 const DEFAULT_PENALTY = 3000;
+/**
+ * Roles for Agents without a shop. A supplier sells one trade's stock to shops below the city's price; a courier
+ * delivers orders for shops that switch delivery on, taking a commission on what it delivers.
+ */
+export const ROLES = {
+  supplier: { zh: '供货商', en: 'Supplier' },
+  courier: { zh: '外卖骑手', en: 'Courier' },
+};
+/** Trades whose shops can take delivery orders, extra orders as a share of walk-ins, and a courier's daily capacity. */
+export const DELIVERY = { trades: ['coffee', 'dining', 'cart'], share: 0.3, capacity: 250, fee: [0.05, 0.25] };
+/** A supplier's own cost, as a share of the city's unit cost (bulk buying). Its price must sit between this and 1. */
+export const SUPPLIER_COST = 0.65;
+const SUPPLIER_PRICE = [0.7, 1];
 
 // ---- deterministic randomness (FNV-1a + mulberry32): same seed, same city, in Node and in browsers ----
 export function hash32(text) {
@@ -175,6 +188,7 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
       days: 0, history: [], today: null, deposit, tokens: deposit,
       spent: { licence: 0, lease: 0, ads: 0, upgrades: 0 }, licensed: false,
       upgrades: { signage: 0, decor: 0, hours: 0 }, servedTotal: 0, screenScore: 0, lastCat: null,
+      supply: null, deliver: null, delivery: false, role: { supplied: 0, sales: 0, delivered: 0, commission: 0 },
     });
   }
   const plansFor = (day) => events.filter((e) => e.type === 'plan' && e.day === day && agents.has(e.agent));
@@ -207,6 +221,10 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
       a.promo = act.promo === true;
       a.lease = Array.isArray(act.lease) ? act.lease.slice(0, MAX_LEASE_PICKS) : [];
       a.upgrade = act.upgrade in UPGRADES ? act.upgrade : null;
+      // Roles without a shop, for today only (like stock, they need a plan each day).
+      a.supply = act.supply && CATS[act.supply.cat] ? { cat: act.supply.cat, price: clamp(Number(act.supply.price) || 0.9, ...SUPPLIER_PRICE) } : null;
+      a.deliver = act.deliver ? { fee: clamp(Number(act.deliver.fee) || 0.15, ...DELIVERY.fee) } : null;
+      if (typeof act.delivery === 'boolean') a.delivery = act.delivery;
       const ad = act.ad && Number.isInteger(act.ad.screen) && screens[act.ad.screen] ? cleanAd(act.ad) : null;
       if (ad && Number.isFinite(act.ad.bid)) bids.push({ agent: a, screen: act.ad.screen, bid: Math.floor(act.ad.bid), ad });
       for (const d of Array.isArray(act.deals) ? act.deals.slice(0, 4) : []) {
@@ -273,17 +291,45 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
       a.upgrade = null;
     }
 
-    // 4. Stock for today, bought with city coins before the doors open.
+    // 4. Stock for today, bought with city coins before the doors open: from the cheapest supplier Agents first,
+    // then the city.
+    const suppliers = [...agents.values()].filter((a) => !a.lot && a.supply && seen.has(a.agent))
+      .sort((x, y) => x.supply.price - y.supply.price || (x.agent < y.agent ? -1 : 1));
+    const couriers = [...agents.values()].filter((a) => !a.lot && !a.supply && a.deliver && seen.has(a.agent))
+      .sort((x, y) => x.deliver.fee - y.deliver.fee || (x.agent < y.agent ? -1 : 1));
+    for (const a of agents.values()) a.today = { event: ev.id, customers: 0, served: 0, revenue: 0, cost: 0, rent: 0, ad: 0, waste: 0 };
+    const capacity = new Map(suppliers.map((s) => [s.agent, Infinity]));
     for (const a of agents.values()) {
-      a.today = { event: ev.id, customers: 0, served: 0, revenue: 0, cost: 0, rent: 0, ad: 0, waste: 0 };
       if (!a.lot) continue;
-      const cat = CATS[lotById.get(a.lot).cat];
+      const catId = lotById.get(a.lot).cat, cat = CATS[catId];
       const unit = cat.cost * (ev.cost ?? 1);
       const want = seen.has(a.agent) ? Math.max(0, a.stock - (cat.perishable ? 0 : a.inventory)) : 0;
-      const units = Math.max(0, Math.min(want, Math.floor(a.cash / unit)));
-      a.cash -= round(units * unit);
-      a.today.cost = round(units * unit);
+      const sources = suppliers.filter((s) => s.supply.cat === catId).map((s) => {
+        if (capacity.get(s.agent) === Infinity) capacity.set(s.agent, Math.floor(s.cash / (SUPPLIER_COST * unit)));
+        return { s, price: unit * s.supply.price };
+      });
+      let rest = want, units = 0, paid = 0;
+      for (const src of sources) {
+        const k = Math.max(0, Math.min(rest, capacity.get(src.s.agent), Math.floor(a.cash / src.price)));
+        if (!k) continue;
+        const bill = round(k * src.price), own = round(k * SUPPLIER_COST * unit);
+        a.cash -= bill; src.s.cash += bill - own;
+        capacity.set(src.s.agent, capacity.get(src.s.agent) - k);
+        src.s.role.supplied += k; src.s.role.sales += bill; src.s.servedTotal += k;
+        src.s.today.served += k; src.s.today.revenue += bill; src.s.today.cost += own;
+        a.today.supplier = src.s.brand?.name ?? src.s.name;
+        rest -= k; units += k; paid += bill;
+      }
+      const k = Math.max(0, Math.min(rest, Math.floor(a.cash / unit)));
+      a.cash -= round(k * unit); paid += round(k * unit); units += k;
+      a.today.cost = paid;
       a.inventory = (cat.perishable ? 0 : a.inventory) + units;
+    }
+    // Roles count a day of business when they offered something.
+    for (const r of [...suppliers, ...couriers]) {
+      r.days++;
+      r.lastCat = r.supply ? 'supplier' : 'courier';
+      if (r.supply && r.today.served) say(day, r.agent, `给${CATS[r.supply.cat].zh}店供货 ${r.today.served.toLocaleString('en-US')} 份`, { kind: 'supply' });
     }
 
     // 5. Customers, trade by trade.
@@ -309,6 +355,21 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
         if (a.lot && partner?.lot) a.today.extra = (a.today.extra ?? 0) + round(partner.today.customers * COBRAND_SHARE);
       }
     }
+    // Delivery: shops that take it get extra orders, handed to the cheapest couriers with room left.
+    const room = new Map(couriers.map((c) => [c.agent, DELIVERY.capacity]));
+    for (const a of agents.values()) {
+      if (!a.lot || !a.delivery || !DELIVERY.trades.includes(lotById.get(a.lot).cat)) continue;
+      let orders = round(a.today.customers * DELIVERY.share);
+      for (const c of couriers) {
+        if (orders <= 0) break;
+        const k = Math.min(orders, room.get(c.agent));
+        if (!k) continue;
+        room.set(c.agent, room.get(c.agent) - k);
+        (a.today.deliveries ??= []).push({ courier: c.agent, orders: k, fee: c.deliver.fee });
+        a.today.extra = (a.today.extra ?? 0) + k;
+        orders -= k;
+      }
+    }
     for (const a of agents.values()) {
       if (!a.lot) continue;
       const lot = lotById.get(a.lot), cat = CATS[lot.cat];
@@ -319,6 +380,23 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
       a.today.served = served;
       a.today.revenue = round(served * price);
       a.cash += a.today.revenue;
+      // Couriers are paid their commission on the delivery orders that were actually served (served last).
+      if (a.today.deliveries) {
+        let left = Math.max(0, served - (customers - a.today.deliveries.reduce((n, d) => n + d.orders, 0)));
+        for (const d of a.today.deliveries) {
+          const done = Math.min(d.orders, left);
+          left -= done;
+          const fee = round(done * price * d.fee);
+          const c = agents.get(d.courier);
+          a.cash -= fee; c.cash += fee;
+          c.role.delivered += done; c.role.commission += fee; c.servedTotal += done;
+          c.today.served += done; c.today.revenue += fee;
+          d.done = done;
+        }
+        a.today.delivered = a.today.deliveries.reduce((n, d) => n + d.done, 0);
+        a.today.courier = agents.get(a.today.deliveries[0].courier).brand?.name ?? agents.get(a.today.deliveries[0].courier).name;
+        delete a.today.deliveries;
+      }
       a.inventory -= served;
       a.servedTotal += served;
       a.lastCat = lot.cat;
@@ -422,6 +500,7 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
       defaults: a.defaults, evicted: a.evicted, daysOpen: a.days, cobrands: [...a.cobrands], today: a.today, history: a.history,
       deposit: a.deposit, tokens: a.tokens, tokensSpent: spent, spent: { ...a.spent }, upgrades: { ...a.upgrades },
       servedTotal: a.servedTotal, screenScore: a.screenScore, cat: a.lastCat, score: 0, scoreParts: null, bestAd: false,
+      delivery: a.delivery, role: { ...a.role },
     };
   });
   const maxProfit = Math.max(0, ...list.map((s) => s.profit));

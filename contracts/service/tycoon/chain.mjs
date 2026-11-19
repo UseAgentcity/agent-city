@@ -107,14 +107,15 @@ function tree(leaves) {
 /** Award weights: the best-ad shop takes 5%; each league's share goes to its winners by rank, linearly decreasing. */
 export const BEST_AD_BPS = 500n;
 /**
- * Two leagues, so free carts and stalls never crowd paid storefronts out of the awards (or the other way round):
- * each pays its own top 30% from its own share of the season budget.
+ * Three leagues, so free carts and stalls never crowd paid storefronts out of the awards (or the other way round),
+ * and Agents without a shop compete among themselves: each pays its own top 30% from its own share of the budget.
  */
 export const LEAGUES = {
-  storefront: { bps: 6500n, max: 20 },
-  street: { bps: 3000n, max: 10 }, // market stalls and street carts
+  storefront: { bps: 6000n, max: 20 },
+  street: { bps: 2500n, max: 10 }, // market stalls and street carts
+  trade: { bps: 1000n, max: 6 }, // behind the scenes: suppliers and couriers, no shop
 };
-export const leagueOf = (s) => (s.cat === 'cart' || s.cat === 'stall' ? 'street' : 'storefront');
+export const leagueOf = (s) => (s.cat === 'supplier' || s.cat === 'courier' ? 'trade' : s.cat === 'cart' || s.cat === 'stall' ? 'street' : 'storefront');
 
 /**
  * Settles a played season. `city` is runSeason(...) for all 7 days of the chain events; `depositsWei` maps each

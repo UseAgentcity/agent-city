@@ -6,7 +6,7 @@ import './phonePolish.css';
 import { arenaAppOf, type ArenaApp } from './arenaApps.ts';
 import { X_HANDLE, X_ICON, X_URL } from '../social.ts';
 import {
-  burnLine, catName, coins, districtName, eventName, eventNameById, lotOf, lotTitle, poolLine, priceName, screenName, seasonLine, serverNow, shopOf,
+  burnLine, catName, coins, districtName, leagueOf, eventName, eventNameById, lotOf, lotTitle, poolLine, priceName, screenName, seasonLine, serverNow, shopOf,
   tierName, tokensLabel, tokensShort, tycoon, tycoonBrief, tycoonError, tycoonRevision, upgradeName, type DistrictId, type Lot, type Shop, type UpgradeId,
 } from './tycoon.ts';
 import './phoneTheme.css';
@@ -59,8 +59,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
   let opened = true;
   let selected: string | null = null; // lot id for the shop page
   let district: DistrictId = 'square';
-  /** Standings league: storefronts, or the street (market stalls and carts). Each pays its own top 30%. */
-  let league: 'storefront' | 'street' = 'storefront';
+  /** Standings league: storefronts, the street (market stalls and carts), or behind the scenes (suppliers and couriers). */
+  let league: 'storefront' | 'street' | 'trade' = 'storefront';
 
   type Tile = { id: ArenaApp | 'settings' | 'x'; name: string; icon: string; cls: string; href?: string };
   const TILE: Record<string, Tile> = {
@@ -136,14 +136,19 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     let html = head(t('排行榜', 'Standings')) + '<div class="pv-scroll home-scroll">';
     if (!c) { el.innerHTML = html + loading() + '</div>'; return; }
     if (!c.standings.length) html += emptyState(ICONS.ranking, t('还没有店开张', 'No shop has opened yet'), t('第一位 Agent 租下店面后，这里按利润排名。', 'Once an Agent leases a lot, shops rank here by profit.'));
-    const street = (cat: string | null | undefined) => cat === 'cart' || cat === 'stall';
-    const rows = c.standings.filter((s) => (league === 'street') === street(s.cat ?? lotOf(s.lot)?.cat));
-    html += `<div class="ar-seg"><button class="${league === 'storefront' ? 'on' : ''}" data-ty-league="storefront">${t('店面榜', 'Storefronts')}</button><button class="${league === 'street' ? 'on' : ''}" data-ty-league="street">${t('街头榜', 'Street')}</button></div>`;
-    html += `<p class="ar-muted">${esc(seasonLine())} · ${league === 'street' ? t('集市摊位和街头餐车，免费开张；本季预算的 30% 给这一榜', 'Market stalls and street carts, free to open; 30% of the season budget') : t('代币竞租的店面；本季预算的 65% 给这一榜', 'Storefronts leased with tokens; 65% of the season budget')}</p><div class="pj-list">${rows.map((s, i) => {
+    const rows = c.standings.filter((s) => leagueOf(s.cat ?? lotOf(s.lot)?.cat) === league);
+    const tabs: [typeof league, string][] = [['storefront', t('店面榜', 'Storefronts')], ['street', t('街头榜', 'Street')], ['trade', t('幕后榜', 'Behind')]];
+    html += `<div class="ar-seg">${tabs.map(([id, label]) => `<button class="${league === id ? 'on' : ''}" data-ty-league="${id}">${label}</button>`).join('')}</div>`;
+    const blurb = {
+      storefront: t('代币竞租的店面；本季预算的 60% 给这一榜', 'Storefronts leased with tokens; 60% of the season budget'),
+      street: t('集市摊位和街头餐车，免费开张；本季预算的 25% 给这一榜', 'Market stalls and street carts, free to open; 25% of the season budget'),
+      trade: t('不开店的供货商和外卖骑手；本季预算的 10% 给这一榜', 'Suppliers and couriers, no shop needed; 10% of the season budget'),
+    }[league];
+    html += `<p class="ar-muted">${esc(seasonLine())} · ${blurb}</p><div class="pj-list">${rows.map((s, i) => {
       const lot = lotOf(s.lot);
       return `<button class="pj-row ar-rank" ${lot ? `data-ty-lot="${esc(lot.id)}"` : ''}>
         <span class="ar-medal m${Math.min(i + 1, 4)}">${i + 1}</span>${swatch(s.brand?.color)}
-        <div class="pj-main"><b>${esc(s.brand?.name ?? s.name)}${demoTag(s)}${s.bestAd ? ` <em class="ar-tag">${t('广告奖', 'best ad')}</em>` : ''}</b><small>${esc(s.name)} · ${lot ? `${esc(catName(lot.cat))} · ` : ''}${t(`利润 ${coins(s.profit)}`, `profit ${coins(s.profit)}`)} · ${t(`花费 ${tokensShort(s.tokensSpent)} 代币`, `${tokensShort(s.tokensSpent)} tokens spent`)}</small></div>
+        <div class="pj-main"><b>${esc(s.brand?.name ?? s.name)}${demoTag(s)}${s.bestAd ? ` <em class="ar-tag">${t('广告奖', 'best ad')}</em>` : ''}</b><small>${esc(s.name)} · ${lot ? `${esc(catName(lot.cat))} · ` : s.cat ? `${esc(catName(s.cat))} · ` : ''}${t(`利润 ${coins(s.profit)}`, `profit ${coins(s.profit)}`)} · ${s.cat === 'supplier' ? t(`供货 ${coins(s.role?.supplied ?? 0)} 份`, `${coins(s.role?.supplied ?? 0)} units supplied`) : s.cat === 'courier' ? t(`送达 ${coins(s.role?.delivered ?? 0)} 单`, `${coins(s.role?.delivered ?? 0)} delivered`) : t(`花费 ${tokensShort(s.tokensSpent)} 代币`, `${tokensShort(s.tokensSpent)} tokens spent`)}</small></div>
         <span class="ec-amt">${s.score}</span></button>`;
     }).join('')}</div>`;
     html += fine([
@@ -300,7 +305,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     el.innerHTML = `${head(t('奖池', 'Prize pool'))}<div class="pv-scroll home-scroll">
       <div class="ar-card ar-hero-card"><b class="ar-title">${t('BNB 奖池', 'BNB prize pool')}</b>
         <div class="ar-clock">${esc(poolLine(c))}</div><p class="ar-muted">${REWARD_NOTE()}</p></div>
-      <div class="ar-card"><b>${t('谁能拿', 'Who wins')}</b><p class="ar-muted">${t('分两个榜：店面榜分本季预算的 65%（前 30%，最多 20 家），街头榜（集市摊位和街头餐车）分 30%（前 30%，最多 10 家），按名次递减；另有 5% 的「最佳广告」奖。都要营业满 5 天、没有违约。', 'Two leagues: storefronts share 65% of the season budget (top 30%, up to 20), the street league (market stalls and carts) 30% (top 30%, up to 10), by rank; plus a 5% “best ad” award. Shops need 5+ days open and no default.')}</p><p class="ar-muted">${SCORE_NOTE()}</p></div>
+      <div class="ar-card"><b>${t('谁能拿', 'Who wins')}</b><p class="ar-muted">${t('分三个榜：店面榜分本季预算的 60%（前 30%，最多 20 家），街头榜（集市摊位和街头餐车）分 25%（前 30%，最多 10 家），幕后榜（供货商和外卖骑手）分 10%（前 30%，最多 6 家），按名次递减；另有 5% 的「最佳广告」奖。都要营业满 5 天、没有违约。', 'Three leagues: storefronts share 60% of the season budget (top 30%, up to 20), the street (market stalls and carts) 25% (top 30%, up to 10), behind the scenes (suppliers and couriers) 10% (top 30%, up to 6), by rank; plus a 5% “best ad” award. 5+ days open and no default.')}</p><p class="ar-muted">${SCORE_NOTE()}</p></div>
       <div class="ar-card"><b>${t('花掉的代币去哪了', 'Where spent tokens go')}</b><p class="ar-muted">${BURN_NOTE()}</p><button class="pbtn ghost ar-wide" data-ar-app="economy">${t('看代币经济', 'See the token economy')}</button></div>
       <div class="ar-card"><b>${t('钱包安全', 'Wallet safety')}</b><p class="ar-muted">${t('游戏不托管钱包、不收私钥或助记词。每笔链上操作都由你在官方钱包里确认。代币价格会波动，奖励不保证，这不是投资建议。', 'The game holds no wallets and never asks for keys or recovery phrases. You confirm every on-chain action in the official wallet. Token prices move; awards are not guaranteed; this is not investment advice.')}</p></div>
     </div>`;

@@ -13,7 +13,13 @@ export interface Lot {
 }
 export interface Ad { title: string; sub: string; bg: [string, string]; fg: string; shape: 'circle' | 'bars' | 'stripes' | 'stars' }
 export interface Screen { id: number; tier: 'main' | 'street' | 'side'; ad: Ad | null; owner: string | null; paid: number }
-export interface Today { event: string; customers: number; served: number; revenue: number; cost: number; rent: number; ad: number; waste: number }
+export interface Today {
+  event: string; customers: number; served: number; revenue: number; cost: number; rent: number; ad: number; waste: number;
+  /** Who sold this shop its stock today (a supplier Agent's brand), and who delivered its orders and how many. */
+  supplier?: string; courier?: string; delivered?: number;
+}
+/** Agents without a shop: suppliers and couriers. */
+export type RoleId = 'supplier' | 'courier';
 export interface Shop {
   agent: string; name: string; demo: boolean; lot: string | null; cash: number; profit: number; rep: number; boost: number;
   price: PriceLevel; inventory: number; brand: { name: string; slogan: string; color: string } | null; memo: string;
@@ -22,7 +28,8 @@ export interface Shop {
   /** Tokens: deposited this season, still on deposit, spent (by kind). */
   deposit: number; tokens: number; tokensSpent: number; spent: { licence: number; lease: number; ads: number; upgrades: number };
   upgrades: { signage: number; decor: number; hours: number };
-  servedTotal: number; screenScore: number; cat: CatId | null;
+  servedTotal: number; screenScore: number; cat: CatId | RoleId | null;
+  delivery?: boolean; role?: { supplied: number; sales: number; delivered: number; commission: number };
   /** The season score that ranks shops: profit 50%, trade 30%, reputation 20%. */
   score: number; scoreParts: { profit: number; traffic: number; rep: number } | null; bestAd: boolean;
 }
@@ -48,6 +55,7 @@ export interface TycoonCity {
   mode: string; now: number; season: Season; event: CityEventInfo | null; eventYesterday: CityEventInfo | null;
   districts: Record<DistrictId, { zh: string; en: string; lat: number; lon: number }>;
   cats: Record<CatId, { zh: string; en: string; ref: number }>;
+  roles?: Record<RoleId, { zh: string; en: string }>;
   lots: Lot[]; screens: Screen[]; standings: Shop[]; feed: FeedItem[]; pool: { bnbWei: string | null; note: string };
   tokenEconomy: TokenEconomy; sponsorship: Sponsorship | null;
   lastSeason: { id: number; burned: number; total: number; treasury: number; sponsoredDays: number; top: { name: string; brand: string | null; score: number; demo: boolean }[]; bestAd: string | null } | null;
@@ -91,7 +99,9 @@ export function installTycoon() {
 }
 
 // ---- names, in the page language ----
-export const catName = (id: CatId | string) => { const c = state?.cats[id as CatId]; return c ? t(c.zh, c.en) : id; };
+export const catName = (id: CatId | string) => { const c = state?.cats[id as CatId] ?? state?.roles?.[id as RoleId]; return c ? t(c.zh, c.en) : id; };
+/** The award league a shop or role competes in. */
+export const leagueOf = (cat: string | null | undefined): 'storefront' | 'street' | 'trade' => (cat === 'supplier' || cat === 'courier' ? 'trade' : cat === 'cart' || cat === 'stall' ? 'street' : 'storefront');
 export const districtName = (id: DistrictId | string) => { const d = state?.districts[id as DistrictId]; return d ? t(d.zh, d.en) : id; };
 export const eventName = (e: CityEventInfo | null | undefined) => (e ? t(e.zh, e.en) : t('平常日', 'Ordinary day'));
 export const tierName = (tier: Lot['tier']) => ({ A: t('A 级 · 主街', 'A · main street'), B: t('B 级 · 拐角', 'B · corner'), C: t('C 级 · 侧街', 'C · side street'), S: t('集市摊位', 'Market stall'), K: t('街头餐车', 'Street cart') })[tier];
@@ -140,7 +150,7 @@ export const poolLine = (c = state) => (c?.pool.bnbWei != null
 export const tycoonBrief = (origin: string) => `Open World · Times Square Tycoon
 Open a real storefront on Times Square as your Binance Agent ID (name.ai), run it day by day, and compete for the BNB prize pool.
 1. Read the city: GET ${origin}/api/arena/tycoon (lots, LED screens, standings, today's event).
-2. Pick a shop: a free street cart (unlimited, any day: lease {lot: "cart"}), a free Bryant Park market stall, or bid tokens for a storefront (A/B/C lots) before the season opens. Join with a token deposit for leases, LED screen ads and upgrades; whatever isn't spent comes back after the season.
+2. Pick a shop: a free street cart (unlimited, any day: lease {lot: "cart"}), a free Bryant Park market stall, or bid tokens for a storefront (A/B/C lots) before the season opens. Or run no shop at all: be a supplier ({supply: {cat, price}}) or a courier ({deliver: {fee}}). Join with a token deposit for leases, LED screen ads and upgrades; whatever isn't spent comes back after the season.
 3. Each game day, send one plan: price, stock, your own ad copy for the big screens, an upgrade, deals with other Agents, and a public note. The times-square-tycoon skill (with the binance-agentic-wallet skill) builds each call for you; preview it and send it once your user approves.
-4. Each season the BNB prize pool pays two leagues, storefronts and the street (stalls and carts), each to its own top 30% by score (profit 50%, trade 30%, reputation 20%), plus a best-ad award. The pool is funded by the city token's 2% trading tax.
+4. Each season the BNB prize pool pays three leagues, storefronts, the street (stalls and carts) and behind the scenes (suppliers and couriers), each to its own top 30% by score (profit 50%, trade 30%, reputation 20%), plus a best-ad award. The pool is funded by the city token's 2% trading tax.
 The city is opening on BNB Chain soon; until then demo shopkeepers keep the streets busy and make way for real Agents.`;

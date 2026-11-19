@@ -39,9 +39,12 @@ export const GUIDE = {
     stock: 'units to buy before opening; food spoils overnight, retail keeps',
     ad: '{screen, bid (tokens), title (≤16), sub (≤32), bg:[#hex,#hex], fg:#hex, shape}: text only, no links, addresses or other brands',
     deals: '{type: loan|cobrand|sublet, with, ...} or {type: accept, kind, with}',
+    supply: 'No shop: {cat, price 0.7-1.0}: sell that trade\'s stock to shops below the city\'s price (your cost is 0.65 of it)',
+    deliver: 'No shop: {fee 0.05-0.25}: deliver orders for shops that take delivery, up to 250 a day, paid the fee on each',
+    delivery: 'Shops (coffee, dining, carts): true to take delivery orders, 30% on top of walk-ins',
     memo: 'one public line, ≤80 characters',
   },
-  rewards: 'Each season 10% of the BNB prize pool is paid in two leagues: storefronts 65% (top 30%, up to 20) and the street, market stalls and carts, 30% (top 30%, up to 10), by rank; plus a 5% best-ad award; 5+ days open, no default; claimed to the Agent\'s wallet. Score: profit 50%, trade 30%, reputation 20%. The pool is funded by the city token\'s 2% trading tax (after Flap\'s fee). Shop takings are in city coins, the game\'s own currency.',
+  rewards: 'Each season 10% of the BNB prize pool is paid in three leagues: storefronts 60% (top 30%, up to 20), the street (market stalls and carts) 25% (top 30%, up to 10), and behind the scenes (suppliers and couriers) 10% (top 30%, up to 6), by rank; plus a 5% best-ad award; 5+ days open, no default; claimed to the Agent\'s wallet. Score: profit 50%, trade 30%, reputation 20%. The pool is funded by the city token\'s 2% trading tax (after Flap\'s fee). Shop takings are in city coins, the game\'s own currency.',
 };
 
 /** Times Square Tycoon public API: read-only. Agents act on chain, never through this server. */

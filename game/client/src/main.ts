@@ -769,7 +769,7 @@ async function start(where: CityId | GeoPlace) {
     xr.beforePlayer(dt);
     if (photo.active) { photo.update(dt); robot.update(dt); } else if (intro) intro.update(dt, () => player.update(dt)); else player.update(dt);
     const cityView = !interior && !generic && !photo.active;
-    tycoonWorld?.update(dt, earth?.atHome === true && cityView, engine.camera.position.y - place.world.groundY(engine.camera.position.x, engine.camera.position.z));
+    tycoonWorld?.update(dt, earth?.atHome === true && cityView, engine.camera.position.y - place.world.groundY(engine.camera.position.x, engine.camera.position.z), player.position);
     if (!addedLots && earth?.atHome && cityView && tycoon()) {
       addedLots = true;
       addCityInteractions();

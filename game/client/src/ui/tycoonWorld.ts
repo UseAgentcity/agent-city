@@ -7,6 +7,7 @@ import type { EarthApi } from '../earth/index.ts';
 import { rawCanvases, t } from '../i18n.ts';
 import { installTycoonDecor } from './tycoonDecor.ts';
 import { installBeams } from './tycoonBeams.ts';
+import { installCouriers } from './tycoonCouriers.ts';
 import { auctionDay, catName, coins, onTycoon, priceName, shopOf, tierName, tokensShort, tycoon, type Lot } from './tycoon.ts';
 
 /** A lot's door on the street: the point, the outward normal and the wall tangent (world x/z). */
@@ -205,7 +206,12 @@ function drawTotem(c: HTMLCanvasElement, lot: Lot) {
   g.fillStyle = '#8d96a5'; g.font = `600 32px ${FONT}`; g.fillText(t('昨天的客人', 'Served yesterday'), TOTEM_W / 2, 520);
   g.fillStyle = '#f4f1e8'; g.font = `900 120px ${FONT}`; g.fillText(served != null ? served.toLocaleString('en-US') : '—', TOTEM_W / 2, 625);
   const lost = shop.today ? shop.today.customers - shop.today.served : 0;
-  if (lost > 0) { g.fillStyle = '#f6465d'; g.font = `700 30px ${FONT}`; g.fillText(t(`缺货流失 ${lost} 位`, `${lost} turned away`), TOTEM_W / 2, 712); }
+  // Under the number: turned-away customers, and the Agents behind this shop today (supplier, courier).
+  const notes: [string, string][] = [];
+  if (lost > 0) notes.push(['#f6465d', t(`缺货流失 ${lost} 位`, `${lost} turned away`)]);
+  if (shop.today?.supplier) notes.push(['#c9a36b', t(`货源 ${shop.today.supplier}`, `Stock from ${shop.today.supplier}`)]);
+  if (shop.today?.delivered) notes.push(['#5ec8e6', t(`外卖 ${shop.today.courier} · ${shop.today.delivered} 单`, `Delivery ${shop.today.courier} · ${shop.today.delivered}`)]);
+  notes.slice(0, 2).forEach(([c, text], i) => { g.fillStyle = c; g.font = `700 ${notes.length > 1 ? 27 : 30}px ${FONT}`; g.fillText(text, TOTEM_W / 2, (notes.length > 1 ? 686 : 712) + i * 36, TOTEM_W - 50); });
   // Price and reputation chips.
   const chip = (x: number, label: string) => {
     g.font = `700 32px ${FONT}`;
@@ -287,6 +293,8 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
   scene.add(group);
   const decor = installTycoonDecor(group, ground);
   const beams = installBeams(group, ground);
+  const couriers = installCouriers(group, ground);
+  let focus = { x: 0, z: 0 };
   let clock = 0;
   // ---- shoppers: a line at each door that moves, people going in, people coming out with a bag ----
   const queue = new Crowd(220);
@@ -482,7 +490,7 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       }
       const sign = signs.get(lot.id) ?? placeSign(lot, f);
       const shop = shopOf(lot.owner);
-      const key = `${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${auctionDay()}|${tycoon()?.standings.length ?? 0}|${document.documentElement.lang}`;
+      const key = `${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.today?.supplier ?? ''}|${shop?.today?.delivered ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${auctionDay()}|${tycoon()?.standings.length ?? 0}|${document.documentElement.lang}`;
       if (sign.key !== key) {
         if (sign.totem) drawTotem(sign.canvas, lot); else drawSign(sign.canvas, lot);
         sign.tex.needsUpdate = true;
@@ -509,14 +517,17 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       signs.delete(id);
       stalls.delete(id);
     }
-    beams.sync(city.lots.flatMap((lot) => { const f = lotFrontOf(earth, lot); return f ? [{ lot, f }] : []; }));
+    const fronts = city.lots.flatMap((lot) => { const f = lotFrontOf(earth, lot); return f ? [{ lot, f }] : []; });
+    beams.sync(fronts);
+    couriers.sync(fronts);
   }
   onTycoon(sync);
   let retry = 0;
   return {
     /** Per frame: draw only in the city view; keep retrying lots whose map tiles are still streaming. */
     /** `camHeight`: the camera above the street, for the from-the-air beams. */
-    update(dt: number, visible: boolean, camHeight = 0) {
+    update(dt: number, visible: boolean, camHeight = 0, at?: { x: number; z: number }) {
+      if (at) focus = at;
       group.visible = visible;
       if (!visible) return;
       retry -= dt;
@@ -524,6 +535,7 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       clock += dt;
       decor.update(clock);
       beams.update(dt, camHeight, clock);
+      couriers.update(dt, (x, z) => Math.hypot(x - focus.x, z - focus.z) < 140);
       stepLines(dt);
       stepPeople(dt);
       queue.update(dt);
