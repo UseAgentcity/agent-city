@@ -6,6 +6,7 @@ import { Crowd } from '../earth/crowd.ts';
 import type { EarthApi } from '../earth/index.ts';
 import { rawCanvases, t } from '../i18n.ts';
 import { installTycoonDecor } from './tycoonDecor.ts';
+import { installBeams } from './tycoonBeams.ts';
 import { auctionDay, catName, coins, onTycoon, priceName, shopOf, tierName, tokensShort, tycoon, type Lot } from './tycoon.ts';
 
 /** A lot's door on the street: the point, the outward normal and the wall tangent (world x/z). */
@@ -249,6 +250,7 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
   group.name = 'tycoon-world';
   scene.add(group);
   const decor = installTycoonDecor(group, ground);
+  const beams = installBeams(group, ground);
   let clock = 0;
   // ---- shoppers: a line at each door that moves, people going in, people coming out with a bag ----
   const queue = new Crowd(220);
@@ -462,18 +464,21 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       decor.sync(lot, f, -queueSide(lot));
     }
     decor.done(city.lots.filter((l) => l.key == null).length);
+    beams.sync(city.lots.flatMap((lot) => { const f = lotFrontOf(earth, lot); return f ? [{ lot, f }] : []; }));
   }
   onTycoon(sync);
   let retry = 0;
   return {
     /** Per frame: draw only in the city view; keep retrying lots whose map tiles are still streaming. */
-    update(dt: number, visible: boolean) {
+    /** `camHeight`: the camera above the street, for the from-the-air beams. */
+    update(dt: number, visible: boolean, camHeight = 0) {
       group.visible = visible;
       if (!visible) return;
       retry -= dt;
       if (pending && retry <= 0) { retry = 2; sync(); }
       clock += dt;
       decor.update(clock);
+      beams.update(dt, camHeight, clock);
       stepLines(dt);
       stepPeople(dt);
       queue.update(dt);
