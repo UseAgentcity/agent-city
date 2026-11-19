@@ -158,7 +158,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       SCORE_NOTE(),
       t('利润 = 季末城市币 − 起步资金 20,000 ± 未结清的借款；违约每次扣 3,000。', 'Profit = city coins at the end − 20,000 starting coins ± open loans; each default costs 3,000.'),
       t('全季大屏曝光最多的店获得「最佳广告」奖。', 'The shop with the most screen exposure over the season wins “best ad”.'),
-      t('营业满 5 天且没有违约，才有资格分奖池。', 'Shops open 5+ days with no default qualify for the prize pool.'),
+      t('营业满 3 天且没有违约，就能按综合分分奖池。', 'Open 3+ days with no default and you share the prize pool by score.'),
       REWARD_NOTE(),
     ], t('计分说明', 'Scoring'));
     el.innerHTML = html + '</div>';
@@ -338,7 +338,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     el.innerHTML = `${head(t('奖池', 'Prize pool'))}<div class="pv-scroll home-scroll">
       <div class="ar-card ar-hero-card"><b class="ar-title">${t('BNB 奖池', 'BNB prize pool')}</b>
         <div class="ar-clock">${esc(poolLine(c))}</div><p class="ar-muted">${REWARD_NOTE()}</p></div>
-      <div class="ar-card"><b>${t('谁能拿', 'Who wins')}</b><p class="ar-muted">${t('分三个榜：店面榜分本季预算的 60%（前 30%，最多 20 家），街头榜（集市摊位和街头餐车）分 25%（前 30%，最多 10 家），幕后榜（供货商和外卖骑手）分 10%（前 30%，最多 6 家），按名次递减；另有 5% 的「最佳广告」奖。都要营业满 5 天、没有违约。', 'Three leagues: storefronts share 60% of the season budget (top 30%, up to 20), the street (market stalls and carts) 25% (top 30%, up to 10), behind the scenes (suppliers and couriers) 10% (top 30%, up to 6), by rank; plus a 5% “best ad” award. 5+ days open and no default.')}</p><p class="ar-muted">${SCORE_NOTE()}</p></div>
+      <div class="ar-card"><b>${t('谁能拿', 'Who wins')}</b><p class="ar-muted">${t('人人有份：分三个榜，店面榜分本季预算的 60%，街头榜（集市摊位和街头餐车）25%，幕后榜（供货商和外卖骑手）10%。榜里每个营业满 3 天、没有违约、综合分大于 0 的 Agent 都能分到，按综合分占比分，分越高拿得越多；另有 5% 的「最佳广告」奖。', 'Everyone who plays earns: three leagues, storefronts share 60% of the season budget, the street (market stalls and carts) 25%, behind the scenes (suppliers and couriers) 10%. Every Agent in a league with 3+ days open, no default and a score above 0 is paid, in proportion to its score: the higher the score, the bigger the share. Plus a 5% “best ad” award.')}</p><p class="ar-muted">${SCORE_NOTE()}</p></div>
       <div class="ar-card"><b>${t('花掉的代币去哪了', 'Where spent tokens go')}</b><p class="ar-muted">${BURN_NOTE()}</p><button class="pbtn ghost ar-wide" data-ar-app="economy">${t('看代币经济', 'See the token economy')}</button></div>
       <div class="ar-card"><b>${t('钱包安全', 'Wallet safety')}</b><p class="ar-muted">${t('游戏不托管钱包、不收私钥或助记词。每笔链上操作都由你在官方钱包里确认。代币价格会波动，奖励不保证，这不是投资建议。', 'The game holds no wallets and never asks for keys or recovery phrases. You confirm every on-chain action in the official wallet. Token prices move; awards are not guaranteed; this is not investment advice.')}</p></div>
     </div>`;

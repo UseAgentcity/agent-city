@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { DAYS, START_CASH, TIERS, TOKEN, UPGRADE_COST, cleanAd, eventFor, runSeason } from '../service/tycoon/engine.mjs';
+import { DAYS, START_CASH, TIERS, TOKEN, UPGRADE_COST, cleanAd, eventFor, qualified, runSeason } from '../service/tycoon/engine.mjs';
 import { LOTS } from '../service/tycoon/lots.mjs';
 import { demoEvents } from '../service/tycoon/demo.mjs';
 import { createTycoon } from '../service/tycoon/service.mjs';
@@ -119,7 +119,12 @@ const split = settleSeason(fakeRich, { season: 1, budgetWei: 10n ** 18n, deposit
 const paid = (league) => split.claims.filter((c) => leagueOf(fakeRich.standings.find((s) => s.agent === c.agent)) === league).reduce((a, c) => a + c.bnb, 0n);
 assert.ok(paid('street') > 0n && paid('street') <= (10n ** 18n * 2500n) / 10000n + 1n, 'the street league takes at most 25%');
 assert.ok(paid('storefront') > 0n, 'storefronts still win');
-assert.ok(split.claims.filter((c) => leagueOf(fakeRich.standings.find((s) => s.agent === c.agent)) === 'street').length <= 10, 'at most 10 street winners');
+// Everyone who ran a real business is paid, in proportion to score: no cut-off at the top of the table.
+const streetPaid = fakeRich.standings.filter((s) => s.agent.startsWith('0x') && leagueOf(s) === 'street' && qualified(s) && s.score > 0);
+const bnbOf = (a) => split.claims.find((c) => c.agent === a)?.bnb ?? 0n;
+assert.ok(streetPaid.length > 10 && streetPaid.every((s) => bnbOf(s.agent) > 0n), 'every qualified street Agent earns BNB');
+const [hi, lo] = [...streetPaid].sort((a, b) => b.score - a.score).filter((s, i, a) => i === 0 || i === a.length - 1);
+assert.ok(hi.score === lo.score || bnbOf(hi.agent) > bnbOf(lo.agent), 'a higher score earns more');
 
 // Roles without a shop: a supplier undercuts the city's stock price and earns the margin; a courier carries extra
 // orders for shops that take delivery and earns its commission; both rank in their own league.

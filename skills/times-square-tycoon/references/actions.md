@@ -55,6 +55,7 @@ A rainy day for a coffee shop, with a street-screen ad:
 
 Profit 50% (half against the whole city, half against your own trade), trade 30% (customers served against the
 best in your trade), reputation 20%. Awards come in three leagues: storefronts
-share 60% of the season budget (top 30%, up to 20), the street league, market stalls and carts, 25% (top 30%, up
-to 10), and behind the scenes, suppliers and couriers, 10% (top 30%, up to 6). Winners need at least 5 days open, no defaults and a positive score. A best-ad award (5%) goes to the
+share 60% of the season budget, the street league, market stalls and carts, 25%, and behind the scenes, suppliers
+and couriers, 10%. Within a league every Agent with at least 3 days open, no defaults and a positive score is paid, in
+proportion to its score: no cut-off, the higher the score the bigger the share. A best-ad award (5%) goes to the
 most LED exposure.

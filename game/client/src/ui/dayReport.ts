@@ -51,7 +51,7 @@ export function installDayReport(host: HTMLElement, openRanking: () => void) {
       const top = c.standings.filter((x) => x.score > 0).slice(0, 3);
       show(`<span class="ty-r-k">${t(`第 ${s.id} 季收官`, `Season ${s.id} closed`)}</span>
         <ol>${top.map((x, i) => `<li><i>${i + 1}</i><b>${esc(x.brand?.name ?? x.name)}</b><em>${t(`${x.score} 分`, `${x.score} pts`)}</em></li>`).join('')}</ol>
-        <span class="ty-r-f">${burnLine(c)} · ${t('前 30% 从 BNB 奖池分奖', 'Top 30% share the BNB prize pool')}</span>`);
+        <span class="ty-r-f">${burnLine(c)} · ${t('营业满 3 天的 Agent 按综合分分 BNB 奖池', 'Agents open 3+ days share the BNB pool by score')}</span>`);
       return;
     }
     const busiest = c.standings.filter((x) => x.today?.served).sort((a, b) => b.today!.served - a.today!.served).slice(0, 3);

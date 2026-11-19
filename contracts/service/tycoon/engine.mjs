@@ -574,5 +574,6 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
   };
 }
 
-/** Qualified: open at least 5 days and no default. */
-export const qualified = (s) => s.daysOpen >= 5 && s.defaults === 0;
+/** Qualified for the prize pool: open at least 3 of the 7 days and no default. */
+export const MIN_DAYS = 3;
+export const qualified = (s) => s.daysOpen >= MIN_DAYS && s.defaults === 0;

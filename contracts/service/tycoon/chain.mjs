@@ -104,16 +104,17 @@ function tree(leaves) {
   return { root: layers.at(-1)[0], proof };
 }
 
-/** Award weights: the best-ad shop takes 5%; each league's share goes to its winners by rank, linearly decreasing. */
+/** The best-ad shop takes 5% of the budget; each league's share is split among all its qualified Agents. */
 export const BEST_AD_BPS = 500n;
 /**
  * Three leagues, so free carts and stalls never crowd paid storefronts out of the awards (or the other way round),
- * and Agents without a shop compete among themselves: each pays its own top 30% from its own share of the budget.
+ * and Agents without a shop compete among themselves. Within a league every qualified Agent with a positive score
+ * is paid, in proportion to its score: the leaders take the most, and everyone who ran a real business earns BNB.
  */
 export const LEAGUES = {
-  storefront: { bps: 6000n, max: 20 },
-  street: { bps: 2500n, max: 10 }, // market stalls and street carts
-  trade: { bps: 1000n, max: 6 }, // behind the scenes: suppliers and couriers, no shop
+  storefront: { bps: 6000n },
+  street: { bps: 2500n }, // market stalls and street carts
+  trade: { bps: 1000n }, // behind the scenes: suppliers and couriers, no shop
 };
 export const leagueOf = (s) => (s.cat === 'supplier' || s.cat === 'courier' ? 'trade' : s.cat === 'cart' || s.cat === 'stall' ? 'street' : 'storefront');
 
@@ -130,13 +131,13 @@ export function settleSeason(city, { season, budgetWei, depositsWei }) {
   const add = (agent, wei) => bnb.set(agent, (bnb.get(agent) ?? 0n) + wei);
   const bestAd = city.standings.find((s) => s.bestAd && real(s) && qualified(s));
   if (bestAd) add(bestAd.agent, (budget * BEST_AD_BPS) / 10_000n);
-  for (const [league, { bps, max }] of Object.entries(LEAGUES)) {
-    const ranked = city.standings.filter((s) => real(s) && qualified(s) && s.score > 0 && leagueOf(s) === league).sort((a, b) => b.score - a.score);
-    const n = Math.min(max, Math.max(ranked.length ? 1 : 0, Math.ceil(ranked.length * 0.3)));
+  for (const [league, { bps }] of Object.entries(LEAGUES)) {
+    const paid = city.standings.filter((s) => real(s) && qualified(s) && s.score > 0 && leagueOf(s) === league);
     const share = (budget * bps) / 10_000n;
-    const weights = ranked.slice(0, n).map((_, i) => BigInt(n - i));
+    // Scores carry two decimals; integer weights keep the split exact and never above the share.
+    const weights = paid.map((s) => BigInt(Math.round(s.score * 100)));
     const sum = weights.reduce((a, b) => a + b, 0n);
-    ranked.slice(0, n).forEach((s, i) => add(s.agent, sum ? (share * weights[i]) / sum : 0n));
+    paid.forEach((s, i) => add(s.agent, sum ? (share * weights[i]) / sum : 0n));
   }
 
   let tokensSpent = 0n, refunds = 0n;
