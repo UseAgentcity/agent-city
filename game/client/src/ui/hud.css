@@ -216,3 +216,20 @@ body.tower-demo .ow-cwrap { left: auto; right: 16px; top: 146px; transform: none
 .ty-hud span { color: #c9d1dc; }
 /* Phone: under the minimap and its Teleport button, clear of the jump/sprint/interact buttons. */
 @media (max-width: 640px) { .ty-hud { top: calc(env(safe-area-inset-top, 0px) + 240px); bottom: auto; right: 8px; font-size: 11px; padding: 6px 9px; max-width: calc(100vw - 90px); } .ty-hud b, .ty-hud span { font-size: 11px; white-space: nowrap; } }
+
+/* Closing time: the day's busiest shops, slid in under the top bar for a few seconds. */
+.ty-report { position: absolute; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 92px); transform: translate(-50%, -14px); min-width: 280px; max-width: min(420px, calc(100vw - 24px));
+  display: flex; flex-direction: column; gap: 6px; padding: 12px 16px 11px; border-radius: 16px; border: 1px solid rgba(240,185,11,.5); background: rgba(10,12,18,.86);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #f4f1e8; font: 500 13px/1.35 Inter, "PingFang SC", system-ui, sans-serif; text-align: left;
+  box-shadow: 0 10px 30px rgba(0,0,0,.4); opacity: 0; pointer-events: none; cursor: pointer; transition: opacity .45s, transform .45s; z-index: 6; }
+.ty-report.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.ty-r-k { font-weight: 800; font-size: 12px; letter-spacing: .12em; color: #f0b90b; }
+.ty-report ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ty-report li { display: flex; align-items: center; gap: 9px; }
+.ty-report li i { flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center; font: 800 11px/1 Inter, system-ui; font-style: normal; background: rgba(255,255,255,.1); }
+.ty-report li:first-child i { background: #f0b90b; color: #16130a; }
+.ty-report li b { flex: 1; min-width: 0; font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ty-report li em { flex: none; font-style: normal; color: #c9d1dc; font-size: 12.5px; }
+.ty-r-f { color: rgba(255,255,255,.7); font-size: 12px; }
+@media (max-width: 640px) { .ty-report { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 262px); min-width: 0; left: 12px; right: 12px; transform: translateY(14px); max-width: none; }
+  .ty-report.on { transform: none; } }

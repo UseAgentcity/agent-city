@@ -309,6 +309,7 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       ];
       mem[out].fadeAtEnd = true;
     }
+    decor.sale(l.lot, f);
   }
   function stepPeople(dt: number) {
     for (let i = 0; i < mem.length; i++) {

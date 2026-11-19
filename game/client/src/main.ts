@@ -16,6 +16,7 @@ import { installFlightHud } from './ui/flightHud.ts';
 import { Interactions, Labels, esc } from './interact.ts';
 import { zhPlace } from './earth/zhNames.ts';
 import { installGuide } from './ui/guide.ts';
+import { installDayReport } from './ui/dayReport.ts';
 
 const zhLooking = (l: { title: string; sub: string } | null) => l && { title: zhPlace(l.title), sub: zhPlace(l.sub) };
 import { type Place, type Site } from './place.ts';
@@ -705,6 +706,7 @@ async function start(where: CityId | GeoPlace) {
   const locEl = $('hud-location'), timeEl = $('hud-time'), agentEl = $('hud-agents'), lookEl = $('click-to-look');
   let hudTimer = 0;
   const guide = homeArena ? installGuide($('hud')) : null;
+  if (homeArena) installDayReport($('hud'), () => phone.open('ranking'));
   // Always-on line: season and day, today's city event, the prize pool. Tap it for the standings.
   const tyHud = document.createElement('button');
   tyHud.type = 'button';

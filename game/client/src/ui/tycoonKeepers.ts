@@ -123,6 +123,11 @@ export function installKeepers(group: THREE.Group, ground: (x: number, z: number
   }
 
   return {
+    /** The Agent waves the shopper off (unless it is already waving). */
+    greet(id: string) {
+      const k = byLot.get(id);
+      if (k?.on && k.wave <= 0) { k.wave = 1.6; k.nextWave = Math.max(k.nextWave, 4); }
+    },
     sync(lot: Lot, f: LotFront, totemSide: number) {
       const k = place(lot, f, totemSide);
       const shop = shopOf(lot.owner);

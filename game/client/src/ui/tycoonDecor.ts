@@ -3,7 +3,7 @@
 // Names come from the tenant Agents and are redrawn when the city snapshot changes.
 import * as THREE from 'three';
 import { rawCanvases, t } from '../i18n.ts';
-import { shopOf, tokensShort, type Lot } from './tycoon.ts';
+import { coins, shopOf, tokensShort, type Lot } from './tycoon.ts';
 import type { LotFront } from './tycoonWorld.ts';
 import { installKeepers } from './tycoonKeepers.ts';
 
@@ -268,11 +268,59 @@ export function installTycoonDecor(group: THREE.Group, ground: (x: number, z: nu
   let gateLang = '';
 
   const keepers = installKeepers(group, ground);
+
+  // ---- a sale: "+ the average ticket" floats up over the door in the shop's colour ----
+  const tickets = new Map<string, { key: string; tex: THREE.CanvasTexture }>();
+  const ticketTex = (lot: Lot) => {
+    const shop = shopOf(lot.owner);
+    const avg = shop?.today?.served ? shop.today.revenue / shop.today.served : 0;
+    const color = shop?.brand?.color ?? '#f0b90b';
+    const key = `${Math.round(avg)}|${color}`;
+    const old = tickets.get(lot.id);
+    if (old?.key === key) return avg ? old.tex : null;
+    if (!avg) return null;
+    const c = old?.tex.image as HTMLCanvasElement ?? document.createElement('canvas');
+    c.width = 256; c.height = 96;
+    rawCanvases.add(c);
+    const g = c.getContext('2d')!;
+    g.clearRect(0, 0, 256, 96);
+    g.fillStyle = 'rgba(12,14,20,.78)';
+    g.beginPath(); g.roundRect(8, 14, 240, 68, 34); g.fill();
+    g.strokeStyle = color; g.lineWidth = 4; g.stroke();
+    // A coin.
+    g.fillStyle = '#f0b90b'; g.beginPath(); g.arc(50, 48, 20, 0, Math.PI * 2); g.fill();
+    g.fillStyle = '#7a5600'; g.font = `900 22px ${FONT}`; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('¢', 50, 49);
+    g.fillStyle = '#ffffff'; g.font = `800 38px ${FONT}`; g.textAlign = 'left';
+    g.fillText(`+${coins(avg)}`, 82, 49);
+    const tex = old?.tex ?? new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    tickets.set(lot.id, { key, tex });
+    return tex;
+  };
+  const pops = Array.from({ length: 16 }, () => {
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthWrite: false, toneMapped: false }));
+    s.visible = false; s.scale.set(1.25, 0.47, 1); s.renderOrder = 5;
+    group.add(s);
+    return { s, age: 0, x: 0, y: 0, z: 0 };
+  });
+  let popNext = 0;
   let lastTime = 0;
   const placed = new Set<string>();
   const stalls = new Map<string, { lot: Lot; f: LotFront }>();
   let marketSize = 0;
   return {
+    /** Someone just came out with a bag. */
+    sale(lot: Lot, f: LotFront) {
+      keepers.greet(lot.id);
+      const tex = ticketTex(lot);
+      if (!tex) return;
+      const p = pops[popNext++ % pops.length];
+      (p.s.material as THREE.SpriteMaterial).map = tex;
+      (p.s.material as THREE.SpriteMaterial).needsUpdate = true;
+      p.age = 0; p.x = f.x + f.nx * 1.1; p.z = f.z + f.nz * 1.1; p.y = ground(p.x, p.z) + 2.3;
+      p.s.visible = true;
+    },
     /** Called for every lot whose front is known, on each snapshot. */
     sync(lot: Lot, f: LotFront, totemSide: number) {
       keepers.sync(lot, f, totemSide);
@@ -299,7 +347,16 @@ export function installTycoonDecor(group: THREE.Group, ground: (x: number, z: nu
     },
     get marketSize() { return marketSize; },
     update(time: number) {
-      keepers.update(time, Math.min(0.1, time - lastTime));
+      const dt = Math.min(0.1, time - lastTime);
+      keepers.update(time, dt);
+      for (const p of pops) {
+        if (!p.s.visible) continue;
+        p.age += dt;
+        const k = p.age / 1.8;
+        if (k >= 1) { p.s.visible = false; continue; }
+        p.s.position.set(p.x, p.y + k * 0.9, p.z);
+        (p.s.material as THREE.SpriteMaterial).opacity = k < 0.15 ? k / 0.15 : 1 - Math.max(0, (k - 0.6) / 0.4);
+      }
       lastTime = time;
       const c = new THREE.Color();
       for (let i = 0; i < bulbs.count; i++) {
