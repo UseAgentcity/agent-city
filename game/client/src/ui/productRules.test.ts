@@ -13,9 +13,11 @@ test('no fleet-owner, budget or paid-entry copy reaches the UI', () => {
   }
 });
 
-test('the phone shows the tycoon city and how to send an Agent', () => {
+test('the phone shows the tycoon city, how to send an Agent and how people sponsor an event', () => {
   const phone = src.find(([f]) => f === 'ui/arenaPhone.ts')![1];
-  assert.match(phone, /const DOCK = \['city', 'ranking', 'economy'\]/);
+  assert.match(phone, /const DOCK = \['city', 'sponsor', 'ranking', 'guide'\]/);
+  assert.match(phone, /function renderSponsor/);
+  assert.match(phone, /只有最后赢的人付钱/, 'the sponsor app says only the winner pays');
   assert.match(phone, /function renderEconomy/);
   assert.match(phone, /80% 销毁/, 'the phone states where spent tokens go');
   assert.match(phone, /function renderRanking/);
