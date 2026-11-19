@@ -43,7 +43,7 @@ import { installXR, cityPhoneSource, xrSettings } from './xr/index.ts';
 import { currentBriefing, openBriefingPanel, waiting, type BriefingHooks } from './ui/briefing.ts';
 import { resumeArmed, savePostcard, saveSession, takeResume, type SavedSession } from './session.ts';
 import { startIntro, wantIntro, type Intro } from './ui/intro.ts';
-import { startTour, type Tour } from './ui/tour.ts';
+import { shots, startTour, type Tour } from './ui/tour.ts';
 import { arenaCityAt, playableBounds, mapOpen, TRAVEL_CITIES } from './city/capabilities.ts';
 import { bootInto, currentCity, openArena, setCityActions, updateCity } from './city/current.ts';
 import { installCityScreens } from './city/screens.ts';
@@ -759,7 +759,7 @@ async function start(where: CityId | GeoPlace) {
   let wxTimer = 0;
   const headingDeg = () => ((Math.atan2(Math.sin(player.yaw), -Math.cos(player.yaw)) * 180) / Math.PI + 360) % 360;
 
-  (window as unknown as { __ow: unknown }).__ow = { THREE, player, robot, dayNight, place, earth, ctx, enterBuilding, exitBuilding, engine, phone, dropAt, photo, ride, get generic() { return generic; }, get interior() { return interior; }, enterGeneric, exitGeneric, get waypoint() { return waypoint; }, get tycoon() { return tycoon(); }, setWaypointAt: (lat: number, lon: number, name: string) => { waypoint = { lat, lon, name }; }, autopilot, openReview, city: currentCity };
+  (window as unknown as { __ow: unknown }).__ow = { THREE, player, robot, dayNight, place, earth, ctx, enterBuilding, exitBuilding, engine, phone, dropAt, photo, ride, get generic() { return generic; }, get interior() { return interior; }, enterGeneric, exitGeneric, get waypoint() { return waypoint; }, get tycoon() { return tycoon(); }, setWaypointAt: (lat: number, lon: number, name: string) => { waypoint = { lat, lon, name }; }, autopilot, openReview, city: currentCity, tourShots: () => earth && shots(earth, (x: number, z: number) => place.world.groundY(x, z)) };
 
   // ---- VR (Meta Quest, WebXR): Enter VR button, controllers, wrist phone ----
   const xr = installXR({
