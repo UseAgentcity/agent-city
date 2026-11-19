@@ -51,6 +51,7 @@ import { installSettings, toggleSettings } from './ui/settings.ts';
 import { keymap } from './keymap.ts';
 import { burnLine, catName, districtName, eventName, installTycoon, lotTitle, onTycoon, poolLine, seasonLine, shopOf, tycoon, type Lot } from './ui/tycoon.ts';
 import { installTycoonWorld, lotByBuildingName, lotFrontOf, lotNear } from './ui/tycoonWorld.ts';
+import { decorateShopInterior, shopPoi } from './ui/tycoonInterior.ts';
 import { installTileWarn } from './ui/tileWarn.ts';
 import { localizeCanvas, localizeDocument, t, tr } from './i18n.ts';
 import './i18n-zh.ts';
@@ -300,6 +301,7 @@ async function start(where: CityId | GeoPlace) {
 
   // ---- Every other building: walk up to a wall and press E ----
   let generic: { it: GenericInterior; hit: BuildingHit } | null = null;
+  let shopDecor: ReturnType<typeof decorateShopInterior> | null = null;
   const KIND_WORD: Record<string, string> = { house: 'house', apartments: 'apartments', office: 'offices', shop: 'shop', mall: 'mall', church: 'church', warehouse: 'warehouse', tower: 'tower' };
   const kindOf = (hit: BuildingHit) => {
     const cls = hit.fp.poi?.cls ?? '';
@@ -337,8 +339,12 @@ async function start(where: CityId | GeoPlace) {
     try {
       const f = hit.fp;
       const ring = f.ring.map((v, i) => v - (i % 2 ? f.cz : f.cx));
-      const it = make ? make() : buildGenericInterior({ key: f.key, ring, height: f.h, kind: kindOverride ?? kindOf(hit), name: f.poi?.name, poi: f.poi, doorWall: hit.wall, seed: f.key, country: earth?.country, view: { capture: cityView, origin: new THREE.Vector3(f.cx, hit.point.y, f.cz), yaw: 0, footprint: hit.ring }, pmrem: engine.pmrem, sun: dayNight.sun, lite: engine.renderer.xr.isPresenting });
+      // An Agent's shop is laid out for its trade under its own brand, not the brand the map lists here.
+      const lot = tycoon()?.lots.find((l) => l.key != null && l.key === f.key) ?? null;
+      const poi = lot ? shopPoi(lot) : f.poi;
+      const it = make ? make() : buildGenericInterior({ key: f.key, ring, height: f.h, kind: lot ? 'shop' : kindOverride ?? kindOf(hit), name: poi?.name, poi, doorWall: hit.wall, seed: f.key, country: earth?.country, view: { capture: cityView, origin: new THREE.Vector3(f.cx, hit.point.y, f.cz), yaw: 0, footprint: hit.ring }, pmrem: engine.pmrem, sun: dayNight.sun, lite: engine.renderer.xr.isPresenting });
       generic = { it, hit };
+      shopDecor = lot && !make ? decorateShopInterior(it, lot, (id) => { shopViewed = true; phone.openLot(id); }) : null;
       interactions.remove('door:generic'); doorHit = null;
       labels.clear();
       cityScene.remove(robot.root, player.vehicleGroup);
@@ -367,6 +373,8 @@ async function start(where: CityId | GeoPlace) {
     const yInside = player.position.y; // the floor you're on, in the interior's coordinates (ground floor = 0)
     generic = null;
     it.scene.remove(robot.root);
+    shopDecor?.dispose();
+    shopDecor = null;
     it.dispose();
     cityScene.add(robot.root, player.vehicleGroup);
     engine.setScene(cityScene);
@@ -760,6 +768,7 @@ async function start(where: CityId | GeoPlace) {
       interior.update(dt);
     } else if (generic) {
       generic.it.update(dt, player);
+      shopDecor?.update(dt);
     } else {
       updateGenericDoor(dt);
       dayNight.update(dt, player.position);
