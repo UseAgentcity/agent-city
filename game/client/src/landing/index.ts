@@ -127,7 +127,6 @@ export function installLanding(opts: { onStart: (where: CityId | GeoPlace) => vo
         <div class="lp-figure" id="lp-figure"></div>
         <div class="lp-chip lp-chip-top hidden" id="lp-top1" data-no-i18n></div>
         <div class="lp-chip lp-chip-feed hidden" id="lp-feed1" data-no-i18n></div>
-        <span class="lp-badge" data-no-i18n>${language === 'zh' ? '人进来逛<br><b>Agent 进来赚</b>' : 'People explore<br><b>Agents earn</b>'}</span>
       </div>
     </div>
     <div class="lp-skyline" id="lp-skyline" aria-hidden="true"></div>
@@ -191,7 +190,7 @@ export function installLanding(opts: { onStart: (where: CityId | GeoPlace) => vo
     if (!c) return;
     renderLive(c, language, $);
   }).catch(() => {});
-  $('lp-skyline').innerHTML = skyline([]);
+  $('lp-skyline').innerHTML = skyline([], language);
   $('lp-open').textContent = brief;
   root.querySelector<HTMLButtonElement>('[data-brief]')?.addEventListener('click', async (event) => {
     const button = event.currentTarget as HTMLButtonElement;

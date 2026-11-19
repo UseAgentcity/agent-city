@@ -25,8 +25,8 @@ function rng(seed: number) {
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-/** The Midtown skyline in ink, lit windows in gold, and billboards on the tallest towers showing `ads`. */
-export function skyline(ads: Ad[]): string {
+/** The Midtown skyline in ink, lit windows in gold, and billboards on four towers: the Agents' ads, each once, then open slots. */
+export function skyline(ads: Ad[], lang: Lang = 'zh'): string {
   const W = 1440, H = 240, r = rng(42);
   const blocks: { x: number; w: number; h: number }[] = [];
   for (let x = -10; x < W;) {
@@ -47,7 +47,7 @@ export function skyline(ads: Ad[]): string {
     if (b.h > 170 && i % 2) body += `<rect x="${b.x + b.w / 2 - 2}" y="${y - 22}" width="4" height="22" fill="${INK}"/>`;
   });
   slots.forEach((b, i) => {
-    const ad = ads[i % Math.max(1, ads.length)];
+    const ad: Ad | undefined = ads[i] ?? { title: lang === 'zh' ? '大屏位招租' : 'YOUR AD HERE', bg: ['#fff3c4', '#f0b90b'], fg: INK };
     const x = b.x + 8, y = H - b.h + 14, w = b.w - 16, h = Math.round(w * 0.62);
     const [c0, c1] = ad?.bg ? [hex(ad.bg[0], '#f0b90b'), hex(ad.bg[1], '#ff7a59')] : ['#f0b90b', '#ffd34d'];
     defs += `<linearGradient id="lpg${i}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${c0}"/><stop offset="1" stop-color="${c1}"/></linearGradient>`;
@@ -72,8 +72,9 @@ export function renderLive(c: LiveCity, lang: Lang, $: Get) {
     : `Season ${c.season.id}${c.season.day ? ` · Day ${c.season.day}/${c.season.days}` : ' · settling'}`;
   $('lp-live').textContent = zh ? `${dayLine} · ${open} 家店营业中${ev ? ` · 今日：${ev}` : ''}` : `${dayLine} · ${open} shops open${ev ? ` · Today: ${ev}` : ''}`;
 
-  const ads = c.screens.filter((s) => s.ad).map((s) => s.ad!);
-  $('lp-skyline').innerHTML = skyline(ads);
+  // One billboard per ad: a shop that won two screens shows once.
+  const ads = [...new Map(c.screens.filter((s) => s.ad).map((s) => [s.ad!.title, s.ad!])).values()];
+  $('lp-skyline').innerHTML = skyline(ads, lang);
 
   const shops = c.standings.filter((s) => s.cat && s.score > 0);
   const name = (s: LiveCity['standings'][number]) => esc(s.brand?.name ?? s.name);
@@ -88,7 +89,10 @@ export function renderLive(c: LiveCity, lang: Lang, $: Get) {
     el.innerHTML = `<small>${zh ? '本季第 1 名' : 'No. 1 this season'}</small><b><i style="background:${color(lead)}"></i>${name(lead)}</b><span>${catOf(lead)} · ${zh ? `${lead.score} 分` : `score ${lead.score}`}</span>`;
     el.classList.remove('hidden');
   }
-  const news = zh ? [...c.feed].reverse().find((f) => f.kind === 'screen' || f.kind === 'sponsor' || f.kind === 'supply') : null;
+  // Only today's or yesterday's news, the screen and sponsor bids first; otherwise today's city event.
+  const today = c.season.day ?? c.season.days;
+  const recent = zh ? [...c.feed].reverse().filter((f) => f.day >= today - 1) : [];
+  const news = recent.find((f) => f.kind === 'screen' || f.kind === 'sponsor') ?? recent.find((f) => f.kind === 'supply') ?? null;
   const bubble = news ? esc(news.text) : ev ? esc(zh ? `今日城市事件：${ev}` : `Today in the city: ${ev}`) : '';
   const when = news ? (zh ? `第 ${news.day} 天` : `Day ${news.day}`) : (zh ? '今天' : 'Today');
   if (bubble) { const el = $('lp-feed1'); el.innerHTML = `<small>${when}</small>${bubble}`; el.classList.remove('hidden'); }
