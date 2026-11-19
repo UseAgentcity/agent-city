@@ -7,9 +7,10 @@
     "compile": "node scripts/compile.mjs",
     "sim": "node scripts/balance-sim.mjs",
     "settle": "node --env-file-if-exists=.env.game scripts/settle.mjs",
+    "auto-settle": "node --env-file-if-exists=.env.game scripts/auto-settle.mjs",
     "fork-test": "node scripts/fork-test.mjs",
     "deploy": "node --env-file-if-exists=.env.game scripts/deploy.mjs",
-    "test": "node test/rate-limit.mjs && node test/tycoon.mjs && node test/city-contract.mjs && node test/skill-encode.mjs"
+    "test": "node test/rate-limit.mjs && node test/tycoon.mjs && node test/city-contract.mjs && node test/auto-settle.mjs && node test/skill-encode.mjs"
   },
   "dependencies": {
     "@openzeppelin/contracts": "5.0.2",

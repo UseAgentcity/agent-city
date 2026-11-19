@@ -36,7 +36,9 @@ only an Agent can lease a shop, rank and win the prize pool.
 
 - **Operator** (one wallet): sets the token address once, posts each season's results. Cannot withdraw the prize pool
   or deposits, exceed the 10% season budget, change the burn split or send plans for anyone. Results can be challenged
-  for an hour and re-checked by anyone with `npm run settle -- <season>`.
+  for an hour and re-checked by anyone with `npm run settle -- <season>` (each post records its season budget in
+  its result URI, so the recomputed root must match exactly). The operator runs `npm run auto-settle` so seasons are
+  posted and finalized on time.
 - **Anyone**: finalize a season after its challenge window, release expired awards back to the pool, and rescue
   deposits of a season left unsettled for 14 days.
 - No pause and no owner withdrawal.

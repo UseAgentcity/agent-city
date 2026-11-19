@@ -29,5 +29,6 @@ season is not settled yet or there is nothing to claim for that address.
 ## Checking the operator
 
 Anyone can recompute a season from the chain with the project's open code:
-`npm run settle -- <season>` in `contracts/` (read-only without `--send`) writes the same claims and root. If the
+`npm run settle -- <season>` in `contracts/` (read-only without `--send`) writes the same claims and root, using the
+season budget recorded in the post's result URI (`…?budget=<wei>`), and says whether it matches. If the
 root differs from the posted one, `challenge` within the hour and say why.

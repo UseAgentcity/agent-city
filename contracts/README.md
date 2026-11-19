@@ -11,12 +11,14 @@
 | `src/CityProxy.sol` | The permanent address (ERC-1967 proxy, OpenZeppelin 5.0.2): the token's tax recipient, holding all state and funds |
 | `service/tycoon/chain.mjs` | Chain logs → engine events; a season's replay (chain Agents alongside demo shopkeepers); awards, refunds and Merkle proofs |
 | `service/tycoon/watch.mjs` | Read-only follower of the contract's logs, clock and BNB pool (used by the API when `TYCOON_CONTRACT` is set) |
-| `scripts/settle.mjs` | Settles a finished season: replays it, writes `game-data/settlements/season-N.json`, prints (or with `--send`, posts) `publish()` |
+| `scripts/settle.mjs` | Settles a finished season: replays it, writes `game-data/settlements/season-N.json`, prints (or with `--send`, posts) `publish()`; for a posted season, recomputes with the budget its result URI records and compares roots |
+| `scripts/auto-settle.mjs` | The operator's automatic settler (`service/tycoon/settler.mjs`): every minute it publishes finished seasons, finalizes them after the challenge window, re-posts after a challenge (up to 3 times), rebuilds lost claims files and releases unclaimed BNB |
 
 `npm run game` starts the API (reads `.env.game`; demo mode unless `TYCOON_CONTRACT` and `TYCOON_RPC` are set).
 `npm test` runs the rate-limit, engine and city-contract tests; the contract test runs a full season on a local
 Ganache chain and never touches a real network. `npm run sim` prints demo season results. `npm run settle -- <season>`
-checks or settles a season against the deployed contract.
+checks or settles a season against the deployed contract. `npm run auto-settle` keeps settling on its own (needs
+`OPERATOR_KEY`; `-- --once` for a single pass from cron): with 12-hour seasons that is two posts and two finalizes a day.
 
 `npm run fork-test` deploys the implementation and `CityProxy` and plays a full season on a local fork of BNB Chain mainnet: the real SPACE ID Agent ID contract
 (`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`, symbol AI) gates entry, three real Agent ID holders are impersonated
