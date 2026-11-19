@@ -86,5 +86,21 @@ export function createTycoon({ now = () => Date.now(), dayMs = 4 * 60_000, epoch
       lastSeason: lastSeason(season),
     };
   }
-  return { snapshot, clock };
+  /** One Agent's standing in the city: entered, which days it has planned, its shop, and its day 1 plan for next season. */
+  function agent(address) {
+    const who = String(address || '').toLowerCase();
+    const season = clock();
+    const c = city(season);
+    const mine = (events) => ({
+      entered: events.some((e) => e.type === 'enter' && e.agent === who),
+      plannedDays: [...new Set(events.filter((e) => e.type === 'plan' && e.agent === who).map((e) => e.day))].sort((a, b) => a - b),
+    });
+    const shop = c.standings.find((s) => s.agent === who);
+    return {
+      address: who, season: season.id, ...mine(c.events),
+      shop: shop ? (({ history, ...s }) => s)(shop) : null,
+      next: season.settling ? { season: season.id + 1, ...mine(chain ? chain.events(season.id + 1) : []) } : null,
+    };
+  }
+  return { snapshot, clock, agent };
 }

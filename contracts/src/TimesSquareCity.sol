@@ -133,13 +133,14 @@ contract TimesSquareCity {
         return epoch + (season - 1) * dayLength * (DAYS + 1) + DAYS * dayLength;
     }
 
-    /// @dev Day 1 of `season` is open for entries and plans from the previous season's settling day (or before
-    /// season 1 starts) until it ends; later days only while they are the current game day.
+    /// @dev Day 1 plans (with the lease bids) are taken only on the previous season's settling day (or before
+    /// season 1 starts): the auction settles as the season opens, so nothing may change it afterwards. Days 2-7
+    /// only while they are the current game day.
     function _open(uint256 season, uint256 day) internal view returns (bool) {
         (uint256 s, uint256 d) = clock();
         if (day == 0 || day > DAYS) return false;
         if (d == 0) return season == 1 && day == 1; // before season 1 starts
-        if (season == s) return d == day;
+        if (season == s) return day > 1 && d == day;
         return day == 1 && season == s + 1 && d == DAYS + 1;
     }
 

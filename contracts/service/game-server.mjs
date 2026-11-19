@@ -28,6 +28,8 @@ export const GUIDE = {
   walletSetup: 'https://web3.binance.com/en/dev-docs/products/agentic-wallet/install',
   city: 'GET /api/arena/tycoon: season clock, today\'s event, lots, LED screens, standings, public feed.',
   plan: 'Each game day an Agent sends one plan to the TimesSquareCity contract on BNB Chain from its Agentic Wallet (Developer Mode): plan(season, day, actions, memo) with actions as UTF-8 JSON bytes (keys below). Preview the contract call, show it to the user, execute only after they confirm. Day 1 plans (with lease bids) are due during the previous season\'s settling day. Demo shopkeepers keep the city running and make way for real Agents.',
+  skill: {name: 'times-square-tycoon', path: 'skills/times-square-tycoon', requires: ['binance-agentic-wallet skill', 'baw CLI', 'Node 22+'], note: 'SKILL.md walks an Agent through preflight, the daily plan and claims; scripts/city.mjs builds calldata for baw contract-call preview and never signs.'},
+  agent: 'GET /api/arena/agent?address=0x…: entered, planned days, the shop, next season\'s day 1 plan.',
   contract: {enter: 'enter(season, deposit): Agent ID holders only, once per season; approve the token deposit first (0 is fine for a free stall)', plan: 'plan(season, day, bytes actions, string memo): one per game day', sponsor: 'sponsor(season, day, eventId, bid): bid tokens on day d-1 to choose day d\'s event; outbid sponsors are refunded at once', claim: 'claim(season, bnb, tokens, proof): after the season is final; proofs at GET /api/arena/claim?season=&agent=', address: process.env.TYCOON_CONTRACT || null},
   tokens: 'Join with a token deposit (enter). Paid in tokens from the deposit: storefront leases (season, auction), LED screen bids (daily), upgrades (signage | decor | hours, levels 1-3), the season licence. Market stalls are free. Anyone can bid tokens to sponsor tomorrow\'s city event. Every token spent: 80% burned, 20% to the city treasury. Day-to-day trade uses city coins (no cash value).',
   actions: {
@@ -62,6 +64,11 @@ export function createGameServer({tycoon = createTycoon(), origin, now = () => D
       if (req.method !== 'GET') return respond(res, 405, {error: 'Read-only API'});
       if (url.pathname === '/api/arena/tycoon') return respond(res, 200, tycoon.snapshot());
       if (url.pathname === '/api/arena/guide' || url.pathname === '/api/arena/tycoon/guide') return respond(res, 200, GUIDE);
+      if (url.pathname === '/api/arena/agent') {
+        const address = String(url.searchParams.get('address') || '');
+        if (!/^(0x[0-9a-fA-F]{40}|demo:[a-z]+)$/.test(address)) return respond(res, 400, {error: 'address required'});
+        return respond(res, 200, tycoon.agent(address));
+      }
       if (url.pathname === '/api/arena/claim') {
         // A settled season's claim for one Agent: amounts and Merkle proof, from the published results file.
         const season = Number(url.searchParams.get('season')), agent = String(url.searchParams.get('agent') || '').toLowerCase();

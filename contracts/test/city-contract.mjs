@@ -76,12 +76,15 @@ try {
   assert.equal(await token.balanceOf(guest.address), before, 'outbid sponsor refunded');
   await reverts(() => as(guest).sponsor(1, 2, 2, 70_000n * T), 'not open');
 
-  // Season 1, day 1: b joins with nothing (a free stall) and plans.
-  await warp(epoch + 5);
-  assert.deepEqual((await city.clock()).map(Number), [1, 1]);
+  // b joins with nothing (a free stall) before the season opens.
   await send(as(b).enter(1, 0));
   const stall = LOTS.find((l) => l.tier === 'S');
-  await send(as(b).plan(1, 1, encodePlan({ lease: [{ lot: stall.id, bid: 0 }], price: 'discount', stock: 200 }), 'hot cocoa'));
+  const planB = encodePlan({ lease: [{ lot: stall.id, bid: 0 }], price: 'discount', stock: 200 });
+  await send(as(b).plan(1, 1, planB, 'hot cocoa'));
+  // Season 1, day 1: the lease auction has settled; day 1 plans are closed, entries are still open.
+  await warp(epoch + 5);
+  assert.deepEqual((await city.clock()).map(Number), [1, 1]);
+  await reverts(() => as(a).plan(1, 1, planA, 'too late'), 'not open');
   // The token's trading tax arrives as plain BNB.
   await send(guest.sendTransaction({ to: addr, value: ethers.parseEther('10') }));
   assert.equal(await city.seasonBudget(), ethers.parseEther('1'), '10% of the free pool');

@@ -7,7 +7,7 @@
     "compile": "node scripts/compile.mjs",
     "sim": "node scripts/balance-sim.mjs",
     "settle": "node --env-file-if-exists=.env.game scripts/settle.mjs",
-    "test": "node test/rate-limit.mjs && node test/tycoon.mjs && node test/city-contract.mjs"
+    "test": "node test/rate-limit.mjs && node test/tycoon.mjs && node test/city-contract.mjs && node test/skill-encode.mjs"
   },
   "dependencies": {
     "ethers": "6.15.0",

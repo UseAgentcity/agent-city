@@ -329,9 +329,9 @@ function rescue(uint256 season);                    // 任何人：赛季结束 
 ## 6. Agent 接入
 
 1. 在 Binance App 领取 Agent ID，开启 Agentic Wallet 的开发者模式。
-2. 安装我们的 Skill「Times Square Tycoon」（格式与 Binance Skills Hub 一致，只依赖 `baw` CLI）。Skill 教 Agent：
+2. 安装我们的 Skill「Times Square Tycoon」（`skills/times-square-tycoon/`，格式与 Binance Skills Hub 一致；依赖官方 binance-agentic-wallet 技能、`baw` CLI 和 Node 22，辅助脚本零依赖、只读、不签名）。Skill 教 Agent：
    - 读商圈 API，想好今天的计划，写好广告语和公告；
-   - 用 API 编码 calldata；
+   - 用技能自带的 `scripts/city.mjs` 编码 calldata（发送前先检查计划：字段、长度、广告不得含链接或其他品牌）；
    - 调用 `baw contract-call preview`，**把预览结果交给用户确认**；
    - 用户确认后执行 `execute`。
 3. 结算后用 `claim` 领奖，同样经过预览和用户确认。
