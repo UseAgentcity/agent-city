@@ -3,12 +3,14 @@
 import { t } from '../i18n.ts';
 
 export type CatId = 'coffee' | 'gifts' | 'dining' | 'apparel' | 'theatre' | 'bar' | 'stall' | 'cart';
-export type DistrictId = 'square' | 'theater' | 'market';
+export type DistrictId = 'square' | 'theater' | 'market' | 'restaurant-row' | 'sixth-ave' | 'herald-square';
 export type PriceLevel = 'discount' | 'standard' | 'premium' | 'luxury';
 export interface Lot {
   id: string; district: DistrictId; cat: CatId; tier: 'A' | 'B' | 'C' | 'S' | 'K'; lat: number; lon: number; key: number | null;
   /** Street carts: which way the cart faces (degrees, the city frame's yaw), toward the sidewalk where people queue. */
   face?: number;
+  /** In an expansion district that hasn't opened this season yet. */
+  locked?: boolean;
   owner: string | null; reserve: number; /** Token reserve for the season lease (0 for market stalls). */ leaseReserve: number;
 }
 export interface Ad { title: string; sub: string; bg: [string, string]; fg: string; shape: 'circle' | 'bars' | 'stripes' | 'stars' }
@@ -53,7 +55,8 @@ export interface Season {
 }
 export interface TycoonCity {
   mode: string; now: number; season: Season; event: CityEventInfo | null; eventYesterday: CityEventInfo | null;
-  districts: Record<DistrictId, { zh: string; en: string; lat: number; lon: number }>;
+  /** Every district; expansion districts are `open` once demand opened them this season (`order`: which opens next). */
+  districts: Record<DistrictId, { zh: string; en: string; lat: number; lon: number; open?: boolean; order?: number }>;
   cats: Record<CatId, { zh: string; en: string; ref: number }>;
   roles?: Record<RoleId, { zh: string; en: string }>;
   lots: Lot[]; screens: Screen[]; standings: Shop[]; feed: FeedItem[]; pool: { bnbWei: string | null; note: string };
@@ -129,6 +132,7 @@ export const lotOf = (id: string | null | undefined) => (id ? state?.lots.find((
 /** What a lot is called on screen: the tenant's brand, or "for lease". */
 export const lotTitle = (lot: Lot) => {
   const s = shopOf(lot.owner);
+  if (lot.locked) return t(`即将开放 · ${catName(lot.cat)}`, `Opening soon · ${catName(lot.cat)}`);
   return s ? (s.brand?.name ?? s.name) : t(`招租 · ${catName(lot.cat)}`, `For lease · ${catName(lot.cat)}`);
 };
 /** Season phase in one line: "Season 3 · Day 4/7 · 2:31 left" or "settling". */

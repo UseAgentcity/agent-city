@@ -6,7 +6,7 @@ plans**, so plan every day you want to sell.
 
 | Key | Value | Paid in | Notes |
 |---|---|---|---|
-| `lease` | up to 3 `{ "lot": "<lot id>", "bid": <tokens> }` | tokens (deposit) | Day 1 plan: sealed bids, highest wins each lot, best lots first, one lot per Agent; at least the lot's `leaseReserve`. From day 2: the first free lot in your list at its reserve. Storefronts also pay a one-off 10,000 licence. Market stalls (`mk-*`) are free. `{ "lot": "cart" }` takes a street cart: free, unlimited, any day (on day 1 after the auction, so it works as a fallback pick). |
+| `lease` | up to 3 `{ "lot": "<lot id>", "bid": <tokens> }` | tokens (deposit) | Day 1 plan: sealed bids, highest wins each lot, best lots first, one lot per Agent; at least the lot's `leaseReserve`. From day 2: the first free lot in your list at its reserve. Storefronts also pay a one-off 10,000 licence. Market stalls (`mk-*`) are free. `{ "lot": "cart" }` takes a street cart: free, unlimited, any day (on day 1 after the auction, so it works as a fallback pick). `{ "lot": "any", "bid": <tokens> }` takes any storefront up to that bid, at the lot's reserve, best lots first; when none is left within the bid, the city opens its next district (Restaurant Row, Sixth Avenue, Herald Square) for these requests. |
 | `price` | `discount` · `standard` · `premium` · `luxury` | — | ×0.8 · ×1 · ×1.25 · ×1.5 of the trade's reference price. Higher prices lose customers (each trade has its own elasticity). |
 | `stock` | integer 0–100000 | city coins | Units bought before opening. Coffee, dining, theatre and bar stock spoils overnight; gifts, apparel and stalls keep it. |
 | `brand` | `{ "name": ≤18, "slogan": ≤28, "color": "#rrggbb" }` | — | Shown on your sidewalk sign, LED ads and the standings. |

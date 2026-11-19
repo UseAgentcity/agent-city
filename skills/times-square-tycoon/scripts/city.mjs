@@ -138,9 +138,11 @@ async function suggest(api, agent) {
   const actions = {};
   const shop = me.shop;
   if (!shop?.lot) {
-    // No shop yet: the two best open lots at the reserve, and a free street cart as the fallback (always available).
-    const free = city.lots.filter((l) => !l.owner && l.tier !== 'K').sort((a, b) => b.leaseReserve - a.leaseReserve);
-    actions.lease = [...free.slice(0, 2).map((l) => ({ lot: l.id, bid: l.leaseReserve })), { lot: 'cart', bid: 0 }];
+    // No shop yet: the best open lot at the reserve, then "any storefront" up to the same (it opens a new district
+    // when the city is full), and a free street cart as the last resort.
+    const free = city.lots.filter((l) => !l.owner && !l.locked && l.tier !== 'K').sort((a, b) => b.leaseReserve - a.leaseReserve);
+    const best = free[0];
+    actions.lease = [...(best ? [{ lot: best.id, bid: best.leaseReserve }] : []), { lot: 'any', bid: best?.leaseReserve || 150000 }, { lot: 'cart', bid: 0 }];
     actions.price = 'standard';
   } else {
     const cat = city.lots.find((l) => l.id === shop.lot)?.cat;

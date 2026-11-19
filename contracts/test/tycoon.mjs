@@ -148,6 +148,28 @@ assert.equal(leagueOf(R('cour')), 'trade');
 const noSup = runSeason({ seed: 'roles', lots: LOTS, events: roleEvents.filter((e) => e.agent !== 'sup') });
 assert.ok(noSup.standings.find((s) => s.agent === 'solo').profit < R('solo').profit, 'cheaper stock lifts the shops');
 
+// New districts open on demand: Agents bidding for "any storefront" are seated at the reserve, best lots first;
+// when none is left within their bid, the next district opens. Few Agents open nothing.
+const anyAgents = (n) => {
+  const ev = [];
+  for (let i = 0; i < n; i++) {
+    const agent = '0x' + String(5000 + i).padStart(40, '0');
+    ev.push({ type: 'enter', agent, name: `x${i}`, deposit: 400_000 });
+    for (let d = 1; d <= DAYS; d++) ev.push({ type: 'plan', agent, day: d, actions: { ...(d === 1 ? { lease: [{ lot: 'any', bid: 150_000 + i * 1000 }] } : {}), price: 'standard', stock: 400 } });
+  }
+  return runSeason({ seed: 'grow', lots: LOTS, events: demoEvents('grow', LOTS, DAYS, ev) });
+};
+const few = anyAgents(6), crowd = anyAgents(30);
+assert.deepEqual(few.districtsOpened, [], 'a few Agents fit in the city as it is');
+assert.ok(few.standings.filter((s) => s.agent.startsWith('0x00000000000000000000000000000000000050')).every((s) => s.spent.lease > 0), 'and all get a storefront');
+assert.equal(few.lots.filter((l) => l.locked).length, 24, 'the expansion districts are listed, locked');
+assert.deepEqual(crowd.districtsOpened, ['restaurant-row', 'sixth-ave', 'herald-square'], 'a crowd opens the districts in order');
+const seated = crowd.standings.filter((s) => s.agent.startsWith('0x00000000000000000000000000000000000050') && s.spent.lease > 0);
+assert.equal(seated.length, 30, 'everyone seated');
+assert.ok(seated.every((s) => s.spent.lease === TIERS.B.lease || s.spent.lease === TIERS.C.lease), 'each at the reserve of a lot within the bid');
+const poor = runSeason({ seed: 'grow', lots: LOTS, events: [{ type: 'enter', agent: 'p', name: 'p', deposit: 1000 }, { type: 'plan', agent: 'p', day: 1, actions: { lease: [{ lot: 'any', bid: 1000 }] } }] });
+assert.deepEqual(poor.districtsOpened, [], 'a bid under the cheapest reserve opens nothing');
+
 // The public snapshot follows the clock: day 1 first, settling after day 7.
 let t = Date.UTC(2026, 10, 19);
 const city = createTycoon({ now: () => t, dayMs: 1000, epoch: t });
@@ -160,4 +182,4 @@ t += 4000;
 assert.equal(city.snapshot().season.settling, true);
 assert.ok(city.snapshot().standings.every((s) => !('wallet' in s)), 'no wallets in the public snapshot');
 
-console.log('PASS: deterministic season, token lease auction and licence, opening auction, unlimited street carts, suppliers and couriers, three award leagues, free stalls, 80/20 burn split, upgrades, event sponsorship, composite score, daily rent, loan default, ad filter, public clock');
+console.log('PASS: deterministic season, token lease auction and licence, opening auction, unlimited street carts, suppliers and couriers, three award leagues, districts opening on demand, free stalls, 80/20 burn split, upgrades, event sponsorship, composite score, daily rent, loan default, ad filter, public clock');

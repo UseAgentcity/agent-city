@@ -260,3 +260,42 @@ export const cartLot = (i) => {
   const [lat, lon, face] = CART_SPOTS[i];
   return { id: `cart-${i + 1}`, district: 'square', cat: 'cart', tier: 'K', lat, lon, key: null, face };
 };
+
+/**
+ * Districts that open on demand, in this order. When Agents asking for "any storefront" (`lease: [{ lot: 'any', bid }]`)
+ * find every storefront taken, the engine opens the next district and seats them there at the reserve. Lots are real
+ * street-front buildings surveyed from the 3D city (spread along the street, low-rise with a shop where possible,
+ * none already used); their own map names are replaced by the Agents' brands.
+ */
+export const EXPANSIONS = [
+  { id: 'restaurant-row', zh: '餐厅街', en: 'Restaurant Row', lat: 40.76045, lon: -73.98945, lots: [
+    { id: 'rr-d1', cat: 'dining', tier: 'B', lat: 40.759797, lon: -73.98828, key: 570492480 },
+    { id: 'rr-d2', cat: 'dining', tier: 'B', lat: 40.760138, lon: -73.989216, key: 42345044481 },
+    { id: 'rr-d3', cat: 'dining', tier: 'C', lat: 40.760422, lon: -73.989985, key: 570492332 },
+    { id: 'rr-c1', cat: 'coffee', tier: 'C', lat: 40.760778, lon: -73.990585, key: 42345044493 },
+    { id: 'rr-b1', cat: 'bar', tier: 'B', lat: 40.760111, lon: -73.988313, key: 73389965792 },
+    { id: 'rr-b2', cat: 'bar', tier: 'B', lat: 40.760386, lon: -73.98891, key: 8096604807 },
+    { id: 'rr-b3', cat: 'bar', tier: 'C', lat: 40.760809, lon: -73.989825, key: 8096604814 },
+    { id: 'rr-d4', cat: 'dining', tier: 'C', lat: 40.760981, lon: -73.99047, key: 570495522 },
+  ] },
+  { id: 'sixth-ave', zh: '第六大道', en: 'Sixth Avenue', lat: 40.75855, lon: -73.9808, lots: [
+    { id: 'sa-g1', cat: 'gifts', tier: 'B', lat: 40.758047, lon: -73.981365, key: 42466787200 },
+    { id: 'sa-a1', cat: 'apparel', tier: 'B', lat: 40.758752, lon: -73.980255, key: 2562021603 },
+    { id: 'sa-c1', cat: 'coffee', tier: 'B', lat: 40.75903, lon: -73.980764, key: 45131126083 },
+    { id: 'sa-b1', cat: 'bar', tier: 'C', lat: 40.75925, lon: -73.980528, key: 41744651362 },
+    { id: 'sa-g2', cat: 'gifts', tier: 'C', lat: 40.757894, lon: -73.980912, key: 42423880644 },
+    { id: 'sa-d1', cat: 'dining', tier: 'B', lat: 40.758176, lon: -73.980939, key: 23206160644 },
+    { id: 'sa-c2', cat: 'coffee', tier: 'C', lat: 40.758806, lon: -73.980282, key: 45131127041 },
+    { id: 'sa-a2', cat: 'apparel', tier: 'B', lat: 40.759112, lon: -73.979524, key: 123506949792 },
+  ] },
+  { id: 'herald-square', zh: '先驱广场', en: 'Herald Square', lat: 40.7502, lon: -73.9893, lots: [
+    { id: 'hs-g1', cat: 'gifts', tier: 'B', lat: 40.749608, lon: -73.988406, key: 42448331872 },
+    { id: 'hs-c1', cat: 'coffee', tier: 'B', lat: 40.750009, lon: -73.989028, key: 60875816161 },
+    { id: 'hs-a1', cat: 'apparel', tier: 'B', lat: 40.750313, lon: -73.989734, key: 570495532 },
+    { id: 'hs-a2', cat: 'apparel', tier: 'B', lat: 40.750635, lon: -73.990413, key: 42344195534 },
+    { id: 'hs-d1', cat: 'dining', tier: 'C', lat: 40.749918, lon: -73.988288, key: 297690730 },
+    { id: 'hs-g2', cat: 'gifts', tier: 'C', lat: 40.750028, lon: -73.989109, key: 42344196013 },
+    { id: 'hs-g3', cat: 'gifts', tier: 'C', lat: 40.750226, lon: -73.989579, key: 570416494 },
+    { id: 'hs-c2', cat: 'coffee', tier: 'C', lat: 40.75075, lon: -73.990497, key: 42344195535 },
+  ] },
+].map((d) => ({ ...d, lots: d.lots.map((l) => ({ ...l, district: d.id })) }));

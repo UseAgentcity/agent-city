@@ -149,7 +149,7 @@ export function installKeepers(group: THREE.Group, ground: (x: number, z: number
       }
       if (k.banner && k.bannerTex) {
         // Theatres already carry the lease on their marquee.
-        k.banner.visible = !shop && lot.cat !== 'theatre';
+        k.banner.visible = !shop && !lot.locked && lot.cat !== 'theatre';
         const key = `${lot.leaseReserve}|${auctionDay()}|${document.documentElement.lang}`;
         if (k.banner.visible && k.bannerKey !== key) { k.bannerKey = key; drawLease(k.bannerTex.image as HTMLCanvasElement, lot); k.bannerTex.needsUpdate = true; }
       }

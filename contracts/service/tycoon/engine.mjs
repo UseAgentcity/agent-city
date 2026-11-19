@@ -14,7 +14,7 @@
 //   { type: 'sponsor', who, name, day, event, bid }          anyone bids tokens to set `day`'s city event
 // Output: the city after `days` resolved game days.
 
-import { CART_SPOTS, cartLot } from './lots.mjs';
+import { CART_SPOTS, EXPANSIONS, cartLot } from './lots.mjs';
 
 export const DAYS = 7;
 export const START_CASH = 20000;
@@ -147,8 +147,38 @@ export function cleanAd(ad) {
  * tenants (day 1 plans, bids included, are due before the season starts: during the last one's settling day).
  * Pure: the same arguments always give the same city.
  */
-export function runSeason({ seed, lots, events, days = DAYS, opening = false, carts = CART_SPOTS }) {
+export function runSeason({ seed, lots, events, days = DAYS, opening = false, carts = CART_SPOTS, expansions = EXPANSIONS }) {
   const lotById = new Map(lots.map((l) => [l.id, l]));
+  const opened = []; // expansion districts opened this season, in order
+  const STOREFRONT = new Set(['A', 'B', 'C']);
+  /** Opens the next expansion district (its lots join the city); false when there is none left. */
+  const openNext = (day) => {
+    const d = expansions[opened.length];
+    if (!d) return false;
+    opened.push(d.id);
+    for (const l of d.lots) lotById.set(l.id, l);
+    say(day, null, `店面全部租满，新街区「${d.zh}」开放：新增 ${d.lots.length} 个店面`, { kind: 'district', district: d.id });
+    return true;
+  };
+  /** The best free storefront at or under `bid` that the Agent can afford, best traffic first. */
+  const freeStorefront = (a, bid) => [...lotById.values()]
+    .filter((l) => STOREFRONT.has(l.tier) && !lotOwner.has(l.id) && TIERS[l.tier].lease <= bid && TIERS[l.tier].lease + licenceFor(a, l) <= a.tokens)
+    .sort((x, y) => TIERS[y.tier].traffic - TIERS[x.tier].traffic)[0] ?? null;
+  /**
+   * Seats Agents who asked for "any storefront": highest bid first, at the lot's reserve. When no free storefront is
+   * within an Agent's bid, the next district opens: demand at that price is more than the city has. A bid below the
+   * cheapest reserve never opens anything.
+   */
+  const seatAny = (wanting, day) => {
+    const queue = wanting.map((a) => ({ a, bid: Math.max(...a.lease.filter((x) => x?.lot === 'any').map((x) => Math.floor(x.bid ?? 0))) }))
+      .sort((x, y) => y.bid - x.bid);
+    for (const { a, bid } of queue) {
+      let lot = freeStorefront(a, bid);
+      const could = bid >= TIERS.C.lease && a.tokens >= TIERS.C.lease + licenceFor(a, { tier: 'C' });
+      while (!lot && could && openNext(day)) lot = freeStorefront(a, bid);
+      if (lot) lease(a, lot, TIERS[lot.tier].lease, day);
+    }
+  };
   const cartLots = []; // cart spots handed out this season, in order
   /** The first free cart spot for an Agent asking for `lot: 'cart'`, or null when the street is full. */
   const takeCart = () => {
@@ -255,6 +285,8 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
         }
         if (best) lease(best.a, lot, best.bid, day);
       }
+      // Then "any storefront" requests, opening new districts when the city is full.
+      seatAny(plans.map((p) => agents.get(p.agent)).filter((a) => !a.lot && a.lease.some((x) => x?.lot === 'any')), day);
       // Then carts, for anyone still without a shop who asked for one.
       for (const p of plans) {
         const a = agents.get(p.agent);
@@ -267,6 +299,7 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
         const a = agents.get(p.agent);
         if (a.lot) continue;
         for (const pick of a.lease) {
+          if (pick?.lot === 'any') { seatAny([a], day); if (a.lot) break; continue; }
           const lot = pick?.lot === 'cart' ? takeCart() : lotById.get(pick?.lot);
           if (!lot || lotOwner.has(lot.id) || TIERS[lot.tier].lease + licenceFor(a, lot) > a.tokens) continue;
           lease(a, lot, TIERS[lot.tier].lease, day);
@@ -530,8 +563,10 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
     seed, day: resolved,
     event: resolved ? dayEvents[resolved - 1] : null,
     days: dayEvents,
-    // Storefronts and stalls always; cart spots only while someone runs a cart there.
-    lots: [...lots, ...cartLots.filter((l) => lotOwner.has(l.id))].map((l) => ({ ...l, owner: lotOwner.get(l.id) ?? null, reserve: TIERS[l.tier].rent, leaseReserve: TIERS[l.tier].lease })),
+    // Storefronts and stalls always; districts not yet opened, marked locked; cart spots only while in use.
+    lots: [...lots, ...expansions.flatMap((d) => d.lots.map((l) => (opened.includes(d.id) ? l : { ...l, locked: true }))), ...cartLots.filter((l) => lotOwner.has(l.id))]
+      .map((l) => ({ ...l, owner: lotOwner.get(l.id) ?? null, reserve: TIERS[l.tier].rent, leaseReserve: TIERS[l.tier].lease })),
+    districtsOpened: [...opened],
     screens, standings: list, feed: feed.slice(-120),
     openOffers: offers.filter((o) => !o.done).map(({ done, ...o }) => o),
     tokens: { spent: tokens, total, burned, treasury: total - burned, deposits: list.reduce((s, x) => s + x.deposit, 0) },

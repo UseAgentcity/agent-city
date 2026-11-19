@@ -2,7 +2,7 @@
 // Today the events come from the demo shopkeepers on a fast clock; on mainnet they come from the
 // TimesSquareCity contract's events in chain order, through the same engine.
 import { CATS, DAYS, DELIVERY, EVENTS, ROLES, SCREENS, SCREEN_RESERVE, SUPPLIER_COST, TIERS, TOKEN, UPGRADES, UPGRADE_COST, eventFor, runSeason, sponsorFor } from './engine.mjs';
-import { DISTRICTS, LOTS } from './lots.mjs';
+import { DISTRICTS, EXPANSIONS, LOTS } from './lots.mjs';
 import { DEMO_AGENTS, demoEvents, demoSponsors } from './demo.mjs';
 import { chainSeed } from './chain.mjs';
 
@@ -76,7 +76,12 @@ export function createTycoon({ now = () => Date.now(), dayMs = 4 * 60_000, epoch
         leader: lead ? { name: lead.name ?? lead.who, event: lead.event, bid: lead.bid } : null,
       } : null,
       tokenEconomy: { ...c.tokens, burnBps: TOKEN.burnBps, licence: TOKEN.licence, screenReserve: SCREEN_RESERVE, upgrades: UPGRADES, upgradeCost: UPGRADE_COST, symbol: process.env.TYCOON_TOKEN_SYMBOL || null },
-      districts: DISTRICTS, cats: CATS, tiers: TIERS, roles: ROLES, delivery: DELIVERY, supplierCost: SUPPLIER_COST, events: EVENTS.map(({ id, zh, en }) => ({ id, zh, en })),
+      // Every district, the expansion ones marked open once demand has opened them this season (in order).
+      districts: {
+        ...Object.fromEntries(Object.entries(DISTRICTS).map(([id, d]) => [id, { ...d, open: true }])),
+        ...Object.fromEntries(EXPANSIONS.map(({ lots, id, ...d }, i) => [id, { ...d, open: (c.districtsOpened ?? []).includes(id), order: i + 1 }])),
+      },
+      cats: CATS, tiers: TIERS, roles: ROLES, delivery: DELIVERY, supplierCost: SUPPLIER_COST, events: EVENTS.map(({ id, zh, en }) => ({ id, zh, en })),
       lots: c.lots,
       screens: c.screens.map((s, i) => ({ ...s, tier: SCREENS[i].tier })),
       standings: c.standings.map(({ history, ...s }) => ({ ...s, demo: s.agent.startsWith('demo:'), history: history.map((h) => ({ day: h.day, revenue: h.revenue, customers: h.customers, served: h.served, cash: h.cash })) })),

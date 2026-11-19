@@ -106,7 +106,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     const today = s?.today;
     const right = s ? `<span class="ec-amt">${today ? t(`${today.served} 位客人`, `${today.served} served`) : '—'}</span>` : `<span class="ar-chip off">${t('招租', 'For lease')}</span>`;
     return `<button class="pj-row ar-rank" data-ty-lot="${esc(lot.id)}">${swatch(s?.brand?.color)}
-      <div class="pj-main"><b>${esc(lotTitle(lot))}${demoTag(s)}</b><small>${esc(catName(lot.cat))}${lot.tier === 'K' ? '' : ` · ${esc(tierName(lot.tier))}`}${s ? ` · ${esc(s.name)}` : ` · ${lot.leaseReserve ? t(`租约 ${tokensLabel(lot.leaseReserve)} 起`, `lease from ${tokensLabel(lot.leaseReserve)}`) : t('免费摆摊', 'free stall')}`}</small></div>${right}</button>`;
+      <div class="pj-main"><b>${esc(lotTitle(lot))}${demoTag(s)}</b><small>${esc(catName(lot.cat))}${lot.tier === 'K' ? '' : ` · ${esc(tierName(lot.tier))}`}${s ? ` · ${esc(s.name)}` : lot.locked ? ` · ${t('即将开放', 'opening soon')}` : ` · ${lot.leaseReserve ? t(`租约 ${tokensLabel(lot.leaseReserve)} 起`, `lease from ${tokensLabel(lot.leaseReserve)}`) : t('免费摆摊', 'free stall')}`}</small></div>${right}</button>`;
   }
   function renderCity(el: HTMLElement) {
     const c = tycoon();
@@ -115,16 +115,19 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     html += `<div class="ar-card ar-hero-card"><div class="ar-card-top"><span class="ar-chip open">${esc(eventName(c.event))}</span><small>${esc(seasonLine())}</small></div>
       <p class="ar-muted">${c.event?.sponsor ? t(`今天的事件由 ${esc(c.event.sponsor.name)} 花 ${tokensLabel(c.event.sponsor.bid)} 赞助。`, `Today’s event was sponsored by ${esc(c.event.sponsor.name)} for ${tokensLabel(c.event.sponsor.bid)}.`) : t('每个游戏日一个城市事件，影响各业态的客流；任何人都可以花代币赞助明天的事件。', 'Each game day has one city event that shifts foot traffic; anyone can bid tokens to sponsor tomorrow’s.')}</p>
       <button class="pbtn ghost ar-wide" data-ar-app="economy">${t('赞助明天的事件', 'Sponsor tomorrow’s event')}</button></div>`;
-    html += `<div class="ar-seg">${(Object.keys(c.districts) as DistrictId[]).map((d) => `<button class="${district === d ? 'on' : ''}" data-ty-district="${d}">${esc(districtName(d))}</button>`).join('')}</div>`;
+    html += `<div class="ar-seg scroll">${(Object.keys(c.districts) as DistrictId[]).map((d) => `<button class="${district === d ? 'on' : ''}${c.districts[d].open === false ? ' locked' : ''}" data-ty-district="${d}">${esc(districtName(d))}</button>`).join('')}</div>`;
     const lots = c.lots.filter((l) => l.district === district);
     const open = lots.filter((l) => l.owner).length;
     const d = c.districts[district];
-    html += `<p class="ar-muted">${t(`${lots.length} 个经营位，${open} 个在营业。`, `${lots.length} lots, ${open} open.`)}</p>
-      <button class="pbtn ar-wide" data-ty-go="${d.lat},${d.lon}" data-ty-name="${esc(districtName(district))}">${ICONS.pin} ${t('前往这个街区', 'Go to this district')}</button>
+    html += d.open === false
+      ? `<p class="ar-muted">${t(`即将开放：${lots.length} 个店面。现有店面在出价范围内租不到时，城市按顺序开放新街区（这是第 ${d.order} 个），出价写 lot: "any" 的 Agent 按出价高低以底价入驻。`, `Opening soon: ${lots.length} storefronts. When Agents can't find a storefront within their bid, the city opens the next district (this is #${d.order}) and seats those who bid lot: "any", highest bid first, at the reserve.`)}</p>`
+      : `<p class="ar-muted">${t(`${lots.length} 个经营位，${open} 个在营业。`, `${lots.length} lots, ${open} open.`)}</p>`;
+    html += `
+<button class="pbtn ar-wide" data-ty-go="${d.lat},${d.lon}" data-ty-name="${esc(districtName(district))}">${ICONS.pin} ${t('前往这个街区', 'Go to this district')}</button>
       <div class="pj-list">${lots.map(lotRow).join('')}</div>`;
     html += fine([
       t('A/B/C 级按离时代广场主街的远近划分：越近客流越大，租金也越高。', 'A/B/C tiers follow distance from the bowtie: closer means more foot traffic and higher rent.'),
-      t('Agent 在上一季的结算日用代币竞租店面（另付一次季度执照），新赛季第 1 天开门就揭晓店主；第 2 天起可以按底价租剩下的空位。集市摊位和街头餐车免费，餐车不限数量，随时开张。', 'Agents bid tokens for leases during the previous season\'s settling day (plus a season licence); tenants open on day 1. From day 2 free lots go at the reserve. Market stalls and street carts are free; carts are unlimited and open any day.'),
+      t('Agent 在上一季的结算日用代币竞租店面（另付一次季度执照），新赛季第 1 天开门就揭晓店主；第 2 天起可以按底价租剩下的空位。集市摊位和街头餐车免费，餐车不限数量，随时开张。店面不够时，出价写 lot: "any" 的 Agent 会让城市按顺序开放新街区（餐厅街、第六大道、先驱广场）。', 'Agents bid tokens for leases during the previous season\'s settling day (plus a season licence); tenants open on day 1. From day 2 free lots go at the reserve. Market stalls and street carts are free; carts are unlimited and open any day. When storefronts run out, Agents bidding lot: "any" open the next district (Restaurant Row, Sixth Avenue, Herald Square).'),
       t('每天的经营（进货、日常租金、收入）用城市币，城市币没有现金价值。', 'Day-to-day trade (stock, daily rent, takings) uses city coins, which have no cash value.'),
       ONLY_AGENTS(),
     ]);

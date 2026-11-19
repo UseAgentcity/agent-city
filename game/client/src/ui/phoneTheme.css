@@ -256,3 +256,9 @@
   #phone.arena-phone .ar-rank b { white-space: normal; }
   #phone.arena-phone .ar-rank small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }
+
+/* District tabs scroll sideways once the city has more districts than fit; districts not yet open are dimmed. */
+#phone.arena-phone .ar-seg.scroll { overflow-x: auto; scrollbar-width: none; }
+#phone.arena-phone .ar-seg.scroll::-webkit-scrollbar { display: none; }
+#phone.arena-phone .ar-seg.scroll button { flex: none; padding: 7px 12px; white-space: nowrap; }
+#phone.arena-phone .ar-seg button.locked { opacity: .55; }

@@ -156,6 +156,25 @@ function drawTotem(c: HTMLCanvasElement, lot: Lot) {
   const bg = g.createLinearGradient(0, 0, 0, TOTEM_H);
   bg.addColorStop(0, '#11141b'); bg.addColorStop(1, '#07080c');
   g.fillStyle = bg; g.fillRect(0, 0, TOTEM_W, TOTEM_H);
+  if (lot.locked) {
+    // A district that opens when the city's storefronts run out.
+    const d = tycoon()?.districts[lot.district];
+    g.fillStyle = '#2a2f3a'; g.fillRect(0, 0, TOTEM_W, 118);
+    g.fillStyle = '#9aa3b2'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = `800 50px ${FONT}`; g.fillText(catName(lot.cat), TOTEM_W / 2, 62);
+    const en = t('zh', 'en') === 'en';
+    g.fillStyle = '#7dd3fc'; g.font = `900 ${en ? 92 : 104}px ${FONT}`; g.fillText(t('即将开放', 'COMING'), TOTEM_W / 2, 320);
+    if (en) g.fillText('SOON', TOTEM_W / 2, 420);
+    g.fillStyle = '#f4f1e8'; g.font = `800 46px ${FONT}`; g.fillText(d ? t(d.zh, d.en) : '', TOTEM_W / 2, en ? 520 : 440, TOTEM_W - 50);
+    g.fillStyle = '#9aa3b2'; g.font = `600 32px ${FONT}`;
+    g.fillText(t('现有店面租满后', 'Opens when the city'), TOTEM_W / 2, 640);
+    g.fillText(t('这条街就开放', 'runs out of storefronts'), TOTEM_W / 2, 690);
+    g.strokeStyle = 'rgba(125,211,252,.5)'; g.lineWidth = 4; g.setLineDash([18, 12]); g.strokeRect(36, 760, TOTEM_W - 72, 170); g.setLineDash([]);
+    g.fillStyle = '#7dd3fc'; g.font = `700 34px ${FONT}`;
+    g.fillText(t('出价写 lot: "any"', 'Bid lot: "any"'), TOTEM_W / 2, 820);
+    g.fillText(t(`${tierName(lot.tier)} · ${tokensShort(lot.leaseReserve)} 起`, `${tierName(lot.tier)} · from ${tokensShort(lot.leaseReserve)}`), TOTEM_W / 2, 876, TOTEM_W - 80);
+    return;
+  }
   // Trade band.
   g.fillStyle = shop ? color : '#2a2f3a'; g.fillRect(0, 0, TOTEM_W, 118);
   g.fillStyle = shop ? '#0b0d12' : '#f0b90b'; g.textAlign = 'center'; g.textBaseline = 'middle';
@@ -490,7 +509,7 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       }
       const sign = signs.get(lot.id) ?? placeSign(lot, f);
       const shop = shopOf(lot.owner);
-      const key = `${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.today?.supplier ?? ''}|${shop?.today?.delivered ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${auctionDay()}|${tycoon()?.standings.length ?? 0}|${document.documentElement.lang}`;
+      const key = `${lot.locked ? 'locked' : ''}|${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.today?.supplier ?? ''}|${shop?.today?.delivered ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${auctionDay()}|${tycoon()?.standings.length ?? 0}|${document.documentElement.lang}`;
       if (sign.key !== key) {
         if (sign.totem) drawTotem(sign.canvas, lot); else drawSign(sign.canvas, lot);
         sign.tex.needsUpdate = true;
