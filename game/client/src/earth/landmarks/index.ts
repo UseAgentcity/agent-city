@@ -44,7 +44,8 @@ const DETAIL = 1500, DRAW = 9000, COLLIDE = 700;
 const NYC = { lat0: 40.49, lat1: 40.92, lon0: -74.27, lon1: -73.68 };
 
 
-export interface LookHit { title: string; sub: string; x: number; z: number }
+/** `key`: the building's footprint key, when the hit is an ordinary building. */
+export interface LookHit { title: string; sub: string; x: number; z: number; key?: number }
 
 export class LandmarkLayer {
   group = new THREE.Group();
@@ -331,7 +332,7 @@ export class LandmarkLayer {
         const addr = e.f.num && street ? `${e.f.num} ${street}` : null;
         const title = e.f.poi?.name ?? addr ?? (street ? `Building on ${street}` : 'Building');
         const sub = [e.f.poi && addr ? addr : null, `${floors} floor${floors === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
-        return { title, sub, x: cx, z: cz };
+        return { title, sub, x: cx, z: cz, key: e.f.key };
       }
     }
     return null;

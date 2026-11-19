@@ -50,7 +50,7 @@ import { openReview } from './ui/review.ts';
 import { installSettings, toggleSettings } from './ui/settings.ts';
 import { keymap } from './keymap.ts';
 import { catName, districtName, eventName, installTycoon, lotTitle, onTycoon, poolLine, seasonLine, shopOf, tycoon, type Lot } from './ui/tycoon.ts';
-import { installTycoonWorld, lotFrontOf } from './ui/tycoonWorld.ts';
+import { installTycoonWorld, lotByBuildingName, lotFrontOf, lotNear } from './ui/tycoonWorld.ts';
 import { installTileWarn } from './ui/tileWarn.ts';
 import { localizeCanvas, localizeDocument, t, tr } from './i18n.ts';
 import './i18n-zh.ts';
@@ -804,18 +804,23 @@ async function start(where: CityId | GeoPlace) {
         updateCity(g, area.place);
         wxTimer -= 0.1;
         if (wxTimer < 0) { wxTimer = 2; dayNight.setLocation(g.lat, g.lon); }
+        // A building an Agent leases is that Agent's shop in every label, not the brand the map lists there.
+        const nearLot = !interior && !generic && earth ? lotNear(earth, player.position.x, player.position.z) : null;
+        const insideLot = generic ? tycoon()?.lots.find((l) => l.key != null && l.key === generic!.hit.fp.key) ?? null : null;
+        const lookRaw = interior || generic || photo.active ? null : earth.lookingAt();
+        const lookLot = lookRaw ? (tycoon()?.lots.find((l) => l.key != null && l.key === lookRaw.key) ?? lotByBuildingName(earth, lookRaw.title)) : null;
         hud.update({
           lat: g.lat, lon: g.lon,
           altitude: player.position.y + earth.e0,
           agl: player.agl, heading, pitch: -player.pitch * 57.3, speed: player.vehicle !== 'foot' ? player.vehicleSpeed : player.speed,
           localTime: dayNight.label(),
-          place: interior ? `${interior.repo.name} HQ` : generic ? generic.it.title : zhPlace(place.locationName(player.position.x, player.position.z)),
+          place: interior ? `${interior.repo.name} HQ` : insideLot ? lotTitle(insideLot) : generic ? generic.it.title : nearLot ? lotTitle(nearLot) : zhPlace(place.locationName(player.position.x, player.position.z)),
           sub: zhPlace(interior || generic ? [place.locationName(anchor.x, anchor.z), area.sub].filter(Boolean).join(' · ') : [area.place, area.sub].filter(Boolean).join(', ')),
           mode: interior || generic ? 'indoors' : player.flying ? 'fly' : 'walk',
           waypoint, imperial: imperial(),
           surface: player.mode === 'swim' ? 'swimming' : player.agl > 3 ? 'in the air' : '',
           weather: dayNight.weather.summary(imperial(), dayNight.hour),
-          looking: interior || generic || photo.active ? null : zhLooking(earth.lookingAt()),
+          looking: lookLot ? { title: lotTitle(lookLot), sub: `${catName(lookLot.cat)} · ${t('由 Agent 经营', 'Run by an Agent')}` } : zhLooking(lookRaw),
         });
         if (!worldMapOpen() && !photo.active) hud.setMode(interior ? 'walk' : player.vehicle !== 'foot' ? player.vehicle : player.flying ? 'fly' : 'walk');
         earthMini.setVisible(!interior && !generic);

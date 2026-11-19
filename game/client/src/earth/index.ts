@@ -57,7 +57,7 @@ export interface EarthApi {
    */
   onShift: ((map: (v: THREE.Vector3) => void) => void) | null;
   /** The building in the middle of the view, after a short look (name or address, and neighborhood). */
-  lookingAt(): { title: string; sub: string } | null;
+  lookingAt(): { title: string; sub: string; key?: number } | null;
   /** Street name signs at intersections on or off. */
   setStreetSigns(on: boolean): void;
 }
@@ -433,7 +433,7 @@ export async function buildEarthPlace(place: GeoPlace, repos: Repo[], say: (m: s
       const hit = chunks.landmarks.look(cam, performance.now() / 1000, streetNear);
       if (!hit) return null;
       const hood = earth.area(hit.x, hit.z).place;
-      return { title: hit.title, sub: [hit.sub, hood].filter((t) => t && t !== hit.title).join(' · ') };
+      return { title: hit.title, sub: [hit.sub, hood].filter((t) => t && t !== hit.title).join(' · '), key: hit.key };
     },
     setStreetSigns(on) { LandmarkLayer.signsOn = on; chunks.landmarks.setSigns(on); },
     buildingNear(x, z, maxDist = 1.6) {

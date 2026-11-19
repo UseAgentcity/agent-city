@@ -8,7 +8,7 @@ import { rawCanvases, t } from '../i18n.ts';
 import { catName, coins, onTycoon, priceName, shopOf, tierName, tycoon, type Lot } from './tycoon.ts';
 
 /** A lot's door on the street: the point, the outward normal and the wall tangent (world x/z). */
-export interface LotFront { x: number; z: number; nx: number; nz: number; tx: number; tz: number; wall: number }
+export interface LotFront { x: number; z: number; nx: number; nz: number; tx: number; tz: number; wall: number; /** The building's own map name, which the game shows as the Agent's shop instead. */ poi?: string }
 
 const fronts = new Map<string, LotFront | null>();
 /**
@@ -41,12 +41,29 @@ export function lotFrontOf(earth: EarthApi, lot: Lot): LotFront | null {
       let nx = -vz / len, nz = vx / len;
       if (nx * (x - hit.cx) + nz * (z - hit.cz) < 0) { nx = -nx; nz = -nz; }
       bestD = dd;
-      best = { x, z, nx, nz, tx: vx / len, tz: vz / len, wall: len };
+      best = { x, z, nx, nz, tx: vx / len, tz: vz / len, wall: len, poi: hit.fp.poi?.name };
     }
     front = best;
   }
   fronts.set(lot.id, front);
   return front;
+}
+
+/** The lot whose door is within `r` metres of (x, z), if its front is known. */
+export function lotNear(earth: EarthApi, x: number, z: number, r = 18): Lot | null {
+  let best: Lot | null = null, bestD = r;
+  for (const lot of tycoon()?.lots ?? []) {
+    const f = lotFrontOf(earth, lot);
+    if (!f) continue;
+    const d = Math.hypot(f.x - x, f.z - z);
+    if (d < bestD) { bestD = d; best = lot; }
+  }
+  return best;
+}
+/** A lot whose building carries this map name (so a label naming that building names the shop instead). */
+export function lotByBuildingName(earth: EarthApi, name: string): Lot | null {
+  for (const lot of tycoon()?.lots ?? []) if (lotFrontOf(earth, lot)?.poi === name) return lot;
+  return null;
 }
 
 // ---------- signs ----------
@@ -203,9 +220,100 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
   const group = new THREE.Group();
   group.name = 'tycoon-world';
   scene.add(group);
-  const queue = new Crowd(180);
+  // ---- shoppers: a line at each door that moves, people going in, people coming out with a bag ----
+  const queue = new Crowd(220);
   group.add(queue.group);
-  for (const m of queue.members) { m.pose = 'stand'; m.speed = 0; m.scale = 0.94 + Math.random() * 0.12; }
+  for (const m of queue.members) { m.pose = 'stand'; m.speed = 0; m.scale = 0.94 + Math.random() * 0.12; m.visible = false; m.fade = 0; }
+  interface Mem { busy: boolean; path: { x: number; z: number }[]; face: number | null; fadeTo: number; release: boolean; fadeAtEnd: boolean }
+  const mem: Mem[] = queue.members.map(() => ({ busy: false, path: [], face: null, fadeTo: 0, release: false, fadeAtEnd: false }));
+  interface Line { lot: Lot; f: LotFront; side: number; people: number[]; want: number; every: number; timer: number }
+  const lineByLot = new Map<string, Line>();
+  const WALK = 1.25;
+  const take = () => {
+    const i = mem.findIndex((m) => !m.busy);
+    if (i < 0) return null;
+    Object.assign(mem[i], { busy: true, path: [], face: null, fadeTo: 1, release: false, fadeAtEnd: false });
+    const m = queue.members[i];
+    m.visible = true; m.fade = 0; m.carry = false; m.speed = 0;
+    return i;
+  };
+  const put = (i: number, x: number, z: number) => queue.members[i].pos.set(x, ground(x, z), z);
+  /** Where the i-th person in a line stands, and which way they face (the door, or the person ahead). */
+  function slot(l: Line, i: number) {
+    const { f, side } = l;
+    const along = i ? 0.9 + i * 0.78 : 0;
+    const out = (l.lot.key == null ? 1.6 : 1.3) + (i % 2 ? 0.12 : -0.08) + (i ? 0 : 0.2);
+    return {
+      x: f.x + f.nx * out + f.tx * side * along, z: f.z + f.nz * out + f.tz * side * along,
+      face: i === 0 ? Math.atan2(-f.nx, -f.nz) : Math.atan2(-f.tx * l.side, -f.tz * l.side),
+    };
+  }
+  function join(l: Line) {
+    const i = take();
+    if (i == null) return;
+    const s = slot(l, l.people.length), far = slot(l, l.people.length + 5);
+    put(i, far.x, far.z);
+    mem[i].path = [{ x: s.x, z: s.z }];
+    mem[i].face = s.face;
+    l.people.push(i);
+  }
+  function leaveBack(l: Line) {
+    const i = l.people.pop()!;
+    const p = queue.members[i].pos, far = slot(l, l.people.length + 6);
+    Object.assign(mem[i], { path: [{ x: (p.x + far.x) / 2, z: (p.z + far.z) / 2 }], fadeTo: 0, release: true, face: null });
+  }
+  /** The person at the front goes in; everyone steps up; a shopper comes out with a bag. */
+  function serve(l: Line) {
+    const i = l.people.shift()!;
+    const { f } = l;
+    Object.assign(mem[i], { path: [{ x: f.x + f.nx * 0.15, z: f.z + f.nz * 0.15 }], fadeTo: 0, release: true, face: null });
+    l.people.forEach((k, j) => { const s = slot(l, j); mem[k].path = [{ x: s.x, z: s.z }]; mem[k].face = s.face; });
+    const out = take();
+    if (out != null) {
+      const away = -l.side;
+      put(out, f.x + f.nx * 0.2, f.z + f.nz * 0.2);
+      queue.members[out].carry = true;
+      mem[out].path = [
+        { x: f.x + f.nx * 1.7 + f.tx * away * 0.8, z: f.z + f.nz * 1.7 + f.tz * away * 0.8 },
+        { x: f.x + f.nx * 1.9 + f.tx * away * 12, z: f.z + f.nz * 1.9 + f.tz * away * 12 },
+      ];
+      mem[out].fadeAtEnd = true;
+    }
+  }
+  function stepPeople(dt: number) {
+    for (let i = 0; i < mem.length; i++) {
+      const st = mem[i];
+      if (!st.busy) continue;
+      const m = queue.members[i];
+      if (st.path.length) {
+        const p = st.path[0], dx = p.x - m.pos.x, dz = p.z - m.pos.z, d = Math.hypot(dx, dz);
+        if (d < 0.06) st.path.shift();
+        else {
+          const step = Math.min(d, WALK * dt);
+          m.pos.x += (dx / d) * step; m.pos.z += (dz / d) * step;
+          m.pos.y = ground(m.pos.x, m.pos.z);
+          m.speed = WALK; m.yaw = Math.atan2(dx, dz);
+        }
+      } else {
+        m.speed = 0;
+        if (st.face != null) m.yaw = st.face;
+        if (st.fadeAtEnd) { st.fadeAtEnd = false; st.fadeTo = 0; st.release = true; }
+      }
+      m.fade = Math.max(0, Math.min(1, m.fade + Math.sign(st.fadeTo - m.fade) * Math.min(Math.abs(st.fadeTo - m.fade), dt * 1.6)));
+      if (st.release && !st.path.length && m.fade <= 0.01) { st.busy = false; m.visible = false; m.carry = false; }
+    }
+  }
+  function stepLines(dt: number) {
+    for (const l of lineByLot.values()) {
+      while (l.people.length < l.want && mem.some((m) => !m.busy)) join(l);
+      while (l.people.length > l.want) leaveBack(l);
+      if (!l.people.length) continue;
+      l.timer -= dt;
+      if (l.timer > 0) continue;
+      l.timer = l.every * (0.75 + Math.random() * 0.5);
+      serve(l);
+    }
+  }
 
   interface Sign { mesh: THREE.Mesh; canvas: HTMLCanvasElement; tex: THREE.CanvasTexture; key: string; glow?: THREE.MeshBasicMaterial; mat?: THREE.MeshBasicMaterial; totem?: boolean }
   const signs = new Map<string, Sign>();
@@ -287,7 +395,6 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       const shop = shopOf(lot.owner);
       if (shop?.today) served.set(lot.cat, Math.max(served.get(lot.cat) ?? 1, shop.today.served));
     }
-    let used = 0;
     for (const lot of city.lots) {
       const f = lotFrontOf(earth, lot);
       if (!f) { pending = true; continue; }
@@ -313,22 +420,15 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
         sign.glow?.color.copy(shop ? c : new THREE.Color('#f0b90b'));
         if (sign.mat) { sign.mat.color.copy(c); sign.mat.opacity = shop ? 0.45 : 0.18; }
       }
-      // Queue: up to ten people, scaled to the best shop of the same trade yesterday.
-      const n = shop?.today?.served ? Math.max(1, Math.round((shop.today.served / (served.get(lot.cat) ?? 1)) * 10)) : 0;
-      const side = queueSide(lot);
-      for (let i = 0; i < n && used < queue.members.length; i++, used++) {
-        const m = queue.members[used];
-        const along = 0.9 + i * 0.78;
-        const out = (lot.key == null ? 1.6 : 1.3) + (i % 2 ? 0.12 : -0.08);
-        const x = f.x + f.nx * out + f.tx * side * (i ? along : 0) + (i ? 0 : f.nx * 0.2);
-        const z = f.z + f.nz * out + f.tz * side * (i ? along : 0) + (i ? 0 : f.nz * 0.2);
-        m.pos.set(x, ground(x, z), z);
-        // The first in line faces the door; the rest face the person ahead.
-        m.yaw = i === 0 ? Math.atan2(-f.nx, -f.nz) : Math.atan2(-f.tx * side, -f.tz * side) + (Math.random() - 0.5) * 0.4;
-        m.visible = true; m.fade = 1;
-      }
+      // The line: up to nine people, scaled to the best shop of the same trade yesterday; busier shops
+      // also serve faster, so people go in and come out more often.
+      const ratio = shop?.today?.served ? shop.today.served / (served.get(lot.cat) ?? 1) : 0;
+      const want = ratio ? Math.max(1, Math.round(ratio * 9)) : 0;
+      let l = lineByLot.get(lot.id);
+      if (!l) { l = { lot, f, side: queueSide(lot), people: [], want: 0, every: 6, timer: 2 + Math.random() * 4 }; lineByLot.set(lot.id, l); }
+      l.want = want;
+      l.every = 9 - 6 * Math.min(1, ratio);
     }
-    for (let i = used; i < queue.members.length; i++) queue.members[i].visible = false;
   }
   onTycoon(sync);
   let retry = 0;
@@ -339,6 +439,8 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       if (!visible) return;
       retry -= dt;
       if (pending && retry <= 0) { retry = 2; sync(); }
+      stepLines(dt);
+      stepPeople(dt);
       queue.update(dt);
     },
     sync,
