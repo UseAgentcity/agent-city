@@ -11,6 +11,8 @@
     "test": "node test/rate-limit.mjs && node test/tycoon.mjs && node test/city-contract.mjs && node test/skill-encode.mjs"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "5.0.2",
+    "@openzeppelin/contracts-upgradeable": "5.0.2",
     "ethers": "6.15.0",
     "ganache": "7.9.2",
     "solc": "0.8.30"

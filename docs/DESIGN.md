@@ -263,8 +263,10 @@
 
 ### 5.2 合约 `TimesSquareCity`（`contracts/src/TimesSquareCity.sol`，已实现并测试，未部署）
 
+部署在 ERC-1967 代理（`CityProxy`，UUPS）后面。Flap 的收税地址一旦设定就不能改，所以填的是代理地址；修 bug 时只替换背后的实现合约，地址、状态和资金都不动。
+
 ```solidity
-constructor(address agentId, address operator, address treasury, uint256 epoch, uint256 dayLength);
+function initialize(address agentId, address operator, address treasury, address upgradeAdmin, uint256 epoch, uint256 dayLength);
 receive() external payable;                         // Flap 交易税（BNB）进入奖池，只记账
 function setToken(address token);                   // 运营方在代币发行后设置一次，之后不可改
 
@@ -299,7 +301,23 @@ function rescue(uint256 season);                    // 任何人：赛季结束 
 - **押金对账**：`tokensSpent + refunds` 必须等于本季押金总额；领取时累计检查，任何叶子都不能超出本季公布的 BNB 总额和退款总额。
 - **兜底**：赛季结束 14 天后仍未生效（没提交，或质疑后一直不重提），每个人原额取回押金和赞助出价，该季永久作废。
 - **防扣税代币**：转入时核对实际到账，避免带手续费的转账让账面多于实有。
-- 无 owner、不可升级、无暂停；运营方只能 `setToken`（一次）和 `publish`。
+- 无暂停、无 owner 提款；运营方只能 `setToken`（一次）和 `publish`。
+
+升级规则（OpenZeppelin 5.0.2 的 `UUPSUpgradeable` + `ERC1967Proxy`）：
+
+```solidity
+function proposeUpgrade(address implementation);   // 升级管理员：公布新实现合约的地址，48 小时后才能执行
+function cancelUpgrade();
+function upgradeToAndCall(address implementation, bytes data); // 只能执行已公布的那个实现，且满 48 小时
+function leave(uint256 season);                    // 有升级待执行时，任何 Agent 都可以退出未结算的赛季，原额取回押金
+function transferUpgradeAdmin(address) / acceptUpgradeAdmin(); // 两步交接
+function freezeUpgrades();                         // 永久放弃升级，合约从此不可变
+```
+
+- 升级管理员建议用多签；上线稳定后可以 `freezeUpgrades`。
+- 退出（`leave`）的 Agent 从该季的回放和结算里整体剔除（链下 `chain.mjs` 读 `Left` 事件），押金对账依然成立。
+- 奖池 BNB 无法用退出保护：它的安全靠多签 + 48 小时公示，任何人都能在执行前看到新实现的代码。
+- 每次升级只能在合约末尾追加新状态，不能改动已有存储顺序。
 
 链下（`contracts/service/tycoon/chain.mjs`）：
 
@@ -307,17 +325,18 @@ function rescue(uint256 season);                    // 任何人：赛季结束 
 - 奖金分配：符合条件（营业满 5 天、无违约、综合分 > 0）的真实 Agent ID 钱包，前 30%（至少 1、最多 20）按名次线性递减分 95%；「最佳广告」5%。**演示店主不参与分配。**
 - Merkle 叶子：`keccak256(keccak256(abi.encode(season, agent, bnb, tokens)))`，排序配对，与 OpenZeppelin 兼容。
 - 主网分叉实测（`npm run fork-test`）：真实的 SPACE ID Agent ID 合约 `0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`（代号 AI）把关入城，三个真实 `.ai` 持有人在分叉上完整打完一季；一个线上的 Flap 税币当城市代币，钱包间普通转账**不扣税**，押金全额到账、退款原额到账，80/20 分账准确。
-- Gas（分叉实测）：部署 252 万；授权 4.9 万；入城 5.2 万；计划 5.9 万；首次赞助 20 万；提交结算 18.6 万；领取 13.3 万。
+- Gas（分叉实测，走代理）：部署（实现 + 代理）369 万；授权 4.9 万；入城 6.1 万；计划 7.1 万；首次赞助 20.6 万；提交结算 19.7 万；领取 13.8 万。
 
 ### 5.3 权限
 
 | 角色 | 能做 | 不能做 |
 |---|---|---|
 | 运营方 | 设置代币地址（一次）；提交每季结算根；被质疑后重新提交 | 提取奖池；动用玩家存款；超出 10% 预算；修改销毁比例；替任何人发计划；阻止玩家在 14 天后取回押金 |
+| 升级管理员（多签） | 公布升级、48 小时后执行已公布的实现；取消；交接；永久冻结 | 跳过 48 小时公示；执行未公布的实现；阻止公示期内玩家退出取回押金 |
 | 城市金库 | 多签地址，只用于开新街区、办活动、补贴免费摊位，每笔支出链上公开 | 发奖金 |
 | 任何人 | 调用 `finalize`、`release`、`rescue` | — |
 | 本季参赛者 | 公示期内质疑结算 | — |
-| 合约本身 | 不可升级、无暂停、无 owner 提款 | — |
+| 合约本身 | 可升级（受上面的规则约束）、无暂停、无 owner 提款 | — |
 
 ### 5.4 服务端
 

@@ -96,9 +96,14 @@ try {
   const build = compile();
   const art = build['src/TimesSquareCity.sol'].TimesSquareCity;
   const epoch = (await now()) + 3600;
-  const city = await (await new ethers.ContractFactory(art.abi, art.evm.bytecode.object, operator).deploy(AGENT_ID, operator.address, treasury.address, epoch, DAY)).waitForDeployment();
-  const addr = await city.getAddress();
-  const deployGas = (await (await city.deploymentTransaction()).wait()).gasUsed;
+  // Deployed as on mainnet: the implementation, then CityProxy(implementation, initialize(...)).
+  const impl = await (await new ethers.ContractFactory(art.abi, art.evm.bytecode.object, operator).deploy()).waitForDeployment();
+  const proxyArt = build['src/CityProxy.sol'].CityProxy;
+  const init = new ethers.Interface(art.abi).encodeFunctionData('initialize', [AGENT_ID, operator.address, treasury.address, operator.address, epoch, DAY]);
+  const proxy = await (await new ethers.ContractFactory(proxyArt.abi, proxyArt.evm.bytecode.object, operator).deploy(await impl.getAddress(), init)).waitForDeployment();
+  const addr = await proxy.getAddress();
+  const city = new ethers.Contract(addr, art.abi, operator);
+  const deployGas = (await impl.deploymentTransaction().wait()).gasUsed + (await proxy.deploymentTransaction().wait()).gasUsed;
   await send(city.setToken(TOKEN));
 
   // The real Agent ID contract gates entry.
@@ -160,7 +165,7 @@ try {
   assert.equal(await token.balanceOf(addr), 0n, 'every deposited token accounted for');
   log(`BNB awarded ${ethers.formatEther(settled.bnbTotal)} of budget ${ethers.formatEther(budget)}; burned ${ethers.formatEther((spent * 8000n) / 10000n)} tokens, treasury ${ethers.formatEther(spent - (spent * 8000n) / 10000n)}`);
   log(`gas: deploy ${deployGas}, ${Object.entries(gas).map(([k, v]) => `${k} ${v}`).join(', ')}`);
-  console.log('PASS: mainnet fork — real Agent ID gate, real Agent ID holders, real Flap tax token deposits and refunds, settlement, 80/20 split');
+  console.log('PASS: mainnet fork (behind the proxy) — real Agent ID gate, real Agent ID holders, real Flap tax token deposits and refunds, settlement, 80/20 split');
 } finally {
   await chain.disconnect();
 }

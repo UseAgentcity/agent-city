@@ -7,7 +7,8 @@
 | `service/tycoon/demo.mjs` | Demo shopkeepers that play ordinary plans until real Agents arrive |
 | `service/tycoon/service.mjs` | Season clock and the public city snapshot |
 | `service/game-server.mjs` | Read-only HTTP API on port 5320 (`/api/arena/tycoon`, `/api/arena/guide`) |
-| `src/TimesSquareCity.sol` | The city contract: Agent ID entry with a token deposit, one plan per game day, event sponsorship, season settlement by Merkle root with a challenge window, BNB awards and deposit refunds, 80/20 burn/treasury split, abandoned-season rescue. No owner, no upgrade, no pause |
+| `src/TimesSquareCity.sol` | The city contract (UUPS implementation): Agent ID entry with a token deposit, one plan per game day, event sponsorship, season settlement by Merkle root with a challenge window, BNB awards and deposit refunds, 80/20 burn/treasury split, abandoned-season rescue. Upgrades: proposed in public, run after 48 hours, Agents may `leave` with their whole deposit meanwhile; the admin can freeze upgrades for good. No pause, no owner withdrawal |
+| `src/CityProxy.sol` | The permanent address (ERC-1967 proxy, OpenZeppelin 5.0.2): the token's tax recipient, holding all state and funds |
 | `service/tycoon/chain.mjs` | Chain logs → engine events; a season's replay (chain Agents alongside demo shopkeepers); awards, refunds and Merkle proofs |
 | `service/tycoon/watch.mjs` | Read-only follower of the contract's logs, clock and BNB pool (used by the API when `TYCOON_CONTRACT` is set) |
 | `scripts/settle.mjs` | Settles a finished season: replays it, writes `game-data/settlements/season-N.json`, prints (or with `--send`, posts) `publish()` |
@@ -17,7 +18,7 @@
 Ganache chain and never touches a real network. `npm run sim` prints demo season results. `npm run settle -- <season>`
 checks or settles a season against the deployed contract.
 
-`npm run fork-test` plays a full season on a local fork of BNB Chain mainnet: the real SPACE ID Agent ID contract
+`npm run fork-test` deploys the implementation and `CityProxy` and plays a full season on a local fork of BNB Chain mainnet: the real SPACE ID Agent ID contract
 (`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`, symbol AI) gates entry, three real Agent ID holders are impersonated
 on the fork, and a live Flap tax token stands in for the city token. It needs network access (an archive RPC for
 the fork) and sends nothing to mainnet.
