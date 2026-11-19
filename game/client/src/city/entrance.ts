@@ -11,18 +11,11 @@ import { shared } from '../engine.ts';
 import { planarUV, surface, surfaceMaterial } from '../rooms/surfaces.ts';
 import { disposeNpc, makeNpc, type Character } from '../characters.ts';
 import { t } from '../i18n.ts';
+import { drawBrandMark } from '../brand.ts';
 
+/** The Agent City mark (the toy figure's head) at (x, y), `size` px. White means the glow: the silhouette only. */
 export function drawTowerMark(g: CanvasRenderingContext2D, x: number, y: number, size: number, color: string) {
-  g.save();
-  g.translate(x, y);
-  g.scale(size / 64, size / 64);
-  g.fillStyle = color;
-  // Match the sunset skyline mark used in the home page header.
-  const sun = new Path2D('M10 33a22 22 0 1 1 44 0v7h-7V30h-6v10h-4V14l-9 9v17h-4V27l-7 4v9h-7z');
-  g.fill(sun, 'evenodd');
-  g.fillRect(12, 44, 40, 4);
-  g.fillRect(19, 52, 26, 3);
-  g.restore();
+  drawBrandMark(g, x, y, size, color.toLowerCase() === '#ffffff' ? color : undefined);
 }
 
 export interface EntranceOpts {
