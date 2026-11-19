@@ -295,11 +295,16 @@ const SHOPFRONT = /* glsl */ `
     o = mix(o, frameC, glassZone * (1.0 - shop));                   // mullions and transom
     o = mix(o, vec3(0.03, 0.035, 0.045), shop);                     // glass (the room behind is added as light)
     o = mix(o, signC, signBand);
-    // The shop's name: letters across the middle of the band.
+    // The shop's name as a clean abstract mark: a round logo and a soft name bar, not made-up letters
+    // (pseudo-letters read as gibberish up close). The game's own shops carry their real names on totems.
     float lx = gu - (7.5 * 0.5 - 2.6 + 0.6 * sk);
     if (signBand > 0.5) {
-      float letters = owLetters(vec2(lx, v - bandBot), bandTop - bandBot, seed * 3.0 + grp, px) * step(lx, 5.2 - 1.2 * sk);
-      o = mix(o, letterC, letters);
+      float bh = bandTop - bandBot, cy = bandBot + bh * 0.5;
+      float logo = 1.0 - smoothstep(bh * 0.3, bh * 0.3 + px * 1.5, length(vec2(lx - bh * 0.5, v - cy)));
+      float barLen = 1.6 + 2.2 * fract(sk * 7.3);
+      float bar = step(bh * 1.15, lx) * step(lx, bh * 1.15 + barLen)
+                * (1.0 - smoothstep(bh * 0.13, bh * 0.13 + px * 1.5, abs(v - cy)));
+      o = mix(o, letterC, max(logo, bar * 0.8));
     }
     o = mix(o, vec3(0.06, 0.075, 0.09), frieze);
     // Bodegas: posters in the windows, a roll-down gate housing over the glass.

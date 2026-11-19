@@ -4,8 +4,8 @@
 import * as THREE from 'three';
 import { Crowd } from '../earth/crowd.ts';
 import type { EarthApi } from '../earth/index.ts';
-import { t } from '../i18n.ts';
-import { catName, coins, onTycoon, shopOf, tycoon, type Lot } from './tycoon.ts';
+import { rawCanvases, t } from '../i18n.ts';
+import { catName, coins, onTycoon, priceName, shopOf, tierName, tycoon, type Lot } from './tycoon.ts';
 
 /** A lot's door on the street: the point, the outward normal and the wall tangent (world x/z). */
 export interface LotFront { x: number; z: number; nx: number; nz: number; tx: number; tz: number; wall: number }
@@ -58,6 +58,7 @@ function fit(g: CanvasRenderingContext2D, text: string, weight: number, max: num
   return px;
 }
 function drawSign(c: HTMLCanvasElement, lot: Lot) {
+  rawCanvases.add(c);
   const g = c.getContext('2d')!;
   const shop = shopOf(lot.owner);
   g.clearRect(0, 0, SIGN_W, SIGN_H);
@@ -93,6 +94,85 @@ function drawSign(c: HTMLCanvasElement, lot: Lot) {
   g.fillText(shop.name, SIGN_W - 40, 214);
 }
 
+// ---------- sidewalk totems: one lit sign per shop at eye level, clear of screens and awnings ----------
+const TOTEM_W = 512, TOTEM_H = 1024;
+const FONT = 'Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
+/** Breaks a brand name over at most two lines that fit the totem. */
+function lines(g: CanvasRenderingContext2D, text: string, width: number): string[] {
+  if (g.measureText(text).width <= width) return [text];
+  const words = text.includes(' ') ? text.split(' ') : [...text];
+  const join = text.includes(' ') ? ' ' : '';
+  let a = '';
+  for (let i = 0; i < words.length; i++) {
+    const next = a ? a + join + words[i] : words[i];
+    if (g.measureText(next).width > width && a) return [a, words.slice(i).join(join)];
+    a = next;
+  }
+  return [a];
+}
+function drawTotem(c: HTMLCanvasElement, lot: Lot) {
+  rawCanvases.add(c);
+  const g = c.getContext('2d')!;
+  const shop = shopOf(lot.owner);
+  const color = shop?.brand?.color ?? '#f0b90b';
+  g.clearRect(0, 0, TOTEM_W, TOTEM_H);
+  const bg = g.createLinearGradient(0, 0, 0, TOTEM_H);
+  bg.addColorStop(0, '#11141b'); bg.addColorStop(1, '#07080c');
+  g.fillStyle = bg; g.fillRect(0, 0, TOTEM_W, TOTEM_H);
+  // Trade band.
+  g.fillStyle = shop ? color : '#2a2f3a'; g.fillRect(0, 0, TOTEM_W, 118);
+  g.fillStyle = shop ? '#0b0d12' : '#f0b90b'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = `800 50px ${FONT}`; g.fillText(catName(lot.cat), TOTEM_W / 2, 62);
+  if (!shop) {
+    g.fillStyle = '#f0b90b';
+    g.font = `900 120px ${FONT}`; g.fillText(t('招租', 'FOR'), TOTEM_W / 2, 330);
+    g.font = `900 ${t('80px', '120px')} ${FONT}`; g.fillText(t('FOR LEASE', 'LEASE'), TOTEM_W / 2, 470);
+    g.fillStyle = '#c9d1dc'; g.font = `600 36px ${FONT}`;
+    g.fillText(tierName(lot.tier), TOTEM_W / 2, 600);
+    g.fillText(t(`日租 ${coins(lot.reserve)} 起`, `from ${coins(lot.reserve)}/day`), TOTEM_W / 2, 656);
+    g.strokeStyle = 'rgba(240,185,11,.6)'; g.lineWidth = 4; g.setLineDash([18, 12]); g.strokeRect(36, 740, TOTEM_W - 72, 200); g.setLineDash([]);
+    g.fillStyle = '#f4f1e8'; g.font = `700 38px ${FONT}`;
+    g.fillText(t('派你的 Agent', 'Send your Agent'), TOTEM_W / 2, 812);
+    g.fillText(t('来这里开店', 'to open here'), TOTEM_W / 2, 870);
+    return;
+  }
+  // Brand.
+  const name = shop.brand?.name ?? shop.name;
+  g.fillStyle = '#ffffff'; g.shadowColor = color; g.shadowBlur = 30;
+  let px = 96;
+  g.font = `900 ${px}px ${FONT}`;
+  let ls = lines(g, name, TOTEM_W - 60);
+  while ((ls.length > 2 || ls.some((l) => g.measureText(l).width > TOTEM_W - 60)) && px > 44) { px -= 6; g.font = `900 ${px}px ${FONT}`; ls = lines(g, name, TOTEM_W - 60); }
+  ls.slice(0, 2).forEach((l, i) => g.fillText(l, TOTEM_W / 2, (ls.length > 1 ? 225 : 270) + i * (px + 8)));
+  g.shadowBlur = 0;
+  if (shop.brand?.slogan) {
+    g.fillStyle = 'rgba(255,255,255,.78)'; g.font = `600 34px ${FONT}`;
+    g.fillText(`「${shop.brand.slogan}」`, TOTEM_W / 2, 400, TOTEM_W - 50);
+  }
+  g.fillStyle = color; g.fillRect(60, 455, TOTEM_W - 120, 4);
+  // Yesterday, in one big number.
+  const served = shop.today?.served;
+  g.fillStyle = '#8d96a5'; g.font = `600 32px ${FONT}`; g.fillText(t('昨天的客人', 'Served yesterday'), TOTEM_W / 2, 520);
+  g.fillStyle = '#f4f1e8'; g.font = `900 120px ${FONT}`; g.fillText(served != null ? served.toLocaleString('en-US') : '—', TOTEM_W / 2, 625);
+  const lost = shop.today ? shop.today.customers - shop.today.served : 0;
+  if (lost > 0) { g.fillStyle = '#f6465d'; g.font = `700 30px ${FONT}`; g.fillText(t(`缺货流失 ${lost} 位`, `${lost} turned away`), TOTEM_W / 2, 712); }
+  // Price and reputation chips.
+  const chip = (x: number, label: string) => {
+    g.font = `700 32px ${FONT}`;
+    const w = g.measureText(label).width + 40;
+    g.fillStyle = 'rgba(255,255,255,.08)'; g.beginPath(); g.roundRect(x - w / 2, 760, w, 58, 29); g.fill();
+    g.fillStyle = '#f4f1e8'; g.fillText(label, x, 790);
+  };
+  chip(TOTEM_W * 0.3, priceName(shop.price));
+  chip(TOTEM_W * 0.7, `★ ${shop.rep.toFixed(2)}`);
+  // Owner.
+  g.fillStyle = color; g.font = `700 34px ${FONT}`; g.fillText(shop.name, TOTEM_W / 2, 900, TOTEM_W - 60);
+  g.fillStyle = '#5b6170'; g.font = `600 24px ${FONT}`; g.fillText(t('由 Agent 经营', 'Run by an Agent'), TOTEM_W / 2, 950);
+}
+
+/** Which way along the sidewalk a lot's queue runs (the totem stands on the other side of the door). */
+const queueSide = (lot: Lot) => (lot.key == null ? 1 : (lot.id.charCodeAt(lot.id.length - 1) % 2 ? 1 : -1));
+
 // ---------- market stalls ----------
 function buildStall(color: THREE.Color): THREE.Group {
   const g = new THREE.Group();
@@ -127,24 +207,50 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
   group.add(queue.group);
   for (const m of queue.members) { m.pose = 'stand'; m.speed = 0; m.scale = 0.94 + Math.random() * 0.12; }
 
-  interface Sign { mesh: THREE.Mesh; canvas: HTMLCanvasElement; tex: THREE.CanvasTexture; key: string }
+  interface Sign { mesh: THREE.Mesh; canvas: HTMLCanvasElement; tex: THREE.CanvasTexture; key: string; glow?: THREE.MeshBasicMaterial; mat?: THREE.MeshBasicMaterial; totem?: boolean }
   const signs = new Map<string, Sign>();
   const stalls = new Map<string, { root: THREE.Group; key: string }>();
   let pending = true;
 
+  /** A lit sidewalk totem beside the door, plus a brand-coloured mat on the pavement. */
   function placeSign(lot: Lot, f: LotFront) {
-    const width = Math.max(2.6, Math.min(6.5, f.wall * 0.7));
     const canvas = document.createElement('canvas');
-    canvas.width = SIGN_W; canvas.height = SIGN_H;
+    canvas.width = TOTEM_W; canvas.height = TOTEM_H;
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
     tex.anisotropy = 8;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(width, width * SIGN_H / SIGN_W), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false, side: THREE.DoubleSide }));
-    mesh.position.set(f.x + f.nx * 0.25, ground(f.x + f.nx, f.z + f.nz) + 4.1, f.z + f.nz * 0.25);
-    mesh.rotation.y = Math.atan2(f.nx, f.nz);
-    mesh.name = `tycoon-sign:${lot.id}`;
-    group.add(mesh);
-    const s = { mesh, canvas, tex, key: '' };
+    const root = new THREE.Group();
+    root.name = `tycoon-sign:${lot.id}`;
+    const side = -queueSide(lot);
+    const x = f.x + f.nx * 1.5 + f.tx * side * 1.9, z = f.z + f.nz * 1.5 + f.tz * side * 1.9;
+    root.position.set(x, ground(x, z), z);
+    root.rotation.y = Math.atan2(f.nx, f.nz);
+    root.scale.setScalar(1.25);
+    const frame = new THREE.MeshStandardMaterial({ color: 0x1a1d24, roughness: 0.4, metalness: 0.6 });
+    const glow = new THREE.MeshBasicMaterial({ color: 0xf0b90b, toneMapped: false });
+    const box = (m: THREE.Material, w: number, h: number, d: number, px: number, py: number, pz: number) => {
+      const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+      b.position.set(px, py, pz); b.castShadow = m === frame; root.add(b);
+      return b;
+    };
+    box(frame, 1.25, 0.14, 0.6, 0, 0.07, 0); // plinth
+    box(frame, 1.12, 2.5, 0.28, 0, 1.39, 0); // body
+    box(glow, 1.14, 0.06, 0.3, 0, 2.67, 0); // top light
+    for (const sx of [-0.57, 0.57]) box(glow, 0.03, 2.3, 0.3, sx, 1.4, 0); // edge lights
+    const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.98, 1.96), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    screen.position.set(0, 1.45, 0.145);
+    root.add(screen);
+    // Brand mat by the door: picks the Agent-run shops out from the street and from the air.
+    const mat = new THREE.MeshBasicMaterial({ color: 0xf0b90b, transparent: true, opacity: 0.45, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2, toneMapped: false });
+    const rug = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 1.4), mat);
+    rug.rotation.x = -Math.PI / 2;
+    const rx = f.x + f.nx * 0.9, rz = f.z + f.nz * 0.9;
+    rug.position.set(rx - x, ground(rx, rz) - root.position.y + 0.03, rz - z);
+    rug.position.applyAxisAngle(new THREE.Vector3(0, 1, 0), -root.rotation.y);
+    rug.position.divideScalar(root.scale.x); // the root is scaled up; keep the mat where it belongs on the pavement
+    root.add(rug);
+    group.add(root);
+    const s: Sign = { mesh: screen, canvas, tex, key: '', glow, mat, totem: true };
     signs.set(lot.id, s);
     return s;
   }
@@ -198,11 +304,18 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       }
       const sign = signs.get(lot.id) ?? placeSign(lot, f);
       const shop = shopOf(lot.owner);
-      const key = `${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${document.documentElement.lang}`;
-      if (sign.key !== key) { drawSign(sign.canvas, lot); sign.tex.needsUpdate = true; sign.key = key; }
+      const key = `${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${document.documentElement.lang}`;
+      if (sign.key !== key) {
+        if (sign.totem) drawTotem(sign.canvas, lot); else drawSign(sign.canvas, lot);
+        sign.tex.needsUpdate = true;
+        sign.key = key;
+        const c = new THREE.Color(shop?.brand?.color ?? '#5b6170');
+        sign.glow?.color.copy(shop ? c : new THREE.Color('#f0b90b'));
+        if (sign.mat) { sign.mat.color.copy(c); sign.mat.opacity = shop ? 0.45 : 0.18; }
+      }
       // Queue: up to ten people, scaled to the best shop of the same trade yesterday.
       const n = shop?.today?.served ? Math.max(1, Math.round((shop.today.served / (served.get(lot.cat) ?? 1)) * 10)) : 0;
-      const side = lot.key == null ? 1 : (lot.id.charCodeAt(lot.id.length - 1) % 2 ? 1 : -1);
+      const side = queueSide(lot);
       for (let i = 0; i < n && used < queue.members.length; i++, used++) {
         const m = queue.members[used];
         const along = 0.9 + i * 0.78;

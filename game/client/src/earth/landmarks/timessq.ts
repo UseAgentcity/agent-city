@@ -2,6 +2,7 @@
 // wrapped top to bottom), and the red TKTS steps on Duffy Square. The ads are invented brands and
 // Agent City's own slots; no real trademarks.
 import * as THREE from 'three';
+import { rawCanvases } from '../../i18n.ts';
 import type { FootprintData } from '../build/types.ts';
 import type { GeoFrame } from '../frame.ts';
 
@@ -24,6 +25,7 @@ export function setFeatureAds(ads: ScreenAd[]) {
 }
 function drawAtlas() {
   const c = document.createElement('canvas'); c.width = TW * COLS; c.height = TH * ROWS;
+  rawCanvases.add(c); // Agent-written ads and brand names stay as written
   const g = c.getContext('2d')!;
   const ads: ScreenAd[] = [
     { bg: ['#ff3d6e', '#7a1cff'], title: 'NOVA COLA', sub: 'Taste the city', fg: '#fff', shape: 'circle' },

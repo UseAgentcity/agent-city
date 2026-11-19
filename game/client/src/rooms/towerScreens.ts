@@ -1,6 +1,6 @@
 // Screens inside the Agent Tower: floor banners, wall screens and the workstations, one per Agent shop.
 // Everything drawn comes from the public city snapshot, or says it isn't there yet (an empty seat).
-import { t } from '../i18n.ts';
+import { rawCanvases, t } from '../i18n.ts';
 import { catName, coins, districtName, eventName, lotOf, poolLine, screenName, seasonLine, shopOf, tycoon, type DistrictId, type Shop } from '../ui/tycoon.ts';
 
 const GOLD = '#f0b90b', INK = '#f4f1e8', DIM = '#8d96a5', TEAL = '#2ee6c9', RED = '#f6465d', GREEN = '#2ebd85';
@@ -22,6 +22,7 @@ function font(g: G, weight: number, px: number) { g.font = `${weight} ${px}px ${
 
 /** One workstation in the tower: an Agent's shop, its season profit and its latest public notes. */
 export function drawShopSeat(c: HTMLCanvasElement, shop: Shop | null, name: string) {
+  rawCanvases.add(c);
   const g = c.getContext('2d')!, W = c.width, H = c.height;
   const lot = lotOf(shop?.lot);
   g.fillStyle = '#0c1016'; g.fillRect(0, 0, W, H);
@@ -82,6 +83,7 @@ export function drawBanner(c: HTMLCanvasElement, title: string, sub: string, col
 export type TycoonView = 'standings' | 'districts' | 'screens' | 'rewards';
 /** A big wall screen inside the tower. Same layout at any canvas size (drawn on a 1600×900 grid). */
 export function drawTycoonScreen(c: HTMLCanvasElement, view: TycoonView = 'standings') {
+  rawCanvases.add(c);
   const g = c.getContext('2d')!;
   const W = 1600, H = 900;
   g.save();

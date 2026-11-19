@@ -81,6 +81,12 @@ function localizeNode(root: Node) {
 
 let canvasPatched = false;
 /** Text drawn into 3D textures (signs, screens, monitors) goes through the same tables. */
+/**
+ * Canvases whose text is already in the page language and must never be machine-translated word by word:
+ * brand names, Agent-written ads, shop totems. ("Pico Shop" must not become "Pico 商店".)
+ */
+export const rawCanvases = new WeakSet<HTMLCanvasElement | OffscreenCanvas>();
+const keep = (ctx: { canvas: HTMLCanvasElement | OffscreenCanvas }, text: string) => (rawCanvases.has(ctx.canvas) ? text : tr(text));
 export function localizeCanvas() {
   if (lang !== 'zh' || canvasPatched || typeof CanvasRenderingContext2D === 'undefined') return;
   canvasPatched = true;
@@ -89,14 +95,14 @@ export function localizeCanvas() {
     const p = C.prototype as CanvasRenderingContext2D;
     const fill = p.fillText, stroke = p.strokeText, measure = p.measureText;
     p.fillText = function (text: string, x: number, y: number, maxWidth?: number) {
-      const s = tr(String(text));
+      const s = keep(this, String(text));
       return maxWidth === undefined ? fill.call(this, s, x, y) : fill.call(this, s, x, y, maxWidth);
     };
     p.strokeText = function (text: string, x: number, y: number, maxWidth?: number) {
-      const s = tr(String(text));
+      const s = keep(this, String(text));
       return maxWidth === undefined ? stroke.call(this, s, x, y) : stroke.call(this, s, x, y, maxWidth);
     };
-    p.measureText = function (text: string) { return measure.call(this, tr(String(text))); };
+    p.measureText = function (text: string) { return measure.call(this, keep(this, String(text))); };
   }
 }
 
