@@ -300,7 +300,7 @@ async function start(where: CityId | GeoPlace) {
   }
 
   // ---- Every other building: walk up to a wall and press E ----
-  let generic: { it: GenericInterior; hit: BuildingHit } | null = null;
+  let generic: { it: GenericInterior; hit: BuildingHit; lot?: Lot | null } | null = null;
   let shopDecor: ReturnType<typeof decorateShopInterior> | null = null;
   const KIND_WORD: Record<string, string> = { house: 'house', apartments: 'apartments', office: 'offices', shop: 'shop', mall: 'mall', church: 'church', warehouse: 'warehouse', tower: 'tower' };
   const kindOf = (hit: BuildingHit) => {
@@ -343,7 +343,7 @@ async function start(where: CityId | GeoPlace) {
       const lot = tycoon()?.lots.find((l) => l.key != null && l.key === f.key) ?? null;
       const poi = lot ? shopPoi(lot) : f.poi;
       const it = make ? make() : buildGenericInterior({ key: f.key, ring, height: f.h, kind: lot ? 'shop' : kindOverride ?? kindOf(hit), name: poi?.name, poi, doorWall: hit.wall, seed: f.key, country: earth?.country, view: { capture: cityView, origin: new THREE.Vector3(f.cx, hit.point.y, f.cz), yaw: 0, footprint: hit.ring }, pmrem: engine.pmrem, sun: dayNight.sun, lite: engine.renderer.xr.isPresenting });
-      generic = { it, hit };
+      generic = { it, hit, lot };
       shopDecor = lot && !make ? decorateShopInterior(it, lot, (id) => { shopViewed = true; phone.openLot(id); }) : null;
       interactions.remove('door:generic'); doorHit = null;
       labels.clear();
@@ -369,7 +369,7 @@ async function start(where: CityId | GeoPlace) {
     if (!generic || busy) return;
     busy = true;
     await fade(true, t('正在回到街上…', 'Back to the street…'));
-    const { it, hit } = generic;
+    const { it, hit, lot: shopLot } = generic;
     const yInside = player.position.y; // the floor you're on, in the interior's coordinates (ground floor = 0)
     generic = null;
     it.scene.remove(robot.root);
@@ -379,8 +379,10 @@ async function start(where: CityId | GeoPlace) {
     cityScene.add(robot.root, player.vehicleGroup);
     engine.setScene(cityScene);
     labels.occluder = cityOccluder;
-    const out = hit.point.clone().addScaledVector(hit.out, 1.6);
-    player.setWorld(place.world, out, Math.atan2(hit.out.x, hit.out.z));
+    // Out of an Agent's shop you step onto its mat, clear of the sidewalk totem, wherever you went in.
+    const front = shopLot && earth ? lotFrontOf(earth, shopLot) : null;
+    const out = front ? new THREE.Vector3(front.x + front.nx * 2.2, hit.point.y, front.z + front.nz * 2.2) : hit.point.clone().addScaledVector(hit.out, 1.6);
+    player.setWorld(place.world, out, front ? Math.atan2(front.nx, front.nz) : Math.atan2(hit.out.x, hit.out.z));
     if (how === 'roof') {
       // Up the lift and out onto the roof.
       let sx = 0, sz = 0;

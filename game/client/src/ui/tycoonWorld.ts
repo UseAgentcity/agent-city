@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { Crowd } from '../earth/crowd.ts';
 import type { EarthApi } from '../earth/index.ts';
 import { rawCanvases, t } from '../i18n.ts';
+import { installTycoonDecor } from './tycoonDecor.ts';
 import { catName, coins, onTycoon, priceName, shopOf, tierName, tokensShort, tycoon, type Lot } from './tycoon.ts';
 
 /** A lot's door on the street: the point, the outward normal and the wall tangent (world x/z). */
@@ -30,16 +31,29 @@ export function lotFrontOf(earth: EarthApi, lot: Lot): LotFront | null {
     const hit = earth.footprintsNear(p.x, p.z, 40).find((h) => h.fp.key === lot.key);
     if (!hit) return null; // tile not streamed yet; try again later
     const r = hit.ring;
+    // A wall that faces straight into a neighbour (an alley, a party wall) is no door: rank those last.
+    const others = earth.footprintsNear(p.x, p.z, 60).filter((h) => h.fp.key !== lot.key);
+    const inside = (ring: number[], x: number, z: number) => {
+      let c = false;
+      for (let i = 0, j = ring.length - 2; i < ring.length; j = i, i += 2) {
+        const zi = ring[i + 1], zj = ring[j + 1];
+        if ((zi > z) !== (zj > z) && x < ((ring[j] - ring[i]) * (z - zi)) / (zj - zi) + ring[i]) c = !c;
+      }
+      return c;
+    };
+    const blocked = (x: number, z: number, nx: number, nz: number) =>
+      [2.5, 5, 8].some((d) => others.some((h) => inside(h.ring, x + nx * d, z + nz * d)));
     let best: LotFront | null = null, bestD = Infinity;
     for (let i = 0; i < r.length; i += 2) {
       const ax = r[i], az = r[i + 1], bx = r[(i + 2) % r.length], bz = r[(i + 3) % r.length];
       const vx = bx - ax, vz = bz - az, len = Math.hypot(vx, vz);
       if (len < 1.5) continue;
       const k = Math.max(0.15, Math.min(0.85, ((c.x - ax) * vx + (c.z - az) * vz) / (len * len)));
-      const x = ax + vx * k, z = az + vz * k, dd = Math.hypot(x - c.x, z - c.z);
-      if (dd >= bestD) continue;
+      const x = ax + vx * k, z = az + vz * k;
       let nx = -vz / len, nz = vx / len;
       if (nx * (x - hit.cx) + nz * (z - hit.cz) < 0) { nx = -nx; nz = -nz; }
+      const dd = Math.hypot(x - c.x, z - c.z) + (blocked(x, z, nx, nz) ? 1e4 : 0);
+      if (dd >= bestD) continue;
       bestD = dd;
       best = { x, z, nx, nz, tx: vx / len, tz: vz / len, wall: len, poi: hit.fp.poi?.name };
     }
@@ -220,6 +234,8 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
   const group = new THREE.Group();
   group.name = 'tycoon-world';
   scene.add(group);
+  const decor = installTycoonDecor(group, ground);
+  let clock = 0;
   // ---- shoppers: a line at each door that moves, people going in, people coming out with a bag ----
   const queue = new Crowd(220);
   group.add(queue.group);
@@ -428,7 +444,9 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       if (!l) { l = { lot, f, side: queueSide(lot), people: [], want: 0, every: 6, timer: 2 + Math.random() * 4 }; lineByLot.set(lot.id, l); }
       l.want = want;
       l.every = 9 - 6 * Math.min(1, ratio);
+      decor.sync(lot, f, -queueSide(lot));
     }
+    decor.done(city.lots.filter((l) => l.key == null).length);
   }
   onTycoon(sync);
   let retry = 0;
@@ -439,6 +457,8 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       if (!visible) return;
       retry -= dt;
       if (pending && retry <= 0) { retry = 2; sync(); }
+      clock += dt;
+      decor.update(clock);
       stepLines(dt);
       stepPeople(dt);
       queue.update(dt);
