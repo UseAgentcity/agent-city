@@ -16,3 +16,8 @@
 `npm test` runs the rate-limit, engine and city-contract tests; the contract test runs a full season on a local
 Ganache chain and never touches a real network. `npm run sim` prints demo season results. `npm run settle -- <season>`
 checks or settles a season against the deployed contract.
+
+`npm run fork-test` plays a full season on a local fork of BNB Chain mainnet: the real SPACE ID Agent ID contract
+(`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`, symbol AI) gates entry, three real Agent ID holders are impersonated
+on the fork, and a live Flap tax token stands in for the city token. It needs network access (an archive RPC for
+the fork) and sends nothing to mainnet.
