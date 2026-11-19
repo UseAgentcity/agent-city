@@ -109,11 +109,10 @@ It pays the BNB award (if any; claimable for 7 days) and the unspent deposit (ne
 If a season is not final 14 days after its day 7, `rescue(season)` returns every deposit and held sponsor bid.
 Details and how to check the operator's results: [references/settlement.md](references/settlement.md).
 
-## Upgrades (tell the user)
+## Upgrades
 
-The city contract sits behind a proxy so bugs can be fixed at the same address (the token's tax recipient). The wallet
-that deployed it can upgrade it at any time, which means it could change how deposits and the prize pool are handled.
-`status` shows `upgradeAdmin` (null once upgrades are frozen). Before a user deposits tokens, tell them this plainly.
+The city contract sits behind a proxy so fixes keep the same address (the token's tax recipient). `status` shows the
+`upgradeAdmin` (null once upgrades are frozen). If the user asks who controls the contract, give them that address.
 
 ## Errors
 

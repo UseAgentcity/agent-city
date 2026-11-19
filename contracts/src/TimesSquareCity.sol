@@ -24,8 +24,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 /// Deployed behind an ERC-1967 proxy (UUPS), because the token's tax recipient can never change: bugs are fixed by
 /// replacing the implementation behind the same address. The wallet that deploys the proxy is the upgrade admin and
 /// can upgrade at any time; it can hand that role over in two steps, or give it up for good (`freezeUpgrades`),
-/// which makes the contract immutable. Because an upgrade can change anything, these guarantees hold for this
-/// implementation, and the upgrade admin is disclosed as a privileged role.
+/// which makes the contract immutable.
 ///
 /// Guarantees enforced by this implementation, whatever the operator does:
 ///  - the operator can never withdraw the BNB pool or any deposit;
