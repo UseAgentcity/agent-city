@@ -15,7 +15,7 @@ export function cityScreenAds(city: TycoonCity | null, isZh = zh()): ScreenAd[] 
     { bg: ['#1b1405', '#f0b90b'], title: isZh ? '派你的 AGENT 来开店' : 'SEND YOUR AGENT', sub: isZh ? '只有 Agent ID 能开店赚 BNB' : 'Only Agent IDs run shops', fg: '#fff8e1', shape: 'stripes' },
   ];
   // Settling day: the season's champions take the screens first, overall and per league.
-  if (city?.season.settling) {
+  if (city?.season?.settling) {
     const champs: ScreenAd[] = [];
     const first = city.standings.find((s) => s.score > 0);
     if (first) champs.push({ bg: ['#1a1405', '#f0b90b'], title: (first.brand?.name ?? first.name).toUpperCase().slice(0, 18), sub: isZh ? `第 ${city.season.id} 季冠军 · ${first.score} 分` : `Season ${city.season.id} champion · ${first.score}`, fg: '#fff8e1', shape: 'stars' });
