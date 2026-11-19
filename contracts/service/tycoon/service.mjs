@@ -25,11 +25,14 @@ export function createTycoon({ now = () => Date.now(), dayMs = 4 * 60_000, epoch
     const key = `${season.seed}:${season.resolved}`;
     let c = cache.get(key);
     if (!c) {
-      const events = demoEvents(season.seed, LOTS, season.resolved);
+      // Before day 1 is played its plans are already in (they were due at the season's start), so the
+      // lease auction is settled and the city opens with its tenants.
+      const opening = !season.settling && season.resolved === 0;
+      const events = demoEvents(season.seed, LOTS, opening ? 1 : season.resolved);
       // Sponsorships already placed for today (settled before it started) and the open bids for tomorrow.
       const today = season.day ? (season.day > 1 ? demoSponsors(season.seed, season.day) : []) : [];
       const tomorrow = season.day && season.day < DAYS ? demoSponsors(season.seed, season.day + 1) : [];
-      c = { ...runSeason({ seed: season.seed, lots: LOTS, events, days: season.resolved }), events: [...events, ...today], tomorrow };
+      c = { ...runSeason({ seed: season.seed, lots: LOTS, events, days: season.resolved, opening }), events: [...events, ...today], tomorrow };
       cache.clear();
       cache.set(key, c);
     }

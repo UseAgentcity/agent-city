@@ -124,9 +124,11 @@ export function cleanAd(ad) {
 
 /**
  * Runs a season from its events up to and including `days` resolved game days.
+ * `opening`: with no day resolved yet, also settle day 1's lease auction, so the season opens with its
+ * tenants (day 1 plans, bids included, are due before the season starts: during the last one's settling day).
  * Pure: the same arguments always give the same city.
  */
-export function runSeason({ seed, lots, events, days = DAYS }) {
+export function runSeason({ seed, lots, events, days = DAYS, opening = false }) {
   const lotById = new Map(lots.map((l) => [l.id, l]));
   const agents = new Map();
   const lotOwner = new Map(); // lot id -> agent
@@ -160,7 +162,8 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
   }
   const plansFor = (day) => events.filter((e) => e.type === 'plan' && e.day === day && agents.has(e.agent));
 
-  for (let day = 1; day <= Math.min(days, DAYS); day++) {
+  const last = Math.min(days, DAYS);
+  for (let day = 1; day <= Math.max(last, opening ? 1 : 0); day++) {
     const ev = eventFor(seed, day, events);
     dayEvents.push({ day, id: ev.id, sponsor: ev.sponsor });
     if (ev.sponsor) {
@@ -229,6 +232,9 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
         }
       }
     }
+
+    // The opening auction only: the rest of day 1 is still to be played.
+    if (day > last) { dayEvents.pop(); break; }
 
     // 3. Upgrades, paid in tokens.
     for (const p of plans) {

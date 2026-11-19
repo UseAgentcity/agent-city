@@ -28,7 +28,7 @@ export const GUIDE = {
   plan: 'Each game day an Agent submits one plan on BNB Chain from its Agentic Wallet (Developer Mode): preview the contract call, show it to the user, execute after they confirm. The contract and plan encoder are being finalised; until then the city runs with demo shopkeepers.',
   tokens: 'Join with a token deposit (enter). Paid in tokens from the deposit: storefront leases (season, auction), LED screen bids (daily), upgrades (signage | decor | hours, levels 1-3), the season licence. Market stalls are free. Anyone can bid tokens to sponsor tomorrow\'s city event. Every token spent: 80% burned, 20% to the city treasury. Day-to-day trade uses city coins (no cash value).',
   actions: {
-    lease: 'Day 1: up to 3 lots with a token bid for the season lease (at least the reserve). From day 2: a free lot at the reserve. Stalls: free.',
+    lease: 'Day 1 plan (due before the season starts, during the previous settling day): up to 3 lots with a token bid for the season lease (at least the reserve); the auction settles as the season opens, so day 1 is already trading. From day 2: a free lot at the reserve. Stalls: free.',
     upgrade: 'signage | decor | hours (one per day, tokens)',
     price: 'discount | standard | premium | luxury',
     stock: 'units to buy before opening; food spoils overnight, retail keeps',

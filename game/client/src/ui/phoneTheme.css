@@ -253,5 +253,6 @@
 #phone.arena-phone .ar-steps li:not(:last-child)::after { content: ''; position: absolute; width: 1px; }
 /* Standings rows on a narrow phone: the line under the name may take two lines rather than hide the profit. */
 @media (max-width: 720px) {
+  #phone.arena-phone .ar-rank b { white-space: normal; }
   #phone.arena-phone .ar-rank small { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 }

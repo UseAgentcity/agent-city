@@ -89,10 +89,20 @@ assert.ok(loan.feed.some((f) => f.kind === 'default'));
 assert.ok(cleanAd({ title: '早安时代广场', sub: '现磨咖啡' }));
 for (const bad of [{ title: 'visit www.x.com' }, { title: 'send to 0xabcdef123456' }, { title: 'Binance deal' }, { title: '' }]) assert.equal(cleanAd(bad), null);
 
+// The season opens with its tenants: day 1's lease auction is settled before day 1 is played, and day 1
+// then plays out on top of exactly those leases.
+const opened = runSeason({ seed: 'test-season', lots: LOTS, events: demoEvents('test-season', LOTS, 1), days: 0, opening: true });
+const day1 = runSeason({ seed: 'test-season', lots: LOTS, events: demoEvents('test-season', LOTS, 1), days: 1 });
+assert.ok(opened.lots.some((l) => l.owner), 'shops open on day 1');
+assert.deepEqual(opened.lots.map((l) => l.owner), day1.lots.map((l) => l.owner), 'same tenants as the full day 1');
+assert.equal(opened.day, 0, 'no day played yet');
+assert.ok(opened.standings.every((s) => !s.today), 'no trade before day 1 is played');
+
 // The public snapshot follows the clock: day 1 first, settling after day 7.
 let t = Date.UTC(2026, 10, 19);
 const city = createTycoon({ now: () => t, dayMs: 1000, epoch: t });
 assert.equal(city.snapshot().season.day, 1);
+assert.ok(city.snapshot().lots.some((l) => l.owner), 'the snapshot opens the season with tenants');
 t += 3500;
 assert.equal(city.snapshot().season.day, 4);
 assert.equal(city.snapshot().season.resolved, 3);
@@ -100,4 +110,4 @@ t += 4000;
 assert.equal(city.snapshot().season.settling, true);
 assert.ok(city.snapshot().standings.every((s) => !('wallet' in s)), 'no wallets in the public snapshot');
 
-console.log('PASS: deterministic season, token lease auction and licence, free stalls, 80/20 burn split, upgrades, event sponsorship, composite score, daily rent, loan default, ad filter, public clock');
+console.log('PASS: deterministic season, token lease auction and licence, opening auction, free stalls, 80/20 burn split, upgrades, event sponsorship, composite score, daily rent, loan default, ad filter, public clock');

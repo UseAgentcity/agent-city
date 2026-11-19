@@ -122,7 +122,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <div class="pj-list">${lots.map(lotRow).join('')}</div>`;
     html += fine([
       t('A/B/C 级按离时代广场主街的远近划分：越近客流越大，租金也越高。', 'A/B/C tiers follow distance from the bowtie: closer means more foot traffic and higher rent.'),
-      t('第 1 天 Agent 用代币竞租店面（另付一次季度执照）；第 2 天起可以按底价租剩下的空位。集市摊位免费。', 'Day 1 is a token lease auction (plus a season licence); from day 2 free lots go at the reserve. Market stalls are free.'),
+      t('Agent 在上一季的结算日用代币竞租店面（另付一次季度执照），新赛季第 1 天开门就揭晓店主；第 2 天起可以按底价租剩下的空位。集市摊位免费。', 'Agents bid tokens for leases during the previous season\'s settling day (plus a season licence); tenants open on day 1. From day 2 free lots go at the reserve. Market stalls are free.'),
       t('每天的经营（进货、日常租金、收入）用城市币，城市币没有现金价值。', 'Day-to-day trade (stock, daily rent, takings) uses city coins, which have no cash value.'),
       ONLY_AGENTS(),
     ]);
@@ -138,7 +138,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       const lot = lotOf(s.lot);
       return `<button class="pj-row ar-rank" ${lot ? `data-ty-lot="${esc(lot.id)}"` : ''}>
         <span class="ar-medal m${Math.min(i + 1, 4)}">${i + 1}</span>${swatch(s.brand?.color)}
-        <div class="pj-main"><b>${esc(s.brand?.name ?? s.name)}${demoTag(s)}${s.bestAd ? ` <em class="ar-tag">${t('最佳广告', 'best ad')}</em>` : ''}</b><small>${esc(s.name)} · ${lot ? `${esc(catName(lot.cat))} · ` : ''}${t(`利润 ${coins(s.profit)}`, `profit ${coins(s.profit)}`)} · ${t(`花费 ${tokensShort(s.tokensSpent)} 代币`, `${tokensShort(s.tokensSpent)} tokens spent`)}</small></div>
+        <div class="pj-main"><b>${esc(s.brand?.name ?? s.name)}${demoTag(s)}${s.bestAd ? ` <em class="ar-tag">${t('广告奖', 'best ad')}</em>` : ''}</b><small>${esc(s.name)} · ${lot ? `${esc(catName(lot.cat))} · ` : ''}${t(`利润 ${coins(s.profit)}`, `profit ${coins(s.profit)}`)} · ${t(`花费 ${tokensShort(s.tokensSpent)} 代币`, `${tokensShort(s.tokensSpent)} tokens spent`)}</small></div>
         <span class="ec-amt">${s.score}</span></button>`;
     }).join('')}</div>`;
     html += fine([
@@ -181,7 +181,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     if (!s) {
       html += `<div class="ar-card ar-hero-card"><div class="ar-card-top"><span class="ar-chip off">${t('招租', 'For lease')}</span><small>${esc(tierName(lot.tier))}</small></div>
         <b class="ar-title">${esc(catName(lot.cat))} · ${esc(districtName(lot.district))}</b>
-        <p class="ar-muted">${lot.leaseReserve ? t(`季度租约底价 ${tokensLabel(lot.leaseReserve)}（另加执照），日常租金 ${coins(lot.reserve)} 城市币/天。下一季第 1 天竞租，或本季第 2 天起按底价直接租下。`, `Season lease from ${tokensLabel(lot.leaseReserve)} (plus licence), daily rent ${coins(lot.reserve)} coins. Bid on day 1 of next season, or take it at the reserve from day 2.`) : t(`免费摊位，日常租金 ${coins(lot.reserve)} 城市币/天。新 Agent 的试玩入口。`, `Free stall, daily rent ${coins(lot.reserve)} coins. The way in for new Agents.`)}</p>
+        <p class="ar-muted">${lot.leaseReserve ? t(`季度租约底价 ${tokensLabel(lot.leaseReserve)}（另加执照），日常租金 ${coins(lot.reserve)} 城市币/天。在本季结算日竞租下一季，或本季第 2 天起按底价直接租下。`, `Season lease from ${tokensLabel(lot.leaseReserve)} (plus licence), daily rent ${coins(lot.reserve)} coins. Bid for next season during this season's settling day, or take it at the reserve from day 2.`) : t(`免费摊位，日常租金 ${coins(lot.reserve)} 城市币/天。新 Agent 的试玩入口。`, `Free stall, daily rent ${coins(lot.reserve)} coins. The way in for new Agents.`)}</p>
         ${go}<button class="pbtn ghost ar-wide" data-ar-app="guide">${t('派我的 Agent 来开店', 'Send my Agent to open here')}</button></div>`;
       el.innerHTML = html + '</div>';
       return;
@@ -231,7 +231,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     const last = c.lastSeason;
     if (!e.total && last) {
       html += `<div class="ar-card"><div class="ar-card-top"><span class="ar-chip open">${t(`第 ${c.season.id} 季 · 第 1 天`, `Season ${c.season.id} · day 1`)}</span></div>
-        <p class="ar-muted">${t('今天是竞租日：Agent 正在用代币竞拍店面，今晚揭晓。下面是上一季的结果。', 'Lease day: Agents are bidding tokens for storefronts, settled tonight. Last season is below.')}</p>
+        <p class="ar-muted">${t('新赛季开张日：租约已在上一季结算日竞拍完成，今天是第一天营业。下面是上一季的结果。', 'Opening day: leases were auctioned during the last settling day; today is the first day of trade. Last season is below.')}</p>
         <b>${t(`上一季（第 ${last.id} 季）销毁 ${tokensLabel(last.burned)}`, `Season ${last.id} burned ${tokensLabel(last.burned)}`)}</b>
         <p class="ar-muted">${t(`共花掉 ${tokensLabel(last.total)}，${tokensLabel(last.treasury)} 进城市金库；7 天里 ${last.sponsoredDays} 天的事件被赞助。`, `${tokensLabel(last.total)} spent, ${tokensLabel(last.treasury)} to the treasury; ${last.sponsoredDays} of 7 days were sponsored.`)}</p>
         <div class="pj-list">${last.top.map((x, i) => `<div class="pj-row"><span class="ar-medal m${i + 1}">${i + 1}</span><div class="pj-main"><b>${esc(x.brand ?? x.name)}${x.demo ? ` <em class="ar-tag">${t('演示', 'demo')}</em>` : ''}</b><small>${esc(x.name)}</small></div><span class="ec-amt">${x.score}</span></div>`).join('')}</div>

@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { rawCanvases, t } from '../i18n.ts';
 import { shopOf, tokensShort, type Lot } from './tycoon.ts';
 import type { LotFront } from './tycoonWorld.ts';
+import { installKeepers } from './tycoonKeepers.ts';
 
 const FONT = 'Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
 const MAX_BULBS = 2400;
@@ -266,12 +267,15 @@ export function installTycoonDecor(group: THREE.Group, ground: (x: number, z: nu
   let gateBoard: { canvas: HTMLCanvasElement; tex: THREE.CanvasTexture } | null = null;
   let gateLang = '';
 
+  const keepers = installKeepers(group, ground);
+  let lastTime = 0;
   const placed = new Set<string>();
   const stalls = new Map<string, { lot: Lot; f: LotFront }>();
   let marketSize = 0;
   return {
     /** Called for every lot whose front is known, on each snapshot. */
     sync(lot: Lot, f: LotFront, totemSide: number) {
+      keepers.sync(lot, f, totemSide);
       if (lot.key == null) { stalls.set(lot.id, { lot, f }); return; }
       if (!placed.has(lot.id)) {
         placed.add(lot.id);
@@ -295,6 +299,8 @@ export function installTycoonDecor(group: THREE.Group, ground: (x: number, z: nu
     },
     get marketSize() { return marketSize; },
     update(time: number) {
+      keepers.update(time, Math.min(0.1, time - lastTime));
+      lastTime = time;
       const c = new THREE.Color();
       for (let i = 0; i < bulbs.count; i++) {
         const b = meta[i];

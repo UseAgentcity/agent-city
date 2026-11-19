@@ -6,7 +6,7 @@ import { Crowd } from '../earth/crowd.ts';
 import type { EarthApi } from '../earth/index.ts';
 import { rawCanvases, t } from '../i18n.ts';
 import { installTycoonDecor } from './tycoonDecor.ts';
-import { catName, coins, onTycoon, priceName, shopOf, tierName, tokensShort, tycoon, type Lot } from './tycoon.ts';
+import { auctionDay, catName, coins, onTycoon, priceName, shopOf, tierName, tokensShort, tycoon, type Lot } from './tycoon.ts';
 
 /** A lot's door on the street: the point, the outward normal and the wall tangent (world x/z). */
 export interface LotFront { x: number; z: number; nx: number; nz: number; tx: number; tz: number; wall: number; /** The building's own map name, which the game shows as the Agent's shop instead. */ poi?: string }
@@ -154,6 +154,20 @@ function drawTotem(c: HTMLCanvasElement, lot: Lot) {
   g.fillStyle = shop ? color : '#2a2f3a'; g.fillRect(0, 0, TOTEM_W, 118);
   g.fillStyle = shop ? '#0b0d12' : '#f0b90b'; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.font = `800 50px ${FONT}`; g.fillText(catName(lot.cat), TOTEM_W / 2, 62);
+  if (!shop && auctionDay() && lot.leaseReserve) {
+    // The season's first day: every lot is up for auction and tonight decides who runs it.
+    const n = tycoon()?.standings.length ?? 0;
+    g.fillStyle = '#f0b90b';
+    g.font = `900 ${t('116px', '96px')} ${FONT}`; g.fillText(t('竞租中', 'AUCTION'), TOTEM_W / 2, 320);
+    g.fillStyle = '#fff4cf'; g.font = `800 ${t('54px', '50px')} ${FONT}`;
+    g.fillText(t('今晚揭晓店主', 'Tenant tonight'), TOTEM_W / 2, 440);
+    g.fillStyle = '#c9d1dc'; g.font = `600 36px ${FONT}`;
+    g.fillText(t(`底价 ${tokensShort(lot.leaseReserve)} 代币`, `Reserve ${tokensShort(lot.leaseReserve)} tokens`), TOTEM_W / 2, 560);
+    g.strokeStyle = 'rgba(240,185,11,.6)'; g.lineWidth = 4; g.strokeRect(36, 660, TOTEM_W - 72, 260);
+    g.fillStyle = '#f0b90b'; g.font = `900 110px ${FONT}`; g.fillText(String(n), TOTEM_W / 2, 760);
+    g.fillStyle = '#f4f1e8'; g.font = `700 36px ${FONT}`; g.fillText(t('个 Agent 已入场', 'Agents in the city'), TOTEM_W / 2, 860);
+    return;
+  }
   if (!shop) {
     g.fillStyle = '#f0b90b';
     g.font = `900 120px ${FONT}`; g.fillText(t('招租', 'FOR'), TOTEM_W / 2, 330);
@@ -427,7 +441,7 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       }
       const sign = signs.get(lot.id) ?? placeSign(lot, f);
       const shop = shopOf(lot.owner);
-      const key = `${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${document.documentElement.lang}`;
+      const key = `${lot.owner ?? ''}|${shop?.brand?.name ?? ''}|${shop?.brand?.slogan ?? ''}|${shop?.brand?.color ?? ''}|${shop?.today?.served ?? ''}|${shop?.price ?? ''}|${shop?.rep ?? ''}|${auctionDay()}|${tycoon()?.standings.length ?? 0}|${document.documentElement.lang}`;
       if (sign.key !== key) {
         if (sign.totem) drawTotem(sign.canvas, lot); else drawSign(sign.canvas, lot);
         sign.tex.needsUpdate = true;
