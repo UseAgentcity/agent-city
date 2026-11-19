@@ -35,6 +35,7 @@ export const ACTIONS: Action[] = [
   { id: 'timelapse', label: 'Time-lapse', group: 'World', code: 'KeyL', defaults: ['KeyL'] },
   { id: 'clock', label: 'Skip 3 hours ahead', group: 'World', code: 'KeyT', defaults: ['KeyT'] },
   { id: 'settings', label: 'Settings', group: 'World', code: 'KeyK', defaults: ['KeyK'] },
+  { id: 'tour', label: 'Sightseeing tour', hint: 'The camera shows you round the city', group: 'World', code: 'KeyV', defaults: ['KeyV'] },
   { id: 'v-foot', label: 'On foot', hint: 'Get off · bail out', group: 'Vehicles', code: 'Digit1', defaults: ['Digit1'] },
   { id: 'v-skate', label: 'Skateboard', group: 'Vehicles', code: 'Digit2', defaults: ['Digit2'] },
   { id: 'v-bike', label: 'Bike', group: 'Vehicles', code: 'Digit3', defaults: ['Digit3'] },

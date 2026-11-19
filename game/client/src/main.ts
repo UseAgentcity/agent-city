@@ -43,6 +43,7 @@ import { installXR, cityPhoneSource, xrSettings } from './xr/index.ts';
 import { currentBriefing, openBriefingPanel, waiting, type BriefingHooks } from './ui/briefing.ts';
 import { resumeArmed, savePostcard, saveSession, takeResume, type SavedSession } from './session.ts';
 import { startIntro, wantIntro, type Intro } from './ui/intro.ts';
+import { startTour, type Tour } from './ui/tour.ts';
 import { arenaCityAt, playableBounds, mapOpen, TRAVEL_CITIES } from './city/capabilities.ts';
 import { bootInto, currentCity, openArena, setCityActions, updateCity } from './city/current.ts';
 import { installCityScreens } from './city/screens.ts';
@@ -626,6 +627,13 @@ async function start(where: CityId | GeoPlace) {
 
   // ---- Photo mode (F) ----
   let intro: Intro | null = null;
+  let tour: Tour | null = null;
+  /** The sightseeing tour: only in the city, outdoors, when nothing else holds the camera. */
+  const startSightseeing = () => {
+    if (tour || intro || photo.active || busy || interior || generic || !earth || !homeArena) return;
+    input.setEnabled(false);
+    tour = startTour({ camera: engine.camera, earth, ground: place.world.groundY, onEnd: () => { tour = null; input.setEnabled(true); } });
+  };
   const photo = new PhotoMode({
     engine, input, dayNight: () => dayNight, subject: () => player.position,
     onToggle: (on) => { document.body.classList.toggle('photo-mode', on); hud?.setMode(on ? 'photo' : player.flying ? 'fly' : 'walk'); if (on) track('photo_mode', {}); },
@@ -634,6 +642,7 @@ async function start(where: CityId | GeoPlace) {
       return { place: interior ? `${interior.repo.name} HQ` : `${place.locationName(player.position.x, player.position.z)}, ${place.title}`, ...g };
     },
   });
+  input.onPress('KeyV', () => { if (!panelOpen()) startSightseeing(); });
   input.onPress('KeyF', () => { if (!panelOpen() && !busy && !photo.active) photo.toggle(player.yaw, player.pitch); });
 
   // ---- Keys ----
@@ -710,6 +719,15 @@ async function start(where: CityId | GeoPlace) {
   let hudTimer = 0;
   const guide = homeArena ? installGuide($('hud')) : null;
   if (homeArena) installDayReport($('hud'), () => phone.open('ranking'));
+  if (homeArena) {
+    // A button for the sightseeing tour (V), for mouse and touch.
+    const tourBtn = document.createElement('button');
+    tourBtn.type = 'button';
+    tourBtn.className = 'ow-tour-btn';
+    tourBtn.innerHTML = `<span>▶</span>${t('观光', 'Tour')}<kbd>V</kbd>`;
+    tourBtn.addEventListener('click', (e) => { e.stopPropagation(); startSightseeing(); });
+    $('hud').appendChild(tourBtn);
+  }
   // Always-on line: season and day, today's city event, the prize pool. Tap it for the standings.
   const tyHud = document.createElement('button');
   tyHud.type = 'button';
@@ -770,7 +788,7 @@ async function start(where: CityId | GeoPlace) {
     const dt = Math.min(timer.getDelta(), 0.05);
     time += dt;
     xr.beforePlayer(dt);
-    if (photo.active) { photo.update(dt); robot.update(dt); } else if (intro) intro.update(dt, () => player.update(dt)); else player.update(dt);
+    if (photo.active) { photo.update(dt); robot.update(dt); } else if (intro) intro.update(dt, () => player.update(dt)); else if (tour) tour.update(dt, () => player.update(dt)); else player.update(dt);
     const cityView = !interior && !generic && !photo.active;
     cityEvents?.update(dt, earth?.atHome === true && cityView);
     tycoonWorld?.update(dt, earth?.atHome === true && cityView, engine.camera.position.y - place.world.groundY(engine.camera.position.x, engine.camera.position.z), player.position);

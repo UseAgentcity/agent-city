@@ -477,3 +477,22 @@ body.ow-intro-on #hud { opacity: 0; transition: opacity .6s; }
 .ow-intro-s { margin-top: 16px; font: 700 clamp(14px, 2.2vw, 19px)/1.4 Inter, "PingFang SC", system-ui, sans-serif; color: #ffe7a3; }
 .ow-intro-l { margin-top: 6px; font: 600 clamp(12px, 1.8vw, 15px)/1.4 Inter, "PingFang SC", system-ui, sans-serif; color: rgba(255,255,255,.82); }
 .ow-intro-x { margin-top: 22px; font: 600 12px/1 Inter, "PingFang SC", system-ui, sans-serif; color: rgba(255,255,255,.55); }
+
+/* Sightseeing tour: a caption card at each stop; the HUD steps aside. */
+body.ow-tour-on #hud { opacity: 0; }
+.ow-tour { position: fixed; left: 28px; bottom: 32px; z-index: 30; max-width: min(460px, calc(100vw - 56px)); padding: 16px 20px 14px; border-radius: 16px;
+  background: rgba(8,10,16,.72); border: 1px solid rgba(240,185,11,.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); color: #fff;
+  display: flex; flex-direction: column; gap: 4px; pointer-events: none; opacity: 0; transform: translateY(10px); transition: opacity .6s, transform .6s;
+  font-family: Inter, "PingFang SC", system-ui, sans-serif; }
+.ow-tour.in { opacity: 1; transform: none; }
+.ow-tour-k { font-size: 11.5px; font-weight: 800; letter-spacing: .2em; color: #f0b90b; text-transform: uppercase; }
+.ow-tour b { font-size: clamp(22px, 4vw, 30px); font-weight: 900; line-height: 1.15; }
+.ow-tour span:not(.ow-tour-k) { font-size: 14px; color: rgba(255,255,255,.82); line-height: 1.45; }
+.ow-tour small { margin-top: 6px; font-size: 11.5px; color: rgba(255,255,255,.5); }
+@media (max-width: 640px) { .ow-tour { left: 12px; right: 12px; bottom: 20px; max-width: none; } }
+
+.ow-tour-btn { position: absolute; left: 16px; bottom: 16px; z-index: 6; display: flex; align-items: center; gap: 7px; padding: 8px 12px; border-radius: 999px;
+  border: 1px solid rgba(240,185,11,.45); background: rgba(10,12,18,.72); color: #fff; font: 700 13px Inter, "PingFang SC", system-ui, sans-serif; cursor: pointer; pointer-events: auto; }
+.ow-tour-btn span { color: #f0b90b; font-size: 11px; }
+.ow-tour-btn kbd { font: 700 10.5px Inter, system-ui; padding: 1px 6px; border-radius: 5px; background: rgba(255,255,255,.12); color: rgba(255,255,255,.75); }
+@media (max-width: 640px) { .ow-tour-btn { bottom: auto; top: calc(env(safe-area-inset-top, 0px) + 300px); left: 12px; } .ow-tour-btn kbd { display: none; } }
