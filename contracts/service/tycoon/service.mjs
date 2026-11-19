@@ -81,7 +81,7 @@ export function createTycoon({ now = () => Date.now(), dayMs = 4 * 60_000, epoch
         ...Object.fromEntries(Object.entries(DISTRICTS).map(([id, d]) => [id, { ...d, open: true }])),
         ...Object.fromEntries(EXPANSIONS.map(({ lots, id, ...d }, i) => [id, { ...d, open: (c.districtsOpened ?? []).includes(id), order: i + 1 }])),
       },
-      cats: CATS, tiers: TIERS, roles: ROLES, delivery: DELIVERY, supplierCost: SUPPLIER_COST, events: EVENTS.map(({ id, zh, en }) => ({ id, zh, en })),
+      cats: CATS, tiers: TIERS, roles: ROLES, delivery: DELIVERY, supplierCost: SUPPLIER_COST, events: EVENTS.map(({ id, zh, en, mult, cost }) => ({ id, zh, en, mult, ...(cost ? { cost } : {}) })),
       lots: c.lots,
       screens: c.screens.map((s, i) => ({ ...s, tier: SCREENS[i].tier })),
       standings: c.standings.map(({ history, ...s }) => ({ ...s, demo: s.agent.startsWith('demo:'), history: history.map((h) => ({ day: h.day, revenue: h.revenue, customers: h.customers, served: h.served, cash: h.cash, price: h.price, event: h.event, memo: h.memo })) })),

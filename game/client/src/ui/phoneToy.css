@@ -1,0 +1,101 @@
+/* The city phone in the landing poster's toy style: a gold halftone home screen, chunky outlined icons, paper app
+   pages with white ink-outlined cards and black-and-gold buttons. Loaded last; id-scoped like phoneTheme.css. */
+#phone.arena-phone {
+  --toy-ink: #16171b; --toy-gold: #f0b90b; --toy-paper: #fbf6e9;
+  --t-bg: var(--toy-paper); --t-surface: #ffffff; --t-surface-2: #fff3c4; --t-line: rgba(22, 23, 27, .14);
+  --t-text: var(--toy-ink); --t-text-2: rgba(22, 23, 27, .72); --t-text-3: rgba(22, 23, 27, .56); --t-gold: #b88600; --t-gold-soft: #fff3c4;
+}
+#phone.arena-phone .phone-view.app-arena { color: var(--toy-ink); }
+
+/* ---- home screen ---- */
+#phone.arena-phone .phone-view.app-arena.ar-springboard {
+  background-color: var(--toy-gold);
+  background-image: radial-gradient(rgba(22, 23, 27, .14) 1.3px, transparent 1.5px);
+  background-size: 11px 11px;
+}
+#phone.arena-phone .ar-widget { color: var(--toy-ink); background: #fff; border: 2.5px solid var(--toy-ink); box-shadow: 4px 4px 0 var(--toy-ink); border-radius: 20px; text-align: left; }
+#phone.arena-phone .ar-widget > b { color: var(--toy-ink); font-weight: 900; }
+#phone.arena-phone .ar-widget small, #phone.arena-phone .ar-widget span { color: rgba(22, 23, 27, .72); }
+#phone.arena-phone .ar-section-label { color: var(--toy-ink); font-weight: 900; letter-spacing: .08em; }
+#phone.arena-phone .ar-springboard .ar-app-name { color: var(--toy-ink); font-weight: 800; text-shadow: none; }
+#phone.arena-phone .ar-icon { border: 2.5px solid var(--toy-ink); box-shadow: 3px 3px 0 var(--toy-ink); background: #fff; color: var(--toy-ink); }
+#phone.arena-phone .ar-icon svg { color: var(--toy-ink); stroke-width: 2.2; }
+#phone.arena-phone .ar-icon.city { background: #fff; }
+#phone.arena-phone .ar-icon.ranking { background: #ffd34d; }
+#phone.arena-phone .ar-icon.exchange { background: #ff7a59; }
+#phone.arena-phone .ar-icon.sponsor { background: #22c3ee; }
+#phone.arena-phone .ar-icon.agent { background: var(--toy-ink); }
+#phone.arena-phone .ar-icon.agent svg { color: var(--toy-gold); }
+#phone.arena-phone .ar-icon.wallet { background: #3ddc97; }
+#phone.arena-phone .ar-icon.economy { background: #ff8fa3; }
+#phone.arena-phone .ar-icon.settings { background: #e9e4d6; }
+#phone.arena-phone .ar-icon.x { background: var(--toy-ink); }
+#phone.arena-phone .ar-icon.x svg { color: #fff; fill: #fff; }
+#phone.arena-phone .ar-app:active .ar-icon { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--toy-ink); }
+#phone.arena-phone .ar-dock { background: rgba(255, 255, 255, .55); border: 2.5px solid var(--toy-ink); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+
+/* ---- app pages ---- */
+#phone.arena-phone .phone-view.app-arena:not(.ar-springboard) { background: var(--toy-paper); }
+#phone.arena-phone .ar-back { color: var(--toy-ink); font-weight: 800; }
+#phone.arena-phone .pv-tabhead h3 { color: var(--toy-ink); font-weight: 900; }
+#phone.arena-phone .app-arena .pv-scroll { -webkit-mask-image: none; mask-image: none; }
+#phone.arena-phone .ar-card, #phone.arena-phone .ar-hero-card { background: #fff; border: 2.5px solid var(--toy-ink); box-shadow: 4px 4px 0 var(--toy-ink); border-radius: 18px; color: var(--toy-ink); }
+#phone.arena-phone .ar-hero-card { background: #fff3c4; }
+#phone.arena-phone .ar-card b, #phone.arena-phone .ar-title { color: var(--toy-ink); }
+#phone.arena-phone .ar-muted, #phone.arena-phone .ar-card .ar-muted { color: rgba(22, 23, 27, .66); }
+#phone.arena-phone .ar-muted.small { font-size: 11.5px; margin-top: 6px; }
+#phone.arena-phone .ar-chip { border: 1.5px solid var(--toy-ink); background: #fff; color: var(--toy-ink); }
+#phone.arena-phone .ar-chip.open, #phone.arena-phone .ar-chip.on { background: #3ddc97; color: var(--toy-ink); }
+#phone.arena-phone .ar-chip.off { background: #f1ede2; color: rgba(22, 23, 27, .6); }
+#phone.arena-phone .ar-seg { background: #fff; border: 2px solid var(--toy-ink); border-radius: 999px; }
+#phone.arena-phone .ar-seg button { color: var(--toy-ink); border-radius: 999px; font-weight: 700; }
+#phone.arena-phone .ar-seg button.on { background: var(--toy-ink); color: var(--toy-gold); box-shadow: none; }
+#phone.arena-phone .pbtn { background: var(--toy-ink); color: var(--toy-gold); border: 2.5px solid var(--toy-ink); border-radius: 999px; font-weight: 900; box-shadow: 3px 3px 0 rgba(22, 23, 27, .25); }
+#phone.arena-phone .pbtn svg { color: var(--toy-gold); }
+#phone.arena-phone .pbtn.ghost { background: #fff; color: var(--toy-ink); }
+#phone.arena-phone .pbtn:disabled { opacity: 1; background: #e9e4d6; color: rgba(22, 23, 27, .55); border-color: rgba(22, 23, 27, .35); box-shadow: none; }
+#phone.arena-phone .pj-row { color: var(--toy-ink); border-color: var(--t-line); }
+#phone.arena-phone .pj-row b { color: var(--toy-ink); }
+#phone.arena-phone .pj-row small { color: rgba(22, 23, 27, .6); }
+#phone.arena-phone .ec-amt { color: var(--toy-ink); font-weight: 800; }
+#phone.arena-phone .ar-fine { background: #fff; border: 2px solid var(--toy-ink); }
+#phone.arena-phone .ar-fine summary { color: var(--toy-ink); }
+#phone.arena-phone .ar-fine li { color: rgba(22, 23, 27, .7); }
+#phone.arena-phone code { background: #f1ede2; color: var(--toy-ink); }
+
+/* ---- sponsor app ---- */
+#phone.arena-phone .ar-lead { display: flex; flex-direction: column; gap: 2px; margin: 10px 0 0; }
+#phone.arena-phone .ar-lead b { font-size: 20px; font-weight: 900; }
+#phone.arena-phone .ar-lead span { font-size: 12.5px; color: rgba(22, 23, 27, .66); }
+#phone.arena-phone .ar-events { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+#phone.arena-phone .ar-event { display: flex; flex-direction: column; gap: 3px; padding: 10px 11px; text-align: left; border: 2px solid var(--toy-ink); border-radius: 14px; background: #fff; color: var(--toy-ink); font: inherit; cursor: pointer; }
+#phone.arena-phone .ar-event b { font-size: 14px; font-weight: 900; }
+#phone.arena-phone .ar-event small { font-size: 10.5px; line-height: 1.35; color: rgba(22, 23, 27, .62); }
+#phone.arena-phone .ar-event.on { background: var(--toy-gold); box-shadow: 3px 3px 0 var(--toy-ink); }
+#phone.arena-phone .ar-event.on small { color: rgba(22, 23, 27, .8); }
+#phone.arena-phone .ar-bid { display: flex; gap: 6px; align-items: stretch; }
+#phone.arena-phone .ar-bid input { flex: 1; min-width: 0; padding: 10px 12px; border: 2.5px solid var(--toy-ink); border-radius: 12px; background: #fff; color: var(--toy-ink); font: 800 17px/1.2 var(--t-font); font-variant-numeric: tabular-nums; }
+#phone.arena-phone .ar-mini { flex: none; padding: 0 11px; border: 2px solid var(--toy-ink); border-radius: 12px; background: #fff; color: var(--toy-ink); font: 800 12px var(--t-font); cursor: pointer; }
+#phone.arena-phone .ar-cta { margin-top: 14px; padding: 13px; font-size: 15px; }
+#phone.arena-phone .ar-note { margin: 12px 0 0; border: 2px solid var(--toy-ink); background: #fff3c4; color: var(--toy-ink); }
+#phone.arena-phone .ar-note.ok { background: #c9f5df; }
+#phone.arena-phone .ar-note.bad { background: #ffd6dc; }
+#phone.arena-phone .ar-note a { color: var(--toy-ink); font-weight: 800; text-decoration: underline; }
+
+/* ---- home screen widgets: the sponsor call and the podium ---- */
+#phone.arena-phone .ar-widgets { display: grid; gap: 10px; margin: 14px 0 12px; }
+#phone.arena-phone .ar-widget-sponsor { display: flex; flex-direction: column; gap: 3px; background: var(--toy-ink); color: #fff; box-shadow: 4px 4px 0 #fff; }
+#phone.arena-phone .ar-widget-sponsor small { color: var(--toy-gold); font-weight: 800; font-size: 11px; }
+#phone.arena-phone .ar-widget-sponsor b { color: #fff; font-size: 16px; font-weight: 900; margin: 0; }
+#phone.arena-phone .ar-widget-sponsor span { color: rgba(255, 255, 255, .78); font-size: 12px; }
+#phone.arena-phone .ar-widget-sponsor em { align-self: flex-end; margin-top: 4px; padding: 4px 12px; border-radius: 999px; background: var(--toy-gold); color: var(--toy-ink); font-style: normal; font-weight: 900; font-size: 12px; }
+#phone.arena-phone .ar-widget-podium { display: flex; flex-direction: column; gap: 5px; }
+#phone.arena-phone .ar-widget-podium small { font-weight: 800; font-size: 11px; color: rgba(22, 23, 27, .6); }
+#phone.arena-phone .ar-pod { display: grid; grid-template-columns: 16px 12px minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+#phone.arena-phone .ar-pod i { font-style: normal; font-weight: 900; font-size: 14px; }
+#phone.arena-phone .ar-pod span { width: 12px; height: 12px; border-radius: 4px; border: 1.5px solid var(--toy-ink); }
+#phone.arena-phone .ar-pod b { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--toy-ink); margin: 0; }
+#phone.arena-phone .ar-pod strong { font-size: 13px; font-weight: 900; }
+/* The older theme styles primary buttons with a more specific selector; match it. */
+#phone.arena-phone .phone-view.app-arena .pbtn:not(.ghost):not(:disabled) { background: var(--toy-ink); color: var(--toy-gold); border-color: var(--toy-ink); }
+#phone.arena-phone .phone-view.app-arena .pbtn.ghost { background: #fff; color: var(--toy-ink); border-color: var(--toy-ink); }

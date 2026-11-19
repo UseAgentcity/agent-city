@@ -60,11 +60,11 @@ export interface TycoonCity {
   districts: Record<DistrictId, { zh: string; en: string; lat: number; lon: number; open?: boolean; order?: number }>;
   cats: Record<CatId, { zh: string; en: string; ref: number }>;
   roles?: Record<RoleId, { zh: string; en: string }>;
-  lots: Lot[]; screens: Screen[]; standings: Shop[]; feed: FeedItem[]; pool: { bnbWei: string | null; note: string };
+  lots: Lot[]; screens: Screen[]; standings: Shop[]; feed: FeedItem[]; pool: { bnbWei: string | null; note: string; contract?: string };
   tokenEconomy: TokenEconomy; sponsorship: Sponsorship | null;
   lastSeason: { id: number; burned: number; total: number; treasury: number; sponsoredDays: number; top: { name: string; brand: string | null; score: number; demo: boolean }[]; bestAd: string | null } | null;
   days: { day: number; id: string; sponsor: { who: string; name: string; bid: number } | null }[];
-  events: { id: string; zh: string; en: string }[];
+  events: { id: string; zh: string; en: string; mult?: Record<string, number>; cost?: number }[];
 }
 
 const API = '/api/arena/tycoon';

@@ -10,6 +10,9 @@ import {
   tierName, tokensLabel, tokensShort, tycoon, tycoonBrief, tycoonError, tycoonRevision, upgradeName, type DistrictId, type Lot, type Shop, type UpgradeId,
 } from './tycoon.ts';
 import './phoneTheme.css';
+import './phoneToy.css';
+import { connectWallet, ethCall, sendTx, walletAccount, walletError } from './wallet.ts';
+import { sponsorEvent, SponsorError } from './sponsorTx.ts';
 
 export interface ArenaPhoneHooks {
   /** Teleport to a spot in the city (a shop's door, a district). */
@@ -31,6 +34,7 @@ const ICONS = {
   back: svg('<path d="M15 5l-7 7 7 7"/>'),
   info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
   pin: svg('<path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>'),
+  spark: svg('<path d="M12 3l1.8 4.6L18.5 9l-4.7 1.6L12 15l-1.8-4.4L5.5 9l4.7-1.4z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8zM5 16l.6 1.4 1.4.6-1.4.6L5 20l-.6-1.4L3 18l1.4-.6z"/>'),
   flame: svg('<path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-9-1 2-2 3-3 3 0-2-1-4-3-6 0 4-4 6-4 12 0 4 3 7 7 7z"/>'),
 };
 
@@ -61,6 +65,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
   let district: DistrictId = 'square';
   /** Standings league: storefronts, the street (market stalls and carts), or behind the scenes (suppliers and couriers). */
   let league: 'storefront' | 'street' | 'trade' = 'storefront';
+  /** Sponsor app: the chosen event, the bid typed so far, and where a bid in progress stands. */
+  let pickEvent: string | null = null, bidText = '', sponsorNote: { kind: 'info' | 'ok' | 'bad'; text: string } | null = null, sponsorBusy = false;
 
   type Tile = { id: ArenaApp | 'settings' | 'x'; name: string; icon: string; cls: string; href?: string };
   const TILE: Record<string, Tile> = {
@@ -69,12 +75,13 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     screens: { id: 'screens', name: t('大屏', 'Screens'), icon: ICONS.screens, cls: 'exchange' },
     guide: { id: 'guide', name: t('派 Agent', 'Send Agent'), icon: ICONS.agent, cls: 'agent' },
     rewards: { id: 'rewards', name: t('奖池', 'Prize pool'), icon: ICONS.wallet, cls: 'wallet' },
-    economy: { id: 'economy', name: t('代币经济', 'Token economy'), icon: ICONS.flame, cls: 'ranking' },
+    economy: { id: 'economy', name: t('代币经济', 'Token economy'), icon: ICONS.flame, cls: 'economy' },
+    sponsor: { id: 'sponsor', name: t('赞助事件', 'Sponsor'), icon: ICONS.spark, cls: 'sponsor' },
     settings: { id: 'settings', name: t('设置', 'Settings'), icon: ICONS.settings, cls: 'settings' },
     x: { id: 'x', name: 'X', icon: X_ICON, cls: 'x', href: X_URL },
   };
-  const GRID = ['city', 'ranking', 'screens', 'economy', 'guide', 'rewards', 'settings', 'x'];
-  const DOCK = ['city', 'ranking', 'economy'];
+  const GRID = ['city', 'ranking', 'screens', 'sponsor', 'guide', 'rewards', 'economy', 'settings']; // X lives on the landing page and in its footer
+  const DOCK = ['city', 'sponsor', 'ranking', 'guide'];
   const tileHtml = (key: string) => {
     const a = TILE[key];
     if (a.href) return `<a class="ar-app" href="${a.href}" target="_blank" rel="noopener noreferrer" aria-label="${esc(a.name)} ${X_HANDLE}"><span class="ar-icon ${a.cls}">${a.icon}</span><span class="ar-app-name">${esc(a.name)}</span></a>`;
@@ -94,9 +101,28 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <div class="ar-w-row"><small>${t('今日', 'Today')} · ${esc(eventName(c?.event))}${c?.event?.sponsor ? t('（赞助）', ' (sponsored)') : ''}</small><small>${top ? `${t('榜首', 'Leader')} ${esc(top.brand?.name ?? top.name)} · ${top.score}` : ''}</small></div>
       <div class="ar-w-row"><small>🔥 ${esc(burnLine(c))}</small><small>${esc(poolLine(c))}</small></div></button>`;
   }
+  /** People's way in: tomorrow's event is up for bids. Shows who leads and opens the sponsor app. */
+  function sponsorWidget() {
+    const c = tycoon();
+    const sp = c?.sponsorship;
+    if (!c || !sp) return '';
+    const lead = sp.leader;
+    return `<button class="ar-widget ar-widget-sponsor" data-ar-app="sponsor"><small>${t(`第 ${sp.day} 天的城市事件`, `Day ${sp.day}'s city event`)}</small>
+      <b>${t('明天发生什么？你来定', 'What happens tomorrow? You decide')}</b>
+      <span>${lead ? t(`「${esc(eventNameById(lead.event))}」领先 · ${esc(lead.name)} 出价 ${tokensLabel(lead.bid)}`, `“${esc(eventNameById(lead.event))}” leads · ${esc(lead.name)} bid ${tokensLabel(lead.bid)}`) : t('还没人出价，底价就能拿下', 'No bids yet: the reserve takes it')}</span>
+      <em>${t('去赞助 →', 'Sponsor →')}</em></button>`;
+  }
+  /** This season's top three, one line each. */
+  function podiumWidget() {
+    const top = tycoon()?.standings.filter((s) => s.score > 0).slice(0, 3) ?? [];
+    if (!top.length) return '';
+    return `<button class="ar-widget ar-widget-podium" data-ar-app="ranking"><small>${t('本季前三', 'Top three this season')}</small>
+      ${top.map((s, i) => `<div class="ar-pod"><i>${i + 1}</i><span style="background:${esc(s.brand?.color ?? '#f0b90b')}"></span><b>${esc(s.brand?.name ?? s.name)}</b><strong>${s.score}</strong></div>`).join('')}</button>`;
+  }
   function renderSpringboard(el: HTMLElement) {
     el.innerHTML = `<div class="ar-board">${widget()}
       <h4 class="ar-section-label">${t('时代广场', 'TIMES SQUARE')}</h4><div class="ar-grid">${GRID.map(tileHtml).join('')}</div>
+      <div class="ar-widgets">${sponsorWidget()}${podiumWidget()}</div>
       <div class="ar-dock">${DOCK.map(tileHtml).join('')}</div></div>`;
   }
 
@@ -114,7 +140,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     if (!c) { el.innerHTML = html + loading() + '</div>'; return; }
     html += `<div class="ar-card ar-hero-card"><div class="ar-card-top"><span class="ar-chip open">${esc(eventName(c.event))}</span><small>${esc(seasonLine())}</small></div>
       <p class="ar-muted">${c.event?.sponsor ? t(`今天的事件由 ${esc(c.event.sponsor.name)} 花 ${tokensLabel(c.event.sponsor.bid)} 赞助。`, `Today’s event was sponsored by ${esc(c.event.sponsor.name)} for ${tokensLabel(c.event.sponsor.bid)}.`) : t('每个游戏日一个城市事件，影响各业态的客流；任何人都可以花代币赞助明天的事件。', 'Each game day has one city event that shifts foot traffic; anyone can bid tokens to sponsor tomorrow’s.')}</p>
-      <button class="pbtn ghost ar-wide" data-ar-app="economy">${t('赞助明天的事件', 'Sponsor tomorrow’s event')}</button></div>`;
+      <button class="pbtn ghost ar-wide" data-ar-app="sponsor">${t('赞助明天的事件', 'Sponsor tomorrow’s event')}</button></div>`;
     html += `<div class="ar-seg scroll">${(Object.keys(c.districts) as DistrictId[]).map((d) => `<button class="${district === d ? 'on' : ''}${c.districts[d].open === false ? ' locked' : ''}" data-ty-district="${d}">${esc(districtName(d))}</button>`).join('')}</div>`;
     const lots = c.lots.filter((l) => l.district === district);
     const open = lots.filter((l) => l.owner).length;
@@ -266,6 +292,76 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
   }
 
   /** Where the tokens go, tomorrow's event auction and the price list. */
+  function effectLine(e: { mult?: Record<string, number>; cost?: number }) {
+    const parts = Object.entries(e.mult ?? {}).map(([cat, m]) => `${catName(cat as never)} ×${m}`);
+    if (e.cost) parts.push(t(`进货价 ×${e.cost}`, `stock cost ×${e.cost}`));
+    return parts.join(' · ') || t('客流照常', 'traffic as usual');
+  }
+  function renderSponsor(el: HTMLElement) {
+    const c = tycoon();
+    let html = head(t('赞助事件', 'Sponsor an event')) + '<div class="pv-scroll home-scroll">';
+    if (!c) { el.innerHTML = html + loading() + '</div>'; return; }
+    const sp = c.sponsorship;
+    const live = c.pool.note === 'contract' && !!c.pool.contract;
+    html += `<div class="ar-card ar-hero-card"><b class="ar-title">${t('明天发生什么，你来定', 'You decide what happens tomorrow')}</b>
+      <p class="ar-muted">${t('每个游戏日有一个城市事件：暴雨让咖啡店爆满、首演夜让剧院排长队……任何人都能用代币竞拍明天的事件，帮你喜欢的店，或者给对手添点麻烦。', 'Every game day has a city event: a downpour fills the coffee shops, opening night queues up the theatres… Anyone can bid tokens for tomorrow’s, to help a shop you like or make life harder for its rivals.')}</p></div>`;
+    if (!sp) {
+      html += `<div class="ar-card"><p class="ar-muted">${t('本季已经没有明天可赞助了，下一季开始后再来。', 'No tomorrow left this season; come back when the next one starts.')}</p></div>`;
+      el.innerHTML = html + '</div>';
+      return;
+    }
+    const lead = sp.leader;
+    const min = Math.max(sp.reserve, (lead?.bid ?? 0) + 1);
+    html += `<div class="ar-card"><div class="ar-card-top"><b>${t(`第 ${sp.day} 天`, `Day ${sp.day}`)}</b><span class="ar-chip ${lead ? 'open' : 'off'}">${lead ? t('有人领先', 'Leading bid') : t('还没人出价', 'No bids yet')}</span></div>
+      ${lead ? `<p class="ar-lead"><b>${esc(eventNameById(lead.event))}</b><span>${esc(lead.name)} · ${tokensLabel(lead.bid)}</span></p>` : `<p class="ar-muted">${t('没人赞助的话，事件随机抽取。', 'Without a sponsor the event is drawn at random.')}</p>`}</div>`;
+    const choice = pickEvent ?? c.events.find((e) => e.id !== lead?.event)?.id ?? c.events[0]?.id;
+    html += `<h4 class="ar-section-label">${t('选一个事件', 'Pick an event')}</h4><div class="ar-events">${c.events.map((e) => `<button class="ar-event${e.id === choice ? ' on' : ''}" data-sp-event="${esc(e.id)}"><b>${esc(eventNameById(e.id))}</b><small>${esc(effectLine(e))}</small></button>`).join('')}</div>`;
+    const value = bidText || String(min);
+    html += `<h4 class="ar-section-label">${t('出价（代币）', 'Your bid (tokens)')}</h4>
+      <div class="ar-bid"><input type="number" inputmode="numeric" min="${min}" step="1000" value="${esc(value)}" data-sp-bid aria-label="${t('出价', 'Bid')}">
+      <button class="ar-mini" data-sp-min="${min}">${t('最低', 'Min')}</button><button class="ar-mini" data-sp-raise="${min}">+10%</button></div>
+      <p class="ar-muted small">${t(`至少 ${tokensLabel(min)}（底价 ${tokensLabel(sp.reserve)}${lead ? '，并高于当前领先出价' : ''}）。`, `At least ${tokensLabel(min)} (reserve ${tokensLabel(sp.reserve)}${lead ? ', above the leading bid' : ''}).`)}</p>`;
+    html += live
+      ? `<button class="pbtn ar-wide ar-cta" data-sp-go ${sponsorBusy ? 'disabled' : ''}>${sponsorBusy ? t('请在钱包里确认…', 'Confirm in your wallet…') : walletAccount() ? t('出价', 'Place the bid') : t('连接钱包并出价', 'Connect wallet and bid')}</button>`
+      : `<button class="pbtn ar-wide ar-cta" disabled>${t('代币上线后开放', 'Opens when the token launches')}</button>`;
+    if (walletAccount()) html += `<p class="ar-muted small">${t('已连接', 'Connected')} ${esc(walletAccount()!.slice(0, 6))}…${esc(walletAccount()!.slice(-4))}</p>`;
+    if (sponsorNote) html += `<p class="ar-note ${sponsorNote.kind}">${sponsorNote.text}</p>`;
+    html += fine([
+      t('只有最后赢的人付钱：被别人超过时，你的代币会立刻原路退回。', 'Only the winner pays: if someone outbids you, your tokens come straight back.'),
+      t('赢的出价算作花掉的代币：80% 销毁、20% 进城市金库。赞助只改变城市事件，不带来任何收益。', 'A winning bid counts as tokens spent: 80% burned, 20% to the city treasury. A sponsorship changes the city event and earns nothing.'),
+      t('用你自己的浏览器钱包（比如币安钱包插件），每一步都在钱包里确认：第一次会先请你授权代币额度，再出价。游戏不保管钱包，也不会要私钥、助记词或配对码。', 'Use your own browser wallet (the Binance Wallet extension, for example) and confirm each step there: the first time it asks you to approve the token amount, then to bid. The game holds no wallets and never asks for keys, recovery phrases or pairing codes.'),
+      t('代币价格会波动，这不是投资建议。', 'Token prices move; not investment advice.'),
+    ]);
+    el.innerHTML = html + '</div>';
+  }
+
+  async function placeBid(rerender: () => void) {
+    const c = tycoon();
+    const sp = c?.sponsorship;
+    if (!c || !sp || !c.pool.contract || sponsorBusy) return;
+    const choice = pickEvent ?? c.events.find((e) => e.id !== sp.leader?.event)?.id ?? c.events[0].id;
+    const eventId = c.events.findIndex((e) => e.id === choice);
+    const min = Math.max(sp.reserve, (sp.leader?.bid ?? 0) + 1);
+    const tokens = Math.floor(Number(bidText || min));
+    if (!(tokens >= min)) { sponsorNote = { kind: 'bad', text: t(`出价至少 ${tokensLabel(min)}。`, `Bid at least ${tokensLabel(min)}.`) }; rerender(); return; }
+    sponsorBusy = true; sponsorNote = null; rerender();
+    try {
+      const account = walletAccount() ?? await connectWallet();
+      const hash = await sponsorEvent({ account, call: ethCall, send: sendTx }, { city: c.pool.contract, season: c.season.id, day: sp.day, eventId, tokens }, (step) => {
+        sponsorNote = { kind: 'info', text: step === 'approve' ? t('第 1 步：请在钱包里授权代币额度。', 'Step 1: approve the token amount in your wallet.') : step === 'bid' ? t('请在钱包里确认出价。', 'Confirm the bid in your wallet.') : t('正在检查余额…', 'Checking your balance…') };
+        rerender();
+      });
+      sponsorNote = { kind: 'ok', text: t(`出价成功！明天的事件现在是「${esc(eventNameById(choice))}」，除非有人出更高的价。`, `Bid placed! Tomorrow is now “${esc(eventNameById(choice))}”, unless someone bids higher.`) + ` <a href="https://bscscan.com/tx/${esc(hash)}" target="_blank" rel="noopener noreferrer">${t('查看交易', 'View transaction')}</a>` };
+      bidText = '';
+    } catch (e) {
+      const m = e instanceof SponsorError ? e.message : '';
+      sponsorNote = { kind: 'bad', text: m === 'no-token' ? t('城市代币还没设定，暂时不能出价。', 'The city token is not set yet; bids are not open.')
+        : m === 'balance' ? t('钱包里的代币不够这次出价。', 'Not enough tokens in your wallet for this bid.')
+        : m === 'too-low' ? t('刚刚有人出了更高的价，请提高出价。', 'Someone just bid higher; raise your bid.')
+        : esc(walletError(e, t)) };
+    } finally { sponsorBusy = false; rerender(); }
+  }
+
   function renderEconomy(el: HTMLElement) {
     const c = tycoon();
     let html = head(t('代币经济', 'Token economy')) + '<div class="pv-scroll home-scroll">';
@@ -296,7 +392,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <li>${t('每季按综合经营分，从 BNB 奖池发奖给 Agent。', 'Each season the BNB pool pays Agents by season score.')}</li>
     </ol></div>`;
     const sp = c.sponsorship;
-    html += `<div class="ar-card"><b>${t('赞助明天的城市事件', 'Sponsor tomorrow’s city event')}</b>`;
+    html += `<div class="ar-card"><b>${t('赞助明天的城市事件', 'Sponsor tomorrow’s city event')}</b><button class="pbtn ghost ar-wide" data-ar-app="sponsor">${t('去赞助', 'Sponsor an event')}</button>`;
     if (!sp) html += `<p class="ar-muted">${t('本季已经没有明天可赞助了，下一季开始后再来。', 'No tomorrow left this season; come back when the next one starts.')}</p>`;
     else {
       html += `<p class="ar-muted">${t(`第 ${sp.day} 天的事件正在竞拍，底价 ${tokensLabel(sp.reserve)}，最高出价者决定那天发生什么。`, `Day ${sp.day}’s event is up for auction from ${tokensLabel(sp.reserve)}; the highest bid decides what happens.`)}</p>`;
@@ -345,6 +441,12 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
   }
 
   function bind(el: HTMLElement, rerender: () => void, onError: (msg: string) => void) {
+    el.querySelectorAll<HTMLElement>('[data-sp-event]').forEach((b) => b.addEventListener('click', () => { pickEvent = b.dataset.spEvent!; rerender(); }));
+    const bidInput = el.querySelector<HTMLInputElement>('[data-sp-bid]');
+    bidInput?.addEventListener('input', () => { bidText = bidInput.value; });
+    el.querySelector<HTMLElement>('[data-sp-min]')?.addEventListener('click', (e) => { bidText = (e.currentTarget as HTMLElement).dataset.spMin!; rerender(); });
+    el.querySelector<HTMLElement>('[data-sp-raise]')?.addEventListener('click', (e) => { bidText = String(Math.ceil(Math.max(Number(bidText) || 0, Number((e.currentTarget as HTMLElement).dataset.spRaise)) * 1.1)); rerender(); });
+    el.querySelector<HTMLElement>('[data-sp-go]')?.addEventListener('click', () => { bidText = bidInput?.value ?? bidText; void placeBid(rerender); });
     el.querySelectorAll<HTMLElement>('[data-ar-app]').forEach((b) => b.addEventListener('click', () => {
       const id = b.dataset.arApp!;
       if (id === 'settings') { hooks.openSettings?.(); return; }
@@ -373,7 +475,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     app = next;
   }
   /** Repaint when the city changes; the home screen's countdown ticks every second. */
-  const contentKey = () => `${app}|${tycoonRevision()}|${selected}|${district}|${app === 'springboard' ? Math.floor(serverNow() / 1000) : ''}|${tycoonError() ?? ''}`;
+  const contentKey = () => `${app}|${tycoonRevision()}|${selected}|${district}|${pickEvent}|${sponsorBusy}|${sponsorNote?.text ?? ''}|${app === 'springboard' ? Math.floor(serverNow() / 1000) : ''}|${tycoonError() ?? ''}`;
   let shown: string | null = null;
 
   return {
@@ -394,6 +496,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       else if (app === 'guide') renderGuide(el);
       else if (app === 'rewards') renderRewards(el);
       else if (app === 'economy') renderEconomy(el);
+      else if (app === 'sponsor') renderSponsor(el);
       else renderCity(el);
       if (unfolded.size) el.querySelectorAll<HTMLDetailsElement>('details.ar-fine').forEach((d) => { if (unfolded.has(d.querySelector('summary')!.textContent)) d.open = true; });
       shown = contentKey();
