@@ -51,6 +51,8 @@ export function clearSession() {
 // The landing page arms a resume right before it starts the game; the game takes it once loaded.
 let armed: SavedSession | null = null;
 export function armResume(s: SavedSession) { armed = s; }
+/** Whether this start will put you back where you left off. */
+export function resumeArmed() { return armed != null; }
 export function takeResume() { const s = armed; armed = null; return s; }
 
 export function sessionAgo(s: SavedSession) {

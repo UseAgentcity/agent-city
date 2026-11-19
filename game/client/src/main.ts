@@ -40,7 +40,8 @@ import type { GameCtx } from './ctx.ts';
 import { installLanding } from './landing/index.ts';
 import { installXR, cityPhoneSource, xrSettings } from './xr/index.ts';
 import { currentBriefing, openBriefingPanel, waiting, type BriefingHooks } from './ui/briefing.ts';
-import { savePostcard, saveSession, takeResume, type SavedSession } from './session.ts';
+import { resumeArmed, savePostcard, saveSession, takeResume, type SavedSession } from './session.ts';
+import { startIntro, wantIntro, type Intro } from './ui/intro.ts';
 import { arenaCityAt, playableBounds, mapOpen, TRAVEL_CITIES } from './city/capabilities.ts';
 import { bootInto, currentCity, openArena, setCityActions, updateCity } from './city/current.ts';
 import { installCityScreens } from './city/screens.ts';
@@ -620,6 +621,7 @@ async function start(where: CityId | GeoPlace) {
   for (const v of VEHICLES) input.onPress(v.key, () => ride(v.id));
 
   // ---- Photo mode (F) ----
+  let intro: Intro | null = null;
   const photo = new PhotoMode({
     engine, input, dayNight: () => dayNight, subject: () => player.position,
     onToggle: (on) => { document.body.classList.toggle('photo-mode', on); hud?.setMode(on ? 'photo' : player.flying ? 'fly' : 'walk'); if (on) track('photo_mode', {}); },
@@ -677,6 +679,11 @@ async function start(where: CityId | GeoPlace) {
   // ---- HUD ----
   $('loading').classList.add('hidden');
   $('hud').classList.remove('hidden');
+  // First look at the city: a sweep down the bowtie that lands behind you (skipped when resuming).
+  if (homeArena && earth && wantIntro(resumeArmed())) {
+    input.setEnabled(false);
+    intro = startIntro({ camera: engine.camera, focus: player.position.clone(), facing: player.yaw, onEnd: () => { intro = null; input.setEnabled(true); } });
+  }
   $('click-to-look').textContent = 'Click the game to look around (or drag)';
   window.addEventListener('agent-city:open-economy', (e) => phone.open((e as CustomEvent<{ app?: string }>).detail?.app ?? 'career'));
   window.addEventListener('agent-city:city-guide', () => openCityGuide());
@@ -758,7 +765,7 @@ async function start(where: CityId | GeoPlace) {
     const dt = Math.min(timer.getDelta(), 0.05);
     time += dt;
     xr.beforePlayer(dt);
-    if (photo.active) { photo.update(dt); robot.update(dt); } else player.update(dt);
+    if (photo.active) { photo.update(dt); robot.update(dt); } else if (intro) intro.update(dt, () => player.update(dt)); else player.update(dt);
     const cityView = !interior && !generic && !photo.active;
     tycoonWorld?.update(dt, earth?.atHome === true && cityView);
     if (!addedLots && earth?.atHome && cityView && tycoon()) {

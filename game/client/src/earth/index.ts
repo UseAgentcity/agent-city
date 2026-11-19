@@ -13,6 +13,10 @@ import { FarTerrain } from './far.ts';
 import { EarthTraffic, EarthPedestrians, EarthShips } from './traffic.ts';
 import { buildEarthRepo, chooseEarthSites, type EarthSite, type HostFp } from './sites.ts';
 import { TIMES_SQUARE } from '../city/capabilities.ts';
+
+/** Where a visit starts, and what it looks at: the plaza under the TKTS steps, facing the bowtie. */
+export const SPAWN_PLAZA = { lat: 40.75845, lon: -73.9854 };
+export const SPAWN_LOOK = { lat: 40.7576, lon: -73.9858 };
 import { updateWater } from './style.ts';
 import { OceanWaves } from './ocean.ts';
 import { SkylineRing } from '../sky.ts';
@@ -181,7 +185,8 @@ export async function buildEarthPlace(place: GeoPlace, repos: Repo[], say: (m: s
 
   // ---- Life ----
   say('Filling the streets…');
-  // Start in the open, facing the headquarters from far enough back to see the entrance.
+  // Start on the Broadway pedestrian plaza below the TKTS steps, looking down the bowtie: LED screens
+  // on both sides, Orion Stage's marquee on the right, the Agent shops' totems along the sidewalks.
   const roomy = (x: number, z: number, r: number) => {
     if (solid(x, z) || wet(x, z)) return false;
     for (let k = 0; k < 12; k++) {
@@ -190,7 +195,7 @@ export async function buildEarthPlace(place: GeoPlace, repos: Repo[], say: (m: s
     }
     return true;
   };
-  const plaza = repos.length ? frame.toLocal(TIMES_SQUARE.lat, TIMES_SQUARE.lon) : { x: 0, z: 0 };
+  const plaza = repos.length ? frame.toLocal(SPAWN_PLAZA.lat, SPAWN_PLAZA.lon) : { x: 0, z: 0 };
   const spawn = new THREE.Vector3(plaza.x, 0, plaza.z);
   if (!roomy(spawn.x, spawn.z, 1.7)) {
     search: for (let distance = 2; distance <= 28; distance += 2) {
@@ -203,7 +208,7 @@ export async function buildEarthPlace(place: GeoPlace, repos: Repo[], say: (m: s
     }
   }
   spawn.y = heightAt(spawn.x, spawn.z);
-  const target = frame.toLocal(40.75839, -73.98553);
+  const target = frame.toLocal(SPAWN_LOOK.lat, SPAWN_LOOK.lon);
   const spawnFacing = repos.length ? Math.atan2(target.x - spawn.x, target.z - spawn.z) : 0;
   const nyc = Math.abs(home.lat - 40.75) < 0.25 && Math.abs(home.lon + 73.98) < 0.3;
   // Busy streets: lots of cars and caretakers, all instanced; fewer on slow GPUs (?q=low) and in VR.
