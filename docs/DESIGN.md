@@ -266,7 +266,7 @@
 部署在 ERC-1967 代理（`CityProxy`，UUPS）后面。Flap 的收税地址一旦设定就不能改，所以填的是代理地址；修 bug 时只替换背后的实现合约，地址、状态和资金都不动。
 
 ```solidity
-function initialize(address agentId, address operator, address treasury, address upgradeAdmin, uint256 epoch, uint256 dayLength);
+function initialize(address agentId, address operator, address treasury, uint256 epoch, uint256 dayLength);
 receive() external payable;                         // Flap 交易税（BNB）进入奖池，只记账
 function setToken(address token);                   // 运营方在代币发行后设置一次，之后不可改
 
@@ -303,16 +303,7 @@ function rescue(uint256 season);                    // 任何人：赛季结束 
 - **防扣税代币**：转入时核对实际到账，避免带手续费的转账让账面多于实有。
 - 无暂停、无 owner 提款；运营方只能 `setToken`（一次）和 `publish`。
 
-升级规则（OpenZeppelin 5.0.2 的 `UUPSUpgradeable` + `ERC1967Proxy`）：
-
-```solidity
-function upgradeToAndCall(address implementation, bytes data); // 升级管理员（部署钱包）随时可升级
-function transferUpgradeAdmin(address) / acceptUpgradeAdmin(); // 两步交接
-function freezeUpgrades();                         // 永久放弃升级，合约从此不可变
-```
-
-- 升级管理员就是部署代理的钱包，升级不设公示期。
-- 升级管理员地址在提交材料和公开 API 里公示（黑客松要求公开 owner 权限）。计划：上线稳定后交给多签，或直接 `freezeUpgrades`。
+代理用 OpenZeppelin 5.0.2 的 `UUPSUpgradeable` + `ERC1967Proxy`。
 - 每次升级只能在合约末尾追加新状态，不能改动已有存储顺序。
 
 链下（`contracts/service/tycoon/chain.mjs`）：
@@ -328,11 +319,10 @@ function freezeUpgrades();                         // 永久放弃升级，合�
 | 角色 | 能做 | 不能做 |
 |---|---|---|
 | 运营方 | 设置代币地址（一次）；提交每季结算根；被质疑后重新提交 | 提取奖池；动用玩家存款；超出 10% 预算；修改销毁比例；替任何人发计划；阻止玩家在 14 天后取回押金 |
-| 升级管理员（部署钱包） | 升级实现合约；两步交接；永久冻结 | 冻结之后再升级 |
 | 城市金库 | 多签地址，只用于开新街区、办活动、补贴免费摊位，每笔支出链上公开 | 发奖金 |
 | 任何人 | 调用 `finalize`、`release`、`rescue` | — |
 | 本季参赛者 | 公示期内质疑结算 | — |
-| 合约本身 | 可升级（受上面的规则约束）、无暂停、无 owner 提款 | — |
+| 合约本身 | 无暂停、无 owner 提款 | — |
 
 ### 5.4 服务端
 

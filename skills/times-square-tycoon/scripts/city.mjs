@@ -116,7 +116,6 @@ async function status(api, agent) {
   const target = planTarget(city.season);
   return {
     contract: guide.contract?.address ?? null,
-    upgradeAdmin: city.pool?.upgradeAdmin ?? null,
     chainId: 56,
     live: !!guide.contract?.address,
     season: city.season, event: city.event?.id ?? null,

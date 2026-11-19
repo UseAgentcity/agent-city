@@ -3,8 +3,7 @@
 import { ethers } from 'ethers';
 import { CITY_ABI, eventsFromLogs } from './chain.mjs';
 
-const ABI = [...CITY_ABI, 'function epoch() view returns (uint256)', 'function dayLength() view returns (uint256)', 'function reserved() view returns (uint256)',
-  'function upgradeAdmin() view returns (address)'];
+const ABI = [...CITY_ABI, 'function epoch() view returns (uint256)', 'function dayLength() view returns (uint256)', 'function reserved() view returns (uint256)'];
 
 /**
  * @param {{rpc: string, address: string, fromBlock?: number, every?: number, step?: number}} o
@@ -27,9 +26,8 @@ export async function watchCity({ rpc, address, fromBlock = 0, every = 15_000, s
         if (got.length) { logs.push(...got); revision++; }
         next = to + 1;
       }
-      const [bal, reserved, admin] = await Promise.all([provider.getBalance(address), city.reserved(), city.upgradeAdmin()]);
-      // Who can upgrade the contract is shown publicly next to the pool it could touch.
-      pool = { bnbWei: bal.toString(), reservedWei: reserved.toString(), upgradeAdmin: admin === ethers.ZeroAddress ? null : admin };
+      const [bal, reserved] = await Promise.all([provider.getBalance(address), city.reserved()]);
+      pool = { bnbWei: bal.toString(), reservedWei: reserved.toString() };
     } catch (e) {
       console.warn('city watch:', e.shortMessage ?? e.message);
     } finally { busy = false; }
