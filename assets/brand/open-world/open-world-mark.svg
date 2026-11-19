@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Open World</title>
+  <desc id="desc">Open globe with city skyline on the equator</desc>
+  <rect width="512" height="512" fill="#070B14"/>
+  <g fill="none" stroke="#E8B923" stroke-width="15" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Left open hemisphere (C) -->
+    <path d="M268 96
+             C168 96 96 168 96 256
+             C96 344 168 416 268 416"/>
+    <!-- Right broken arcs -->
+    <path d="M328 108
+             C378 128 410 176 418 222"/>
+    <path d="M418 290
+             C410 336 378 384 328 404"/>
+    <!-- Inner longitude curves -->
+    <path d="M220 124
+             C186 172 178 222 178 256
+             C178 290 186 340 220 388" stroke-width="12"/>
+    <path d="M292 124
+             C326 172 334 222 334 256
+             C334 290 326 340 292 388" stroke-width="12"/>
+  </g>
+  <!-- Equator + terminal node beyond the open right -->
+  <g fill="#E8B923">
+    <rect x="112" y="249" width="300" height="14" rx="7"/>
+    <circle cx="430" cy="256" r="12"/>
+  </g>
+  <!-- City skyline sitting on the equator -->
+  <g fill="#E8B923">
+    <rect x="186" y="222" width="16" height="34"/>
+    <rect x="206" y="200" width="20" height="56"/>
+    <rect x="230" y="178" width="18" height="78"/>
+    <!-- Spire tower -->
+    <rect x="252" y="152" width="22" height="104"/>
+    <rect x="259" y="132" width="8" height="24"/>
+    <rect x="261" y="116" width="4" height="18"/>
+    <rect x="278" y="190" width="20" height="66"/>
+    <polygon points="302,210 324,178 346,210 346,256 302,256"/>
+    <rect x="350" y="216" width="18" height="40"/>
+  </g>
+</svg>

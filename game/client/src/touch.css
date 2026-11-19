@@ -1,0 +1,68 @@
+/* Touch controls (touch.ts) and the HUD rearranged around them. Only under body.touch-ui. */
+#touch-ui.hidden { display: none; }
+#touch-ui { position: fixed; inset: 0; z-index: 30; pointer-events: none; font-family: Inter, 'PingFang SC', system-ui, sans-serif; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+#touch-ui button { pointer-events: auto; touch-action: none; -webkit-tap-highlight-color: transparent; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+body.touch-ui #game { touch-action: none; }
+
+/* Move stick: a ghost where it rests, it jumps under the thumb. */
+.tc-zone { position: absolute; left: 0; bottom: 0; width: 50%; height: 44%; pointer-events: auto; touch-action: none; }
+.tc-base { position: absolute; left: 92px; top: calc(100% - 118px); width: 116px; height: 116px; margin: -58px 0 0 -58px; border-radius: 50%;
+  background: radial-gradient(circle, rgba(13,24,56,.35) 0 55%, rgba(13,24,56,.6) 56% 100%); border: 2px solid rgba(240,185,11,.45); opacity: .55; transition: opacity .15s; }
+.tc-base.on { opacity: 1; }
+.tc-knob { position: absolute; left: 50%; top: 50%; width: 52px; height: 52px; margin: -26px 0 0 -26px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffd84d, #f0b90b 60%, #b98a00); box-shadow: 0 4px 14px rgba(0,0,0,.45), inset 0 -2px 0 rgba(0,0,0,.18); }
+
+/* Thumb buttons, bottom right. */
+.tc-pad { position: absolute; right: 14px; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); width: 190px; height: 190px; }
+.tc-btn { position: absolute; display: grid; place-items: center; border-radius: 50%; background: rgba(13,24,56,.72) !important; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1.5px solid rgba(255,255,255,.2) !important; color: #f4f6fb !important; font-weight: 800 !important; font-size: 14px !important; box-shadow: 0 6px 18px rgba(0,0,0,.35); transition: transform .08s, background .08s; }
+.tc-btn.down, .tc-btn:active { transform: scale(.92); background: rgba(240,185,11,.9) !important; color: #111 !important; }
+.tc-jump { right: 0; bottom: 0; width: 82px; height: 82px; font-size: 17px !important; background: linear-gradient(160deg, #ffd84d, #f0b90b) !important; color: #111 !important; border-color: rgba(255,255,255,.5) !important; }
+.tc-use { right: 94px; bottom: 6px; width: 60px; height: 60px; }
+.tc-run { right: 10px; bottom: 94px; width: 60px; height: 60px; }
+.tc-dive, .tc-wing { display: none !important; width: 54px; height: 54px; }
+.tc-dive { right: 92px; bottom: 82px; }
+.tc-wing { right: 132px; bottom: 140px; }
+#touch-ui.flying .tc-dive, #touch-ui.flying .tc-wing { display: grid !important; }
+#touch-ui.flying .tc-use { display: none !important; }
+
+/* Phone, map, vehicles: a column on the left under the place card. */
+.tc-side { position: absolute; left: 12px; top: 128px; display: flex; flex-direction: column; gap: 8px; }
+.tc-mini { width: 48px; height: 48px; border-radius: 14px; background: rgba(13,24,56,.78) !important; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid rgba(240,185,11,.4) !important; color: #f4f6fb !important; font-size: 12px !important; font-weight: 700 !important; box-shadow: 0 4px 14px rgba(0,0,0,.3); }
+.tc-mini:active { background: #f0b90b !important; color: #111 !important; }
+.tc-phone { border-color: #f0b90b !important; color: #f0b90b !important; }
+.tc-rides { position: absolute; left: 68px; top: 128px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 8px; border-radius: 14px; pointer-events: auto;
+  background: rgba(13,24,56,.92); border: 1px solid rgba(240,185,11,.4); box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+.tc-rides.hidden { display: none; }
+.tc-rides button { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.07) !important; color: #f4f6fb !important; font-size: 13px !important; font-weight: 600 !important; white-space: nowrap; }
+.tc-rides button:active { background: #f0b90b !important; color: #111 !important; }
+.tc-rides i { font-style: normal; font-size: 18px; }
+
+/* The HUD makes room: minimap and teleport go top right, no key hints, the old phone tab gives way. */
+body.touch-ui #phone-tab { display: none; }
+body.touch-ui .ow-cwrap { left: 50% !important; right: auto !important; top: 12px !important; transform: translateX(-50%) !important; width: min(220px, calc(100vw - 150px)) !important; }
+body.touch-ui kbd { display: none !important; }
+body.touch-ui .ow-minimap { top: 84px; bottom: auto; right: 12px; width: 104px !important; height: 104px !important; }
+body.touch-ui .ow-tp-btn, body.touch-ui .ow-tp-btn.indoors { top: 196px; bottom: auto; right: 12px; width: 104px; padding: 7px 8px; font-size: 13px; gap: 6px; }
+body.touch-ui .ow-nav { top: 240px; bottom: auto; right: 12px; width: 104px; }
+body.touch-ui #hud.ow-earth-hud #toasts { top: auto; bottom: calc(44% + 8px); left: 70px; right: 12px; align-items: center; }
+body.touch-ui .toast { max-width: 100%; }
+body.touch-ui .prompt { left: 50%; right: auto; bottom: calc(44% + 4px); transform: translateX(-50%); max-width: calc(100vw - 140px); pointer-events: auto; cursor: pointer; border-color: rgba(240,185,11,.7); }
+body.touch-ui.touch-used #click-to-look { display: none; }
+body.touch-ui #click-to-look { top: auto; bottom: calc(44% + 60px); max-width: calc(100vw - 140px); white-space: normal; text-align: center; }
+
+/* Landscape phone: shorter screen, wider reach. */
+@media (max-height: 520px) {
+  .tc-zone { width: 45%; height: 70%; }
+  .tc-base { left: 100px; top: calc(100% - 100px); }
+  .tc-pad { bottom: 14px; right: 18px; }
+  .tc-side { top: 12px; left: auto; right: 132px; flex-direction: row; }
+  .tc-rides { top: 68px; left: auto; right: 132px; grid-template-columns: repeat(4, auto); }
+  body.touch-ui .ow-minimap { top: 12px; width: 92px !important; height: 92px !important; }
+  body.touch-ui .ow-tp-btn, body.touch-ui .ow-tp-btn.indoors { top: 112px; width: 92px; }
+  body.touch-ui .ow-nav { top: 156px; width: 92px; }
+  body.touch-ui #hud.ow-earth-hud #toasts { bottom: auto; top: 70px; left: 30%; right: 30%; }
+  body.touch-ui .prompt { bottom: 22px; }
+  body.touch-ui #click-to-look { bottom: 80px; }
+}

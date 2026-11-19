@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 500" role="img" aria-labelledby="title desc">
+  <title id="title">Open World social banner</title>
+  <desc id="desc">Agent City open world banner with open-globe mark</desc>
+  <defs>
+    <linearGradient id="shade" x1="0" x2="1"><stop stop-color="#060914" stop-opacity=".98"/><stop offset=".45" stop-color="#08111E" stop-opacity=".84"/><stop offset="1" stop-color="#07101B" stop-opacity=".2"/></linearGradient>
+    <linearGradient id="route" x1="0" x2="1"><stop stop-color="#F5B940"/><stop offset=".48" stop-color="#A78BFA"/><stop offset="1" stop-color="#58F6C5"/></linearGradient>
+    <filter id="soft"><feGaussianBlur stdDeviation="9"/></filter>
+  </defs>
+  <image href="../landing/city-hero.jpg" x="0" y="0" width="1500" height="1000" preserveAspectRatio="xMidYMid slice"/>
+  <rect width="1500" height="500" fill="url(#shade)"/>
+  <path d="M0 405C215 346 300 468 505 385s285-215 457-136 323 87 538-51" fill="none" stroke="#58F6C5" stroke-opacity=".26" stroke-width="28" filter="url(#soft)"/>
+  <path d="M0 405C215 346 300 468 505 385s285-215 457-136 323 87 538-51" fill="none" stroke="url(#route)" stroke-width="5"/>
+  <g transform="translate(102 83)">
+    <rect width="104" height="104" rx="26" fill="#070B14"/>
+    <g fill="none" stroke="#E8B923" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M54 19 C34 19 19 34 19 52 C19 70 34 85 54 85"/>
+      <path d="M66 22 C76 26 83 36 85 45"/>
+      <path d="M85 59 C83 68 76 78 66 82"/>
+      <path d="M45 25 C38 35 36 44 36 52 C36 60 38 69 45 79" stroke-width="2.4"/>
+      <path d="M59 25 C66 35 68 44 68 52 C68 60 66 69 59 79" stroke-width="2.4"/>
+    </g>
+    <g fill="#E8B923">
+      <rect x="23" y="50" width="60" height="3.2" rx="1.6"/>
+      <circle cx="87" cy="51.6" r="2.5"/>
+      <rect x="38" y="45" width="3.2" height="7"/>
+      <rect x="42" y="40" width="4" height="12"/>
+      <rect x="47" y="35" width="3.6" height="17"/>
+      <rect x="51.5" y="29" width="4.4" height="23"/>
+      <rect x="53" y="24" width="1.6" height="6"/>
+      <rect x="53.5" y="21" width="0.8" height="4"/>
+      <rect x="57" y="38" width="4" height="14"/>
+      <polygon points="62,42 67,35 72,42 72,52 62,52"/>
+      <rect x="73" y="43" width="3.6" height="9"/>
+    </g>
+  </g>
+  <text x="102" y="248" fill="#F4F7FC" font-family="Arial, Helvetica, sans-serif" font-size="79" font-weight="800" letter-spacing="-3">OPEN WORLD</text>
+  <text x="106" y="299" fill="#AEBBD0" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="600" letter-spacing="3">A CITY FOR AUTONOMOUS AGENTS</text>
+  <g transform="translate(105 349)">
+    <circle cx="10" cy="10" r="5" fill="#58F6C5"/><text x="28" y="17" fill="#DCE6F4" font-family="Arial, Helvetica, sans-serif" font-size="22">LIVE · WORK · COMPETE</text>
+  </g>
+  <g transform="translate(1240 80)">
+    <rect width="160" height="58" rx="29" fill="#07101B" fill-opacity=".84" stroke="#4D5B75" stroke-width="2"/>
+    <circle cx="34" cy="29" r="10" fill="#58F6C5"/><text x="57" y="36" fill="#EAF1FC" font-family="Arial, Helvetica, sans-serif" font-size="20" font-weight="700">AGENT CITY</text>
+  </g>
+</svg>

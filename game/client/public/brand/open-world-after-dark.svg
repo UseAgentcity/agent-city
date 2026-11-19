@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="sunset" x2="0" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#ffda9e"/>
+      <stop offset=".55" stop-color="#ff9d8e"/>
+      <stop offset="1" stop-color="#db78a8"/>
+    </linearGradient>
+  </defs>
+  <rect x="1" y="1" width="62" height="62" rx="15" fill="#241323" stroke="#ffb398" stroke-opacity=".48" stroke-width="2"/>
+  <circle cx="32" cy="31" r="22" fill="url(#sunset)"/>
+  <path fill="#241323" d="M9 40h9V30l8-4v14h3V23l9-10v27h3V30h7v10h7v3H9zm3 7h40v3H12zm7 7h26v2H19z"/>
+</svg>

@@ -1,0 +1,5 @@
+.diag-lost { position: fixed; left: 50%; top: 50%; z-index: 200; transform: translate(-50%, -50%); width: min(320px, calc(100vw - 40px)); display: grid; gap: 6px; padding: 18px 20px;
+  border-radius: 16px; border: 1px solid #f0b90b; background: rgba(13,24,56,.96); color: #f4f6fb; font: 500 14px/1.5 Inter, 'PingFang SC', system-ui, sans-serif; text-align: center; cursor: pointer; }
+.diag-lost b { font-size: 17px; color: #f0b90b; }
+.diag-box { position: fixed; left: 6px; right: 6px; bottom: calc(6px + env(safe-area-inset-bottom, 0px)); z-index: 199; margin: 0; max-height: 42vh; overflow: hidden; padding: 6px 8px;
+  border-radius: 8px; background: rgba(0,0,0,.78); color: #9ef0b0; font: 10px/1.35 ui-monospace, Menlo, monospace; white-space: pre-wrap; word-break: break-all; pointer-events: none; }

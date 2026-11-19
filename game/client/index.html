@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open World · Times Square Tycoon</title>
+    <link rel="icon" type="image/svg+xml" sizes="any" href="/brand/open-world-after-dark.svg?v=2" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png?v=ow4" />
+    <meta name="theme-color" content="#0a1430" />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+
+    <!-- Landing page: filled in by src/landing (concept, destinations, GitHub connect) -->
+    <section id="title" class="screen"></section>
+
+    <!-- Loading -->
+    <section id="loading" class="screen hidden">
+      <div class="loading-inner">
+        <div class="spinner"></div>
+        <div id="loading-text">Building your city…</div>
+      </div>
+    </section>
+
+    <!-- HUD -->
+    <div id="hud" class="hidden">
+      <div id="hud-location" class="hud-chip"></div>
+      <div id="hud-time" class="hud-chip"></div>
+      <div id="hud-agents" class="hud-chip hidden"></div>
+      <canvas id="minimap" width="220" height="220"></canvas>
+      <div id="prompt" class="prompt hidden"></div>
+      <div id="toasts"></div>
+      <div id="crosshair"></div>
+      <div id="click-to-look" class="hidden">Click the game to look around (or drag)</div>
+    </div>
+
+    <div id="fade"><div class="fade-msg"></div></div>
+    <div id="panel-root"></div>
+    <div id="labels"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

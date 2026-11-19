@@ -1,0 +1,36 @@
+# Dependencies & build
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+game/client/dist/
+.cache/
+**/cache/
+
+# Secrets — never upload
+.env
+.env.*
+!.env.example
+!.env.game.example
+**/*.pem
+**/id_ed25519
+**/id_rsa
+secrets/
+
+# Local / heavy / junk
+.DS_Store
+.backups/
+local/
+*.log
+dev-hall.webm
+contracts/deployments/
+contracts/game-data/
+contracts/private-rounds/
+contracts/submissions/
+contracts/artifacts/
+.gstack
+.claude/
+vite.log
+
+# On-chain records from the earlier city-coin version (not part of the game)
+archive/
