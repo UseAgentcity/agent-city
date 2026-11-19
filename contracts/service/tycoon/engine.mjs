@@ -1,10 +1,18 @@
 // Times Square Tycoon — the business engine. Deterministic and isomorphic (no Node-only imports), so the
 // server, the replay tool and the in-browser trial all compute the same city from the same events.
 //
+// Two currencies:
+//   city coins  — the shop's operating money (stock, daily rent, takings). Free each season, no cash value.
+//   tokens      — the project token. Agents deposit it to lease storefronts, bid for LED screens, upgrade
+//                 their shop and pay a season licence; anyone can bid tokens to sponsor tomorrow's city event.
+//                 Every token spent is split: 80% burned, 20% to the city treasury. Prizes are BNB from the
+//                 token's trading tax, never the tokens players pay in.
+//
 // Input: the season seed and an ordered list of events (from the chain: block, then log index):
-//   { type: 'enter', agent, name }
-//   { type: 'plan', agent, day, actions, memo }
-// Output: the city after `day` resolved days (lots, screens, agents, standings, feed).
+//   { type: 'enter', agent, name, deposit }                 an Agent joins with a token deposit
+//   { type: 'plan', agent, day, actions, memo }             an Agent's plan for a game day
+//   { type: 'sponsor', who, name, day, event, bid }          anyone bids tokens to set `day`'s city event
+// Output: the city after `days` resolved game days.
 
 export const DAYS = 7;
 export const START_CASH = 20000;
@@ -21,9 +29,30 @@ export const CATS = {
   bar: { zh: '酒吧', en: 'Bar', ref: 14, cost: 4.5, elastic: 1.5, base: 640, perishable: true },
   stall: { zh: '集市摊位', en: 'Market stall', ref: 9, cost: 3.2, elastic: 1.3, base: 470, perishable: false },
 };
-/** Foot traffic multiplier and reserve daily rent per lot tier. */
-export const TIERS = { A: { traffic: 1.6, rent: 2300 }, B: { traffic: 1.0, rent: 1600 }, C: { traffic: 0.6, rent: 900 }, S: { traffic: 0.5, rent: 350 } };
-/** One public event per game day, drawn from the season seed. */
+/**
+ * Per lot tier: foot traffic, daily operating rent (city coins) and the token reserve for the season lease.
+ * Market stalls (S) need no tokens: the free way in.
+ */
+export const TIERS = {
+  A: { traffic: 1.6, rent: 2300, lease: 300_000 },
+  B: { traffic: 1.0, rent: 1600, lease: 150_000 },
+  C: { traffic: 0.6, rent: 900, lease: 60_000 },
+  S: { traffic: 0.5, rent: 350, lease: 0 },
+};
+/** Token prices other than auctions. */
+export const TOKEN = {
+  licence: 10_000, // per season, for a storefront (not for market stalls)
+  burnBps: 8000, // of every token spent: 80% burned, the rest to the city treasury
+  sponsorReserve: 50_000, // minimum bid to sponsor a city event
+};
+/** Shop upgrades bought with tokens. Each lasts the season; costs rise with the level, effects stay small. */
+export const UPGRADES = {
+  signage: { zh: '招牌灯箱', en: 'Lit signage', effect: 0.1 }, // +awareness per level
+  decor: { zh: '店面装修', en: 'Interior', effect: 0.05 }, // +reputation now and +cap per level
+  hours: { zh: '延长营业', en: 'Longer hours', effect: 0.08 }, // +share of passers-by per level
+};
+export const UPGRADE_COST = [30_000, 60_000, 120_000];
+/** One public event per game day: drawn from the season seed, unless someone sponsors it. */
 export const EVENTS = [
   { id: 'normal', zh: '平常日', en: 'Ordinary day', mult: {} },
   { id: 'broadway-out', zh: '百老汇散场', en: 'Broadway lets out', mult: { bar: 1.6, dining: 1.3 } },
@@ -37,7 +66,9 @@ export const EVENTS = [
 /** The 12 LED screens on the bowtie: the One Times Square main screen, street screens, side screens. */
 export const SCREENS = Array.from({ length: 12 }, (_, i) => ({ id: i, tier: i === 0 ? 'main' : i < 6 ? 'street' : 'side' }));
 export const SCREEN_BOOST = { main: 0.6, street: 0.35, side: 0.2 };
-export const SCREEN_RESERVE = { main: 1500, street: 700, side: 300 };
+/** Token reserve per screen per day. */
+export const SCREEN_RESERVE = { main: 40_000, street: 15_000, side: 5_000 };
+const SCREEN_WEIGHT = { main: 3, street: 2, side: 1 };
 const OUTSIDE = 1.0; // weight of "not buying here": high prices lose people, not just shift them
 const COBRAND_SHARE = 0.1;
 const DEFAULT_PENALTY = 3000;
@@ -57,7 +88,24 @@ export function rng(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+/** The seed's own event for a day, ignoring sponsors. */
 export const eventOf = (seed, day) => EVENTS[hash32(`${seed}:event:${day}`) % EVENTS.length];
+/** The winning sponsorship for a day, if any: highest bid at or above the reserve, earliest on ties. */
+export function sponsorFor(day, events) {
+  let best = null;
+  for (const e of events) {
+    if (e.type !== 'sponsor' || e.day !== day || !Number.isFinite(e.bid) || e.bid < TOKEN.sponsorReserve) continue;
+    if (!EVENTS.some((x) => x.id === e.event && x.id !== 'normal')) continue;
+    if (!best || e.bid > best.bid) best = e;
+  }
+  return best;
+}
+/** The event a day actually gets: the sponsor's choice, else the seed's draw. */
+export function eventFor(seed, day, events = []) {
+  const s = sponsorFor(day, events);
+  if (!s) return { ...eventOf(seed, day), sponsor: null };
+  return { ...EVENTS.find((x) => x.id === s.event), sponsor: { who: s.who, name: s.name ?? s.who, bid: Math.floor(s.bid) } };
+}
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 const round = (x) => Math.round(x);
@@ -86,20 +134,39 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
   const feed = [];
   const offers = []; // { kind, from, to, ...terms, day, done }
   const loans = []; // active loans
+  const tokens = { licence: 0, lease: 0, ads: 0, upgrades: 0, sponsor: 0 };
+  const dayEvents = [];
   const say = (day, agent, text, extra = {}) => feed.push({ day, agent, text, ...extra });
+  /** Takes tokens from an Agent's deposit; false (and nothing taken) when it can't cover it. */
+  const spend = (a, kind, amount) => {
+    if (amount <= 0) return true;
+    if (a.tokens < amount) return false;
+    a.tokens -= amount;
+    a.spent[kind] += amount;
+    tokens[kind] += amount;
+    return true;
+  };
 
   for (const e of events) {
     if (e.type !== 'enter' || agents.has(e.agent)) continue;
+    const deposit = Math.max(0, Math.floor(Number(e.deposit) || 0));
     agents.set(e.agent, {
       agent: e.agent, name: e.name ?? e.agent, cash: START_CASH, lot: null, rent: 0, price: 'standard', stock: 0,
       inventory: 0, rep: 1, boost: 0, brand: null, memo: '', defaults: 0, evicted: 0, cobrands: new Set(),
-      days: 0, history: [], today: null,
+      days: 0, history: [], today: null, deposit, tokens: deposit,
+      spent: { licence: 0, lease: 0, ads: 0, upgrades: 0 }, licensed: false,
+      upgrades: { signage: 0, decor: 0, hours: 0 }, servedTotal: 0, screenScore: 0, lastCat: null,
     });
   }
   const plansFor = (day) => events.filter((e) => e.type === 'plan' && e.day === day && agents.has(e.agent));
 
   for (let day = 1; day <= Math.min(days, DAYS); day++) {
-    const ev = eventOf(seed, day);
+    const ev = eventFor(seed, day, events);
+    dayEvents.push({ day, id: ev.id, sponsor: ev.sponsor });
+    if (ev.sponsor) {
+      tokens.sponsor += ev.sponsor.bid;
+      say(day, ev.sponsor.who, `${ev.sponsor.name} 出 ${ev.sponsor.bid.toLocaleString('en-US')} 代币，把今天变成「${ev.zh}」`, { kind: 'sponsor', event: ev.id });
+    }
     const plans = plansFor(day);
     const seen = new Set();
     const bids = []; // ad bids for tomorrow
@@ -119,6 +186,7 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
       a.memo = String(p.memo ?? '').slice(0, 80);
       a.promo = act.promo === true;
       a.lease = Array.isArray(act.lease) ? act.lease.slice(0, MAX_LEASE_PICKS) : [];
+      a.upgrade = act.upgrade in UPGRADES ? act.upgrade : null;
       const ad = act.ad && Number.isInteger(act.ad.screen) && screens[act.ad.screen] ? cleanAd(act.ad) : null;
       if (ad && Number.isFinite(act.ad.bid)) bids.push({ agent: a, screen: act.ad.screen, bid: Math.floor(act.ad.bid), ad });
       for (const d of Array.isArray(act.deals) ? act.deals.slice(0, 4) : []) {
@@ -134,7 +202,7 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
       if (a.memo) say(day, a.agent, a.memo, { kind: 'memo' });
     }
 
-    // 2. Leases. Day 1: sealed bids, best lots first. Later days: free lots at reserve, first come.
+    // 2. Leases, bid in tokens. Day 1: sealed bids, best lots first. Later days: free lots at the reserve.
     if (day === 1) {
       const order = [...lots].sort((x, y) => TIERS[y.tier].traffic - TIERS[x.tier].traffic);
       for (const lot of order) {
@@ -144,7 +212,7 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
           if (a.lot) continue;
           const pick = a.lease.find((x) => x?.lot === lot.id);
           const bid = Math.floor(pick?.bid ?? 0);
-          if (!pick || bid < TIERS[lot.tier].rent) continue;
+          if (!pick || bid < TIERS[lot.tier].lease || bid + licenceFor(a, lot) > a.tokens) continue;
           if (!best || bid > best.bid) best = { a, bid };
         }
         if (best) lease(best.a, lot, best.bid, day);
@@ -155,12 +223,27 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
         if (a.lot) continue;
         for (const pick of a.lease) {
           const lot = lotById.get(pick?.lot);
-          if (lot && !lotOwner.has(lot.id)) { lease(a, lot, TIERS[lot.tier].rent, day); break; }
+          if (!lot || lotOwner.has(lot.id) || TIERS[lot.tier].lease + licenceFor(a, lot) > a.tokens) continue;
+          lease(a, lot, TIERS[lot.tier].lease, day);
+          break;
         }
       }
     }
 
-    // 3. Stock for today, bought before the doors open.
+    // 3. Upgrades, paid in tokens.
+    for (const p of plans) {
+      const a = agents.get(p.agent);
+      if (!a.lot || !a.upgrade || lotById.get(a.lot).tier === 'S') continue;
+      const level = a.upgrades[a.upgrade];
+      if (level >= UPGRADE_COST.length) continue;
+      if (!spend(a, 'upgrades', UPGRADE_COST[level])) { say(day, a.agent, `代币不够，${UPGRADES[a.upgrade].zh}没做成`, { kind: 'short' }); continue; }
+      a.upgrades[a.upgrade] = level + 1;
+      if (a.upgrade === 'decor') a.rep = clamp(a.rep + UPGRADES.decor.effect, 0.6, repCap(a));
+      say(day, a.agent, `升级${UPGRADES[a.upgrade].zh}到 ${level + 1} 级（${UPGRADE_COST[level].toLocaleString('en-US')} 代币）`, { kind: 'upgrade' });
+      a.upgrade = null;
+    }
+
+    // 4. Stock for today, bought with city coins before the doors open.
     for (const a of agents.values()) {
       a.today = { event: ev.id, customers: 0, served: 0, revenue: 0, cost: 0, rent: 0, ad: 0, waste: 0 };
       if (!a.lot) continue;
@@ -173,7 +256,7 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
       a.inventory = (cat.perishable ? 0 : a.inventory) + units;
     }
 
-    // 4. Customers, trade by trade.
+    // 5. Customers, trade by trade.
     for (const catId of Object.keys(CATS)) {
       const open = [...agents.values()].filter((a) => a.lot && lotById.get(a.lot).cat === catId);
       if (!open.length) continue;
@@ -182,7 +265,9 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
       const attract = open.map((a) => {
         const lot = lotById.get(a.lot);
         const level = PRICE_LEVELS[a.price];
-        return TIERS[lot.tier].traffic * (1 + a.boost) * a.rep * (1 / level) ** cat.elastic * (a.promo ? 1.25 : 1);
+        const awareness = 1 + a.boost + UPGRADES.signage.effect * a.upgrades.signage;
+        const hours = 1 + UPGRADES.hours.effect * a.upgrades.hours;
+        return TIERS[lot.tier].traffic * awareness * hours * a.rep * (1 / level) ** cat.elastic * (a.promo ? 1.25 : 1);
       });
       const total = attract.reduce((s, x) => s + x, 0) + OUTSIDE;
       open.forEach((a, i) => { a.today.customers = round(demand * attract[i] / total); });
@@ -205,26 +290,28 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
       a.today.revenue = round(served * price);
       a.cash += a.today.revenue;
       a.inventory -= served;
+      a.servedTotal += served;
+      a.lastCat = lot.cat;
       if (cat.perishable) { a.today.waste = a.inventory; a.inventory = 0; }
       const fill = customers ? served / customers : 1;
-      a.rep = clamp(a.rep + 0.1 * (fill - 0.92) - 0.03 * (PRICE_LEVELS[a.price] - 1), 0.6, 1.4);
+      a.rep = clamp(a.rep + 0.1 * (fill - 0.92) - 0.03 * (PRICE_LEVELS[a.price] - 1), 0.6, repCap(a));
       a.days++;
     }
 
-    // 5. Rent; a shop that cannot pay is evicted.
+    // 6. Daily operating rent in city coins; a shop that cannot pay is evicted (its token lease is lost).
     for (const a of agents.values()) {
       if (!a.lot) continue;
       a.today.rent = a.rent;
       a.cash -= a.rent;
       if (a.cash < 0) {
-        say(day, a.agent, '付不起租金，店面被收回', { kind: 'evicted', lot: a.lot });
+        say(day, a.agent, '付不起日常租金，店面被收回', { kind: 'evicted', lot: a.lot });
         lotOwner.delete(a.lot);
         a.lot = null; a.rent = 0; a.inventory = 0; a.evicted++;
         a.cash = Math.max(a.cash, 0);
       }
     }
 
-    // 6. Loans that fall due today.
+    // 7. Loans that fall due today (city coins).
     for (const l of loans) {
       if (l.paid || l.due !== day) continue;
       const borrower = agents.get(l.to), lender = agents.get(l.from);
@@ -237,29 +324,36 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
       } else say(day, borrower.agent, `按时还款 ${owe} 给 ${lender.name}`, { kind: 'repaid', with: lender.agent });
     }
 
-    // 7. Screen auction: today's highest bid per screen shows tomorrow and lifts that shop's awareness.
+    // 8. Screen auction in tokens: today's highest bid per screen shows tomorrow and lifts that shop's awareness.
     for (const a of agents.values()) a.boost *= 0.5;
     for (const s of screens) { s.ad = null; s.owner = null; s.paid = 0; }
     const won = new Set();
     for (const s of screens) {
       const reserve = SCREEN_RESERVE[s.tier];
-      const best = bids.filter((b) => b.screen === s.id && !won.has(b.agent.agent) && b.bid >= reserve && b.bid <= b.agent.cash)
+      const best = bids.filter((b) => b.screen === s.id && !won.has(b.agent.agent) && b.bid >= reserve && b.bid <= b.agent.tokens)
         .reduce((x, b) => (!x || b.bid > x.bid ? b : x), null);
       if (!best) continue;
       won.add(best.agent.agent);
-      best.agent.cash -= best.bid;
+      spend(best.agent, 'ads', best.bid);
       best.agent.today.ad = best.bid;
       best.agent.boost += SCREEN_BOOST[s.tier];
+      best.agent.screenScore += SCREEN_WEIGHT[s.tier];
       Object.assign(s, { ad: best.ad, owner: best.agent.agent, paid: best.bid });
-      say(day, best.agent.agent, `拿下 ${s.tier === 'main' ? '主屏' : s.tier === 'street' ? '沿街大屏' : '侧屏'}：「${best.ad.title}」`, { kind: 'screen', screen: s.id });
+      say(day, best.agent.agent, `${best.bid.toLocaleString('en-US')} 代币拿下${s.tier === 'main' ? '主屏' : s.tier === 'street' ? '沿街大屏' : '侧屏'}：「${best.ad.title}」`, { kind: 'screen', screen: s.id });
     }
     for (const a of agents.values()) a.history.push({ day, ...a.today, cash: a.cash, price: a.price, rep: +a.rep.toFixed(2) });
   }
 
-  function lease(a, lot, rent, day) {
-    a.lot = lot.id; a.rent = rent; a.inventory = 0;
+  function repCap(a) { return 1.4 + UPGRADES.decor.effect * a.upgrades.decor; }
+  function licenceFor(a, lot) { return lot.tier === 'S' || a.licensed ? 0 : TOKEN.licence; }
+  function lease(a, lot, bid, day) {
+    const licence = licenceFor(a, lot);
+    if (!spend(a, 'licence', licence) || !spend(a, 'lease', bid)) return;
+    if (licence) a.licensed = true;
+    a.lot = lot.id; a.rent = TIERS[lot.tier].rent; a.inventory = 0;
     lotOwner.set(lot.id, a.agent);
-    say(day, a.agent, `租下${CATS[lot.cat].zh}店面 ${lot.id}，日租 ${rent}`, { kind: 'lease', lot: lot.id });
+    const paid = bid + licence;
+    say(day, a.agent, paid ? `用 ${paid.toLocaleString('en-US')} 代币租下${CATS[lot.cat].zh}店面 ${lot.id}` : `免费摆摊：${lot.id}`, { kind: 'lease', lot: lot.id });
   }
   function settleOffer(o, taker, day) {
     const from = agents.get(o.from);
@@ -282,24 +376,55 @@ export function runSeason({ seed, lots, events, days = DAYS }) {
     o.done = true;
   }
 
-  // Standings: profit counts what is owed and owed to you.
+  // Standings. Profit counts what is owed and owed to you; the season score blends profit, trade and
+  // reputation so tokens buy position and attention, never the rank itself.
   const owed = new Map();
   for (const l of loans) if (!l.paid) {
     const v = round(l.amount * (1 + l.rate));
     owed.set(l.to, (owed.get(l.to) ?? 0) - v);
     owed.set(l.from, (owed.get(l.from) ?? 0) + v);
   }
-  const list = [...agents.values()].map((a) => ({
-    agent: a.agent, name: a.name, lot: a.lot, cash: a.cash, profit: a.cash + (owed.get(a.agent) ?? 0) - START_CASH - a.defaults * DEFAULT_PENALTY,
-    rep: +a.rep.toFixed(2), boost: +a.boost.toFixed(2), price: a.price, inventory: a.inventory, brand: a.brand, memo: a.memo,
-    defaults: a.defaults, evicted: a.evicted, daysOpen: a.days, cobrands: [...a.cobrands], today: a.today, history: a.history,
-  })).sort((x, y) => y.profit - x.profit);
+  const list = [...agents.values()].map((a) => {
+    const spent = Object.values(a.spent).reduce((s, x) => s + x, 0);
+    return {
+      agent: a.agent, name: a.name, lot: a.lot, cash: a.cash, profit: a.cash + (owed.get(a.agent) ?? 0) - START_CASH - a.defaults * DEFAULT_PENALTY,
+      rep: +a.rep.toFixed(2), boost: +a.boost.toFixed(2), price: a.price, inventory: a.inventory, brand: a.brand, memo: a.memo,
+      defaults: a.defaults, evicted: a.evicted, daysOpen: a.days, cobrands: [...a.cobrands], today: a.today, history: a.history,
+      deposit: a.deposit, tokens: a.tokens, tokensSpent: spent, spent: { ...a.spent }, upgrades: { ...a.upgrades },
+      servedTotal: a.servedTotal, screenScore: a.screenScore, cat: a.lastCat, score: 0, scoreParts: null, bestAd: false,
+    };
+  });
+  const maxProfit = Math.max(0, ...list.map((s) => s.profit));
+  const maxServed = new Map(), maxCatProfit = new Map();
+  for (const s of list) if (s.cat) {
+    maxServed.set(s.cat, Math.max(maxServed.get(s.cat) ?? 0, s.servedTotal));
+    maxCatProfit.set(s.cat, Math.max(maxCatProfit.get(s.cat) ?? 0, s.profit));
+  }
+  // Profit counts half against the whole city and half against the same trade, so a souvenir shop and
+  // a theatre can both win: theatres take more per head, coffee shops serve more heads.
+  const rel = (v, max) => (max > 0 ? clamp((100 * v) / max, -50, 100) : 0);
+  for (const s of list) {
+    const profit = 0.5 * rel(s.profit, maxProfit) + 0.5 * rel(s.profit, s.cat ? maxCatProfit.get(s.cat) ?? 0 : 0);
+    const traffic = s.cat && maxServed.get(s.cat) ? (100 * s.servedTotal) / maxServed.get(s.cat) : 0;
+    const rep = clamp((100 * (s.rep - 0.6)) / 0.8, 0, 100);
+    s.scoreParts = { profit: round(profit), traffic: round(traffic), rep: round(rep) };
+    s.score = s.daysOpen ? round(0.5 * profit + 0.3 * traffic + 0.2 * rep) : 0;
+  }
+  const bestAd = list.filter((s) => s.screenScore > 0).sort((x, y) => y.screenScore - x.screenScore || y.spent.ads - x.spent.ads)[0];
+  if (bestAd) bestAd.bestAd = true;
+  list.sort((x, y) => y.score - x.score || y.profit - x.profit);
+
+  const total = Object.values(tokens).reduce((s, x) => s + x, 0);
+  const burned = Math.floor((total * TOKEN.burnBps) / 10000);
   const resolved = Math.min(days, DAYS);
   return {
-    seed, day: resolved, event: resolved ? eventOf(seed, resolved) : null, nextEvent: resolved < DAYS ? eventOf(seed, resolved + 1) : null,
-    lots: lots.map((l) => ({ ...l, owner: lotOwner.get(l.id) ?? null, reserve: TIERS[l.tier].rent })),
+    seed, day: resolved,
+    event: resolved ? dayEvents[resolved - 1] : null,
+    days: dayEvents,
+    lots: lots.map((l) => ({ ...l, owner: lotOwner.get(l.id) ?? null, reserve: TIERS[l.tier].rent, leaseReserve: TIERS[l.tier].lease })),
     screens, standings: list, feed: feed.slice(-120),
     openOffers: offers.filter((o) => !o.done).map(({ done, ...o }) => o),
+    tokens: { spent: tokens, total, burned, treasury: total - burned, deposits: list.reduce((s, x) => s + x.deposit, 0) },
   };
 }
 

@@ -49,7 +49,7 @@ import { openCityGuide } from './ui/frontDesk.ts';
 import { openReview } from './ui/review.ts';
 import { installSettings, toggleSettings } from './ui/settings.ts';
 import { keymap } from './keymap.ts';
-import { catName, districtName, eventName, installTycoon, lotTitle, onTycoon, poolLine, seasonLine, shopOf, tycoon, type Lot } from './ui/tycoon.ts';
+import { burnLine, catName, districtName, eventName, installTycoon, lotTitle, onTycoon, poolLine, seasonLine, shopOf, tycoon, type Lot } from './ui/tycoon.ts';
 import { installTycoonWorld, lotByBuildingName, lotFrontOf, lotNear } from './ui/tycoonWorld.ts';
 import { installTileWarn } from './ui/tileWarn.ts';
 import { localizeCanvas, localizeDocument, t, tr } from './i18n.ts';
@@ -694,7 +694,7 @@ async function start(where: CityId | GeoPlace) {
   tyHud.className = 'ty-hud';
   tyHud.addEventListener('click', () => phone.open('ranking'));
   $('hud').appendChild(tyHud);
-  const tyHudText = () => `<b>${esc(seasonLine())}</b><span>${esc(t('今日', 'Today'))} · ${esc(eventName(tycoon()?.event))}</span><span>${esc(poolLine())}</span>`;
+  const tyHudText = () => `<b>${esc(seasonLine())}</b><span>${esc(t('今日', 'Today'))} · ${esc(eventName(tycoon()?.event))}${tycoon()?.event?.sponsor ? esc(t('（赞助）', ' (sponsored)')) : ''}</span><span>🔥 ${esc(burnLine())} · ${esc(poolLine())}</span>`;
   const startVehicle = player.vehicle;
   let phoneSeen = false;
   const guideState = () => {

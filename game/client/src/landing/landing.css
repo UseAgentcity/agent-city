@@ -41,13 +41,13 @@
 .lp-gh.flash { animation: lp-flash 1s ease 2; }
 @keyframes lp-flash { 50% { border-color: var(--lp-gold); box-shadow: 0 0 0 4px rgba(20, 241, 149, .3); } }
 
-/* ---- hero: a still from the Times Square tower, framed right of centre, copy on a navy fade at the left */
+/* Keep the storefront and sidewalk queue visible beside the title. */
 .lp-hero { position: relative; min-height: max(620px, 100svh); display: flex; align-items: center; isolation: isolate; overflow: hidden; background: var(--lp-navy); }
 .lp-hero-media { position: absolute; inset: 0; z-index: -2; overflow: hidden; }
-.lp-hero-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 66% 48%; }
+.lp-hero-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 70% 50%; }
 .lp-hero::before { content: ''; position: absolute; inset: 0; z-index: -1;
   background:
-    linear-gradient(90deg, rgba(8, 15, 27, .68), rgba(8, 15, 27, .31) 39%, transparent 64%),
+    linear-gradient(90deg, rgba(7, 13, 27, .82), rgba(7, 13, 27, .48) 34%, transparent 61%),
     linear-gradient(180deg, rgba(21, 10, 28, .48), transparent 21%, transparent 81%, var(--lp-navy)); }
 .lp-hero #play { background: #f6c18d; color: #201822; font-weight: 800; }
 .lp-hero #play:hover { background: #ffdab9; }
@@ -294,8 +294,8 @@
   .lp-language button { min-height: 36px; padding: 8px 10px; white-space: nowrap; }
   .lp-language > span, .lp-navset span, .lp-navlink:not(.lp-navset):not(.lp-navx) { display: none; }
   .lp-hero { min-height: max(690px, 100svh); align-items: flex-end; }
-  .lp-hero-media { bottom: auto; height: 67%; mask-image: linear-gradient(#000 67%, transparent); }
-  .lp-hero-poster { object-position: 67% 38%; }
+  .lp-hero-media { inset: 0 0 auto; height: 67%; mask-image: linear-gradient(#000 67%, transparent); }
+  .lp-hero-poster { object-position: 68% 50%; }
   .lp-hero::before { background: linear-gradient(180deg, rgba(24, 11, 30, .45), transparent 19%, transparent 32%, rgba(24, 11, 30, .72) 58%, var(--lp-navy) 99%); }
   .lp-hero-copy { padding: 280px var(--lp-gut) 46px; }
   .lp-hero h1 { font-size: clamp(49px, 12vw, 77px); }
@@ -336,10 +336,8 @@
 .lp-repos:empty { display: none; }
 
 .lp-hero h1 { font-size: clamp(56px, 6.3vw, 102px); }
-.lp-hero-poster { object-position: 70% 50%; }
 @media (max-width: 700px) {
   .lp-hero h1 { font-size: clamp(39px, 10.4vw, 69px); }
-  .lp-hero-poster { object-position: 65% 44%; }
 }
 .lp-live { margin: 10px 0 0; font-size: 14px; color: #f0b90b; font-weight: 600; min-height: 1.4em; }
 .lp-risk { font-size: 12px; opacity: .7; }

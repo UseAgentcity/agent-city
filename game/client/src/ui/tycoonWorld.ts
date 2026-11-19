@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import { Crowd } from '../earth/crowd.ts';
 import type { EarthApi } from '../earth/index.ts';
 import { rawCanvases, t } from '../i18n.ts';
-import { catName, coins, onTycoon, priceName, shopOf, tierName, tycoon, type Lot } from './tycoon.ts';
+import { catName, coins, onTycoon, priceName, shopOf, tierName, tokensShort, tycoon, type Lot } from './tycoon.ts';
 
 /** A lot's door on the street: the point, the outward normal and the wall tangent (world x/z). */
 export interface LotFront { x: number; z: number; nx: number; nz: number; tx: number; tz: number; wall: number; /** The building's own map name, which the game shows as the Agent's shop instead. */ poi?: string }
@@ -86,7 +86,7 @@ function drawSign(c: HTMLCanvasElement, lot: Lot) {
     fit(g, t('招租 · FOR LEASE', 'FOR LEASE'), 900, 96, SIGN_W - 80);
     g.fillText(t('招租 · FOR LEASE', 'FOR LEASE'), SIGN_W / 2, 104);
     g.fillStyle = '#c9d1dc';
-    const sub = t(`${catName(lot.cat)} · 日租 ${coins(lot.reserve)} 起 · 派你的 Agent 来开店`, `${catName(lot.cat)} · from ${coins(lot.reserve)}/day · send your Agent`);
+    const sub = t(`${catName(lot.cat)} · ${lot.leaseReserve ? `租约 ${tokensShort(lot.leaseReserve)} 代币起` : '免费摆摊'} · 派你的 Agent 来开店`, `${catName(lot.cat)} · ${lot.leaseReserve ? `lease from ${tokensShort(lot.leaseReserve)} tokens` : 'free stall'} · send your Agent`);
     fit(g, sub, 600, 40, SIGN_W - 80);
     g.fillText(sub, SIGN_W / 2, 190);
     return;
@@ -146,7 +146,7 @@ function drawTotem(c: HTMLCanvasElement, lot: Lot) {
     g.font = `900 ${t('80px', '120px')} ${FONT}`; g.fillText(t('FOR LEASE', 'LEASE'), TOTEM_W / 2, 470);
     g.fillStyle = '#c9d1dc'; g.font = `600 36px ${FONT}`;
     g.fillText(tierName(lot.tier), TOTEM_W / 2, 600);
-    g.fillText(t(`日租 ${coins(lot.reserve)} 起`, `from ${coins(lot.reserve)}/day`), TOTEM_W / 2, 656);
+    g.fillText(lot.leaseReserve ? t(`租约 ${tokensShort(lot.leaseReserve)} 代币起`, `lease from ${tokensShort(lot.leaseReserve)} tokens`) : t('免费摆摊', 'free stall'), TOTEM_W / 2, 656);
     g.strokeStyle = 'rgba(240,185,11,.6)'; g.lineWidth = 4; g.setLineDash([18, 12]); g.strokeRect(36, 740, TOTEM_W - 72, 200); g.setLineDash([]);
     g.fillStyle = '#f4f1e8'; g.font = `700 38px ${FONT}`;
     g.fillText(t('派你的 Agent', 'Send your Agent'), TOTEM_W / 2, 812);
@@ -181,7 +181,7 @@ function drawTotem(c: HTMLCanvasElement, lot: Lot) {
     g.fillStyle = '#f4f1e8'; g.fillText(label, x, 790);
   };
   chip(TOTEM_W * 0.3, priceName(shop.price));
-  chip(TOTEM_W * 0.7, `★ ${shop.rep.toFixed(2)}`);
+  chip(TOTEM_W * 0.7, t(`综合 ${shop.score}`, `Score ${shop.score}`));
   // Owner.
   g.fillStyle = color; g.font = `700 34px ${FONT}`; g.fillText(shop.name, TOTEM_W / 2, 900, TOTEM_W - 60);
   g.fillStyle = '#5b6170'; g.font = `600 24px ${FONT}`; g.fillText(t('由 Agent 经营', 'Run by an Agent'), TOTEM_W / 2, 950);

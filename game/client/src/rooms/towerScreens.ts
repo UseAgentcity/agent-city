@@ -1,7 +1,7 @@
 // Screens inside the Agent Tower: floor banners, wall screens and the workstations, one per Agent shop.
 // Everything drawn comes from the public city snapshot, or says it isn't there yet (an empty seat).
 import { rawCanvases, t } from '../i18n.ts';
-import { catName, coins, districtName, eventName, lotOf, poolLine, screenName, seasonLine, shopOf, tycoon, type DistrictId, type Shop } from '../ui/tycoon.ts';
+import { burnLine, catName, coins, districtName, eventName, lotOf, poolLine, screenName, seasonLine, shopOf, tokensShort, tycoon, type DistrictId, type Shop } from '../ui/tycoon.ts';
 
 const GOLD = '#f0b90b', INK = '#f4f1e8', DIM = '#8d96a5', TEAL = '#2ee6c9', RED = '#f6465d', GREEN = '#2ebd85';
 const FONT = 'Inter, "PingFang SC", "Microsoft YaHei", Arial, sans-serif';
@@ -33,7 +33,7 @@ export function drawShopSeat(c: HTMLCanvasElement, shop: Shop | null, name: stri
   const state = !shop ? t('等待数据', 'Waiting for data') : lot ? `${catName(lot.cat)} · ${districtName(lot.district)}` : t('未开店', 'No shop');
   g.textAlign = 'right'; font(g, 700, 16); g.fillStyle = TEAL; g.fillText(fit(g, state, W * 0.36), W - 12, 24);
   const stats: [string, string][] = [
-    [t('利润', 'Profit'), shop ? coins(shop.profit) : '—'],
+    [t('综合分', 'Score'), shop ? String(shop.score) : '—'],
     [t('昨日成交', 'Served'), shop?.today ? String(shop.today.served) : '—'],
     [t('口碑', 'Rep'), shop ? shop.rep.toFixed(2) : '—'],
   ];
@@ -110,7 +110,7 @@ export function drawTycoonScreen(c: HTMLCanvasElement, view: TycoonView = 'stand
   if (view === 'standings') {
     city.standings.slice(0, 8).forEach((s, i) => {
       const lot = lotOf(s.lot);
-      row(250 + i * 86, `${i + 1}. ${s.brand?.name ?? s.name}${s.demo ? t(' · 演示', ' · demo') : ''}`, lot ? `${catName(lot.cat)} · ${districtName(lot.district)}` : t('未开店', 'no shop'), coins(s.profit), i === 0 ? GOLD : INK);
+      row(250 + i * 86, `${i + 1}. ${s.brand?.name ?? s.name}${s.demo ? t(' · 演示', ' · demo') : ''}`, `${lot ? `${catName(lot.cat)} · ` : ''}${t(`利润 ${coins(s.profit)}`, `profit ${coins(s.profit)}`)}`, String(s.score), i === 0 ? GOLD : INK);
     });
   } else if (view === 'districts') {
     (Object.keys(city.districts) as DistrictId[]).forEach((d, i) => {
@@ -124,17 +124,19 @@ export function drawTycoonScreen(c: HTMLCanvasElement, view: TycoonView = 'stand
   } else if (view === 'screens') {
     city.screens.slice(0, 8).forEach((s, i) => {
       const shop = shopOf(s.owner);
-      row(250 + i * 86, s.ad?.title ?? t('等待竞拍', 'Up for auction'), `${screenName(s.tier)} #${s.id + 1}${shop ? ` · ${shop.brand?.name ?? shop.name}` : ''}`, shop ? coins(s.paid) : '—', shop ? TEAL : DIM);
+      row(250 + i * 86, s.ad?.title ?? t('等待竞拍', 'Up for auction'), `${screenName(s.tier)} #${s.id + 1}${shop ? ` · ${shop.brand?.name ?? shop.name}` : ''}`, shop ? tokensShort(s.paid) : '—', shop ? TEAL : DIM);
     });
   } else {
-    font(g, 800, 96); g.fillStyle = GOLD; g.fillText(fit(g, poolLine(city), W - 120), 60, 330);
-    font(g, 500, 32); g.fillStyle = INK;
+    font(g, 800, 80); g.fillStyle = GOLD; g.fillText(fit(g, poolLine(city), W - 120), 60, 300);
+    font(g, 800, 64); g.fillStyle = '#ff7a59'; g.fillText(fit(g, `🔥 ${burnLine(city)}`, W - 120), 60, 400);
+    font(g, 500, 30); g.fillStyle = INK;
     const lines = [
-      t('奖池来自项目代币 2% 交易税（扣除 Flap 平台费），只用于 Agent 奖励。', 'The pool is the project token’s 2% trading tax (after Flap’s fee), for Agent awards only.'),
-      t('每季发奖池余额的 10%：营业满 5 天、无违约的店，按利润排名前 30%。', 'Each season pays 10% of the pool to the top 30% by profit (5+ days open, no default).'),
-      t('Agent 用自己的钱包领取。城市币没有现金价值，奖励不保证。', 'Agents claim in their own wallet. City coins have no cash value; awards are not guaranteed.'),
+      t(`本季城里花掉 ${tokensShort(city.tokenEconomy.total)} 代币：80% 销毁，20%（${tokensShort(city.tokenEconomy.treasury)}）进城市金库。`, `${tokensShort(city.tokenEconomy.total)} tokens spent this season: 80% burned, 20% (${tokensShort(city.tokenEconomy.treasury)}) to the city treasury.`),
+      t('BNB 奖池只来自项目代币 2% 交易税，不来自玩家花掉的代币。', 'The BNB pool comes only from the token’s 2% trading tax, never from tokens players spend.'),
+      t('每季发奖池余额的 10%，按综合经营分排名前 30%；Agent 用自己的钱包领取。', 'Each season pays 10% of the pool to the top 30% by season score; Agents claim in their own wallet.'),
+      t('城市币没有现金价值，奖励不保证，这不是投资建议。', 'City coins have no cash value; awards are not guaranteed; not investment advice.'),
     ];
-    lines.forEach((l, i) => g.fillText(fit(g, l, W - 120), 60, 450 + i * 60));
+    lines.forEach((l, i) => g.fillText(fit(g, l, W - 120), 60, 500 + i * 56));
   }
   font(g, 500, 22); g.fillStyle = 'rgba(141,150,165,.85)';
   g.fillText(t('数据：城市公开快照 /api/arena/tycoon · 社区项目，非币安官方', 'Data: public city snapshot /api/arena/tycoon · community project, not official Binance'), 60, H - 30);

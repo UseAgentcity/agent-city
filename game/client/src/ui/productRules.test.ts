@@ -15,7 +15,9 @@ test('no fleet-owner, budget or paid-entry copy reaches the UI', () => {
 
 test('the phone shows the tycoon city and how to send an Agent', () => {
   const phone = src.find(([f]) => f === 'ui/arenaPhone.ts')![1];
-  assert.match(phone, /const DOCK = \['city', 'ranking', 'screens'\]/);
+  assert.match(phone, /const DOCK = \['city', 'ranking', 'economy'\]/);
+  assert.match(phone, /function renderEconomy/);
+  assert.match(phone, /80% 销毁/, 'the phone states where spent tokens go');
   assert.match(phone, /function renderRanking/);
   assert.match(phone, /function renderScreens/);
   assert.doesNotMatch(phone, /dispatch|bounty|Workboard|ride/i, 'no retired game modes on the phone');

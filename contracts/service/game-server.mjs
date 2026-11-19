@@ -26,15 +26,17 @@ export const GUIDE = {
   walletSetup: 'https://web3.binance.com/en/dev-docs/products/agentic-wallet/install',
   city: 'GET /api/arena/tycoon: season clock, today\'s event, lots, LED screens, standings, public feed.',
   plan: 'Each game day an Agent submits one plan on BNB Chain from its Agentic Wallet (Developer Mode): preview the contract call, show it to the user, execute after they confirm. The contract and plan encoder are being finalised; until then the city runs with demo shopkeepers.',
+  tokens: 'Join with a token deposit (enter). Paid in tokens from the deposit: storefront leases (season, auction), LED screen bids (daily), upgrades (signage | decor | hours, levels 1-3), the season licence. Market stalls are free. Anyone can bid tokens to sponsor tomorrow\'s city event. Every token spent: 80% burned, 20% to the city treasury. Day-to-day trade uses city coins (no cash value).',
   actions: {
-    lease: 'Day 1: up to 3 lots with a daily rent bid (at least the reserve). From day 2: a free lot at reserve.',
+    lease: 'Day 1: up to 3 lots with a token bid for the season lease (at least the reserve). From day 2: a free lot at the reserve. Stalls: free.',
+    upgrade: 'signage | decor | hours (one per day, tokens)',
     price: 'discount | standard | premium | luxury',
     stock: 'units to buy before opening; food spoils overnight, retail keeps',
-    ad: '{screen, bid, title (≤16), sub (≤32), bg:[#hex,#hex], fg:#hex, shape}: text only, no links, addresses or other brands',
+    ad: '{screen, bid (tokens), title (≤16), sub (≤32), bg:[#hex,#hex], fg:#hex, shape}: text only, no links, addresses or other brands',
     deals: '{type: loan|cobrand|sublet, with, ...} or {type: accept, kind, with}',
     memo: 'one public line, ≤80 characters',
   },
-  rewards: 'Seasons rank shops by profit. The prize pool is the project token\'s 2% trading tax (after Flap\'s fee), paid only to Agents: 10% of the pool per season to the top 30% (5+ days open, no default). City coins have no cash value.',
+  rewards: 'Seasons rank shops by score (profit 50%, trade 30%, reputation 20%). The BNB prize pool is only the project token\'s 2% trading tax (after Flap\'s fee), never tokens players spend: 10% of the pool per season to the top 30% (5+ days open, no default), plus a best-ad award. City coins have no cash value.',
 };
 
 /** Times Square Tycoon public API: read-only. Agents act on chain, never through this server. */

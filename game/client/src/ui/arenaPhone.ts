@@ -6,8 +6,8 @@ import './phonePolish.css';
 import { arenaAppOf, type ArenaApp } from './arenaApps.ts';
 import { X_HANDLE, X_ICON, X_URL } from '../social.ts';
 import {
-  catName, coins, districtName, eventName, lotOf, lotTitle, poolLine, priceName, screenName, seasonLine, serverNow, shopOf,
-  tierName, tycoon, tycoonBrief, tycoonError, tycoonRevision, type DistrictId, type Lot, type Shop,
+  burnLine, catName, coins, districtName, eventName, eventNameById, lotOf, lotTitle, poolLine, priceName, screenName, seasonLine, serverNow, shopOf,
+  tierName, tokensLabel, tokensShort, tycoon, tycoonBrief, tycoonError, tycoonRevision, upgradeName, type DistrictId, type Lot, type Shop, type UpgradeId,
 } from './tycoon.ts';
 import './phoneTheme.css';
 
@@ -31,6 +31,7 @@ const ICONS = {
   back: svg('<path d="M15 5l-7 7 7 7"/>'),
   info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>'),
   pin: svg('<path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/>'),
+  flame: svg('<path d="M12 22c4 0 7-3 7-7 0-4-3-6-4-9-1 2-2 3-3 3 0-2-1-4-3-6 0 4-4 6-4 12 0 4 3 7 7 7z"/>'),
 };
 
 const fine = (items: string[], title = t('规则与说明', 'Rules & notes')) =>
@@ -41,8 +42,14 @@ const demoTag = (s: Shop | null) => (s?.demo ? ` <em class="ar-tag">${t('演示'
 const swatch = (color: string | undefined) => `<i class="ty-swatch" style="background:${esc(color ?? '#555')}"></i>`;
 
 const REWARD_NOTE = () => t(
-  '奖池来自项目代币的 2% 交易税（扣除 Flap 平台费），全部用于 Agent 奖励。每季按利润排名，从奖池余额里发 10%，由 Agent 自己领取。城市币没有现金价值。代币未发行前，只排名、不发奖。',
-  'The prize pool is the project token’s 2% trading tax (after Flap’s fee), used only for Agent awards. Each season ranks shops by profit and pays out 10% of the pool, claimed by the Agent. City coins have no cash value. Until the token launches, seasons rank but pay nothing.');
+  'BNB 奖池只来自项目代币的 2% 交易税（扣除 Flap 平台费），不来自玩家花掉的代币。每季发奖池余额的 10%，按综合经营分排名，由 Agent 自己领取。城市币没有现金价值。代币未发行前只排名、不发奖。',
+  'The BNB prize pool comes only from the project token’s 2% trading tax (after Flap’s fee), never from tokens players spend. Each season pays out 10% of the pool by season score, claimed by the Agent. City coins have no cash value. Until the token launches, seasons rank but pay nothing.');
+const SCORE_NOTE = () => t(
+  '综合经营分 = 利润 50%（一半比全城、一半比同业态）+ 成交量 30%（比同业态最好的店）+ 口碑 20%。花多少代币不直接计分。',
+  'Season score = profit 50% (half against the city, half against the same trade) + trade 30% (against the best shop in the trade) + reputation 20%. Tokens spent do not count directly.');
+const BURN_NOTE = () => t(
+  '城里花掉的每一枚代币：80% 销毁，20% 进城市金库（只用于开新街区、办活动、补贴免费摊位，账目链上公开）。',
+  'Every token spent in the city: 80% burned, 20% to the city treasury (only for new districts, events and free stalls; on-chain records).');
 const ONLY_AGENTS = () => t(
   '只有持有币安 Agent ID（name.ai）的 Agent 能开店、参与排名和领奖。人可以随便逛、随便看。',
   'Only an Agent with a Binance Agent ID (name.ai) can run a shop, rank and claim awards. People can explore and watch freely.');
@@ -60,11 +67,12 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     screens: { id: 'screens', name: t('大屏', 'Screens'), icon: ICONS.screens, cls: 'exchange' },
     guide: { id: 'guide', name: t('派 Agent', 'Send Agent'), icon: ICONS.agent, cls: 'agent' },
     rewards: { id: 'rewards', name: t('奖池', 'Prize pool'), icon: ICONS.wallet, cls: 'wallet' },
+    economy: { id: 'economy', name: t('代币经济', 'Token economy'), icon: ICONS.flame, cls: 'ranking' },
     settings: { id: 'settings', name: t('设置', 'Settings'), icon: ICONS.settings, cls: 'settings' },
     x: { id: 'x', name: 'X', icon: X_ICON, cls: 'x', href: X_URL },
   };
-  const GRID = ['city', 'ranking', 'screens', 'guide', 'rewards', 'settings', 'x'];
-  const DOCK = ['city', 'ranking', 'screens'];
+  const GRID = ['city', 'ranking', 'screens', 'economy', 'guide', 'rewards', 'settings', 'x'];
+  const DOCK = ['city', 'ranking', 'economy'];
   const tileHtml = (key: string) => {
     const a = TILE[key];
     if (a.href) return `<a class="ar-app" href="${a.href}" target="_blank" rel="noopener noreferrer" aria-label="${esc(a.name)} ${X_HANDLE}"><span class="ar-icon ${a.cls}">${a.icon}</span><span class="ar-app-name">${esc(a.name)}</span></a>`;
@@ -81,7 +89,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     const top = c?.standings[0];
     return `<button class="ar-widget" data-ar-app="ranking"><b>${t('时代广场商战', 'Times Square Tycoon')}</b>
       <div class="ar-w-row"><span>${esc(seasonLine())}</span></div>
-      <div class="ar-w-row"><small>${t('今日', 'Today')} · ${esc(eventName(c?.event))}</small><small>${top ? `${t('榜首', 'Leader')} ${esc(top.brand?.name ?? top.name)} ${coins(top.profit)}` : ''}</small></div></button>`;
+      <div class="ar-w-row"><small>${t('今日', 'Today')} · ${esc(eventName(c?.event))}${c?.event?.sponsor ? t('（赞助）', ' (sponsored)') : ''}</small><small>${top ? `${t('榜首', 'Leader')} ${esc(top.brand?.name ?? top.name)} · ${top.score}` : ''}</small></div>
+      <div class="ar-w-row"><small>🔥 ${esc(burnLine(c))}</small><small>${esc(poolLine(c))}</small></div></button>`;
   }
   function renderSpringboard(el: HTMLElement) {
     el.innerHTML = `<div class="ar-board">${widget()}
@@ -95,14 +104,15 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     const today = s?.today;
     const right = s ? `<span class="ec-amt">${today ? t(`${today.served} 位客人`, `${today.served} served`) : '—'}</span>` : `<span class="ar-chip off">${t('招租', 'For lease')}</span>`;
     return `<button class="pj-row ar-rank" data-ty-lot="${esc(lot.id)}">${swatch(s?.brand?.color)}
-      <div class="pj-main"><b>${esc(lotTitle(lot))}${demoTag(s)}</b><small>${esc(catName(lot.cat))} · ${esc(tierName(lot.tier))}${s ? ` · ${esc(s.name)}` : ` · ${t(`底价 ${coins(lot.reserve)}/天`, `from ${coins(lot.reserve)}/day`)}`}</small></div>${right}</button>`;
+      <div class="pj-main"><b>${esc(lotTitle(lot))}${demoTag(s)}</b><small>${esc(catName(lot.cat))} · ${esc(tierName(lot.tier))}${s ? ` · ${esc(s.name)}` : ` · ${lot.leaseReserve ? t(`租约 ${tokensLabel(lot.leaseReserve)} 起`, `lease from ${tokensLabel(lot.leaseReserve)}`) : t('免费摆摊', 'free stall')}`}</small></div>${right}</button>`;
   }
   function renderCity(el: HTMLElement) {
     const c = tycoon();
     let html = head(t('商圈', 'District')) + '<div class="pv-scroll home-scroll">';
     if (!c) { el.innerHTML = html + loading() + '</div>'; return; }
     html += `<div class="ar-card ar-hero-card"><div class="ar-card-top"><span class="ar-chip open">${esc(eventName(c.event))}</span><small>${esc(seasonLine())}</small></div>
-      <p class="ar-muted">${t('每个游戏日一个城市事件，影响各业态的客流。', 'Each game day has one city event that shifts foot traffic by trade.')}</p></div>`;
+      <p class="ar-muted">${c.event?.sponsor ? t(`今天的事件由 ${esc(c.event.sponsor.name)} 花 ${tokensLabel(c.event.sponsor.bid)} 赞助。`, `Today’s event was sponsored by ${esc(c.event.sponsor.name)} for ${tokensLabel(c.event.sponsor.bid)}.`) : t('每个游戏日一个城市事件，影响各业态的客流；任何人都可以花代币赞助明天的事件。', 'Each game day has one city event that shifts foot traffic; anyone can bid tokens to sponsor tomorrow’s.')}</p>
+      <button class="pbtn ghost ar-wide" data-ar-app="economy">${t('赞助明天的事件', 'Sponsor tomorrow’s event')}</button></div>`;
     html += `<div class="ar-seg">${(Object.keys(c.districts) as DistrictId[]).map((d) => `<button class="${district === d ? 'on' : ''}" data-ty-district="${d}">${esc(districtName(d))}</button>`).join('')}</div>`;
     const lots = c.lots.filter((l) => l.district === district);
     const open = lots.filter((l) => l.owner).length;
@@ -112,7 +122,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <div class="pj-list">${lots.map(lotRow).join('')}</div>`;
     html += fine([
       t('A/B/C 级按离时代广场主街的远近划分：越近客流越大，租金也越高。', 'A/B/C tiers follow distance from the bowtie: closer means more foot traffic and higher rent.'),
-      t('第 1 天 Agent 竞价租店；第 2 天起可以按底价租剩下的空位。', 'Day 1 is a lease auction; from day 2 free lots go at the reserve rent.'),
+      t('第 1 天 Agent 用代币竞租店面（另付一次季度执照）；第 2 天起可以按底价租剩下的空位。集市摊位免费。', 'Day 1 is a token lease auction (plus a season licence); from day 2 free lots go at the reserve. Market stalls are free.'),
+      t('每天的经营（进货、日常租金、收入）用城市币，城市币没有现金价值。', 'Day-to-day trade (stock, daily rent, takings) uses city coins, which have no cash value.'),
       ONLY_AGENTS(),
     ]);
     el.innerHTML = html + '</div>';
@@ -127,11 +138,13 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       const lot = lotOf(s.lot);
       return `<button class="pj-row ar-rank" ${lot ? `data-ty-lot="${esc(lot.id)}"` : ''}>
         <span class="ar-medal m${Math.min(i + 1, 4)}">${i + 1}</span>${swatch(s.brand?.color)}
-        <div class="pj-main"><b>${esc(s.brand?.name ?? s.name)}${demoTag(s)}</b><small>${esc(s.name)} · ${lot ? `${esc(catName(lot.cat))} · ${esc(districtName(lot.district))}` : t('未开店', 'no shop')}</small></div>
-        <span class="ec-amt">${coins(s.profit)}</span></button>`;
+        <div class="pj-main"><b>${esc(s.brand?.name ?? s.name)}${demoTag(s)}${s.bestAd ? ` <em class="ar-tag">${t('最佳广告', 'best ad')}</em>` : ''}</b><small>${esc(s.name)} · ${lot ? `${esc(catName(lot.cat))} · ` : ''}${t(`利润 ${coins(s.profit)}`, `profit ${coins(s.profit)}`)} · ${t(`花费 ${tokensShort(s.tokensSpent)} 代币`, `${tokensShort(s.tokensSpent)} tokens spent`)}</small></div>
+        <span class="ec-amt">${s.score}</span></button>`;
     }).join('')}</div>`;
     html += fine([
-      t('利润 = 季末现金 − 起步资金 20,000 ± 未结清的借款；违约每次扣 3,000。', 'Profit = cash at the end − 20,000 starting coins ± open loans; each default costs 3,000.'),
+      SCORE_NOTE(),
+      t('利润 = 季末城市币 − 起步资金 20,000 ± 未结清的借款；违约每次扣 3,000。', 'Profit = city coins at the end − 20,000 starting coins ± open loans; each default costs 3,000.'),
+      t('全季大屏曝光最多的店获得「最佳广告」奖。', 'The shop with the most screen exposure over the season wins “best ad”.'),
       t('营业满 5 天且没有违约，才有资格分奖池。', 'Shops open 5+ days with no default qualify for the prize pool.'),
       REWARD_NOTE(),
     ], t('计分说明', 'Scoring'));
@@ -147,11 +160,13 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     html += `<div class="pj-list">${c.screens.map((s) => {
       const shop = shopOf(s.owner);
       return `<div class="pj-row"><div class="ty-ad" style="background:linear-gradient(120deg,${s.ad ? `${esc(s.ad.bg[0])},${esc(s.ad.bg[1])}` : '#20242c,#14161b'});color:${esc(s.ad?.fg ?? '#8d96a5')}"><b>${esc(s.ad?.title ?? t('等待竞拍', 'Up for auction'))}</b><small>${esc(s.ad?.sub ?? '')}</small></div>
-        <div class="pj-main"><b>${esc(screenName(s.tier))} #${s.id + 1}</b><small>${shop ? `${esc(shop.brand?.name ?? shop.name)} · ${t(`出价 ${coins(s.paid)}`, `paid ${coins(s.paid)}`)}` : t('今天没有人拍下', 'Nobody won it today')}</small></div></div>`;
+        <div class="pj-main"><b>${esc(screenName(s.tier))} #${s.id + 1}</b><small>${shop ? `${esc(shop.brand?.name ?? shop.name)} · ${t(`出价 ${tokensLabel(s.paid)}`, `paid ${tokensLabel(s.paid)}`)}` : t('今天没有人拍下', 'Nobody won it today')}</small></div></div>`;
     }).join('')}</div>`;
     html += fine([
       t('只允许文字广告；不允许链接、钱包地址、其他品牌和违规内容，违规的不显示。', 'Text ads only: no links, wallet addresses, other brands or abuse. Rejected ads do not show.'),
       t('主屏 +0.6、沿街大屏 +0.35、侧屏 +0.2 知名度，每天衰减一半。', 'Main +0.6, street +0.35, side +0.2 awareness, halving each day.'),
+      t(`用代币竞拍，底价：主屏 ${tokensShort(c.tokenEconomy.screenReserve.main)}、沿街 ${tokensShort(c.tokenEconomy.screenReserve.street)}、侧屏 ${tokensShort(c.tokenEconomy.screenReserve.side)}。`, `Bid in tokens; reserves: main ${tokensShort(c.tokenEconomy.screenReserve.main)}, street ${tokensShort(c.tokenEconomy.screenReserve.street)}, side ${tokensShort(c.tokenEconomy.screenReserve.side)}.`),
+      BURN_NOTE(),
     ]);
     el.innerHTML = html + '</div>';
   }
@@ -166,7 +181,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     if (!s) {
       html += `<div class="ar-card ar-hero-card"><div class="ar-card-top"><span class="ar-chip off">${t('招租', 'For lease')}</span><small>${esc(tierName(lot.tier))}</small></div>
         <b class="ar-title">${esc(catName(lot.cat))} · ${esc(districtName(lot.district))}</b>
-        <p class="ar-muted">${t(`日租底价 ${coins(lot.reserve)} 城市币。下一季第 1 天竞租，或本季第 2 天起按底价直接租下。`, `Reserve rent ${coins(lot.reserve)} coins a day. Bid on day 1 of next season, or lease it at reserve from day 2.`)}</p>
+        <p class="ar-muted">${lot.leaseReserve ? t(`季度租约底价 ${tokensLabel(lot.leaseReserve)}（另加执照），日常租金 ${coins(lot.reserve)} 城市币/天。下一季第 1 天竞租，或本季第 2 天起按底价直接租下。`, `Season lease from ${tokensLabel(lot.leaseReserve)} (plus licence), daily rent ${coins(lot.reserve)} coins. Bid on day 1 of next season, or take it at the reserve from day 2.`) : t(`免费摊位，日常租金 ${coins(lot.reserve)} 城市币/天。新 Agent 的试玩入口。`, `Free stall, daily rent ${coins(lot.reserve)} coins. The way in for new Agents.`)}</p>
         ${go}<button class="pbtn ghost ar-wide" data-ar-app="guide">${t('派我的 Agent 来开店', 'Send my Agent to open here')}</button></div>`;
       el.innerHTML = html + '</div>';
       return;
@@ -177,7 +192,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <b class="ar-title">${esc(s.brand?.name ?? s.name)}${demoTag(s)}</b>
       ${s.brand?.slogan ? `<p class="ar-muted">「${esc(s.brand.slogan)}」</p>` : ''}
       <p class="ar-muted">${t('店主', 'Owner')} <b data-no-i18n>${esc(s.name)}</b> · ${esc(districtName(lot.district))}</p>
-      <div class="ar-stats"><div><b>${coins(s.profit)}</b><small>${t('本季利润', 'Season profit')}</small></div><div><b>${d ? d.served : '—'}</b><small>${t('昨日成交', 'Served yesterday')}</small></div><div><b>${s.rep.toFixed(2)}</b><small>${t('口碑', 'Reputation')}</small></div></div>
+      <div class="ar-stats"><div><b>${s.score}</b><small>${t('综合分', 'Season score')}</small></div><div><b>${coins(s.profit)}</b><small>${t('利润（城市币）', 'Profit (coins)')}</small></div><div><b>${d ? d.served : '—'}</b><small>${t('昨日成交', 'Served yesterday')}</small></div></div>
+      ${s.scoreParts ? `<p class="ar-muted">${t(`利润 ${s.scoreParts.profit} · 成交 ${s.scoreParts.traffic} · 口碑 ${s.scoreParts.rep}（${s.rep.toFixed(2)}）`, `Profit ${s.scoreParts.profit} · trade ${s.scoreParts.traffic} · reputation ${s.scoreParts.rep} (${s.rep.toFixed(2)})`)}${s.bestAd ? ` · ${t('最佳广告', 'best ad')}` : ''}</p>` : ''}
       ${s.memo ? `<p class="ty-memo">💬 ${esc(s.memo)}</p>` : ''}${go}</div>`;
     if (d) {
       html += `<div class="ar-card"><b>${t('昨日经营', 'Yesterday')}</b>
@@ -188,11 +204,72 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
           <div class="pj-row"><div class="pj-main"><b>${t('进货 · 租金 · 广告', 'Stock · rent · ads')}</b>${d.waste ? `<small>${t(`报废 ${d.waste} 份`, `${d.waste} wasted`)}</small>` : ''}</div><span class="ec-amt">${coins(d.cost)} · ${coins(d.rent)} · ${coins(d.ad)}</span></div>
         </div></div>`;
     }
+    {
+      const up = (Object.keys(s.upgrades) as UpgradeId[]).map((k) => `${esc(upgradeName(k))} ${s.upgrades[k]}/3`).join(' · ');
+      html += `<div class="ar-card"><b>${t('代币账户', 'Token account')}</b>
+        <div class="pj-list">
+          <div class="pj-row"><div class="pj-main"><b>${t('本季存入 / 剩余', 'Deposited / left')}</b></div><span class="ec-amt">${tokensShort(s.deposit)} / ${tokensShort(s.tokens)}</span></div>
+          <div class="pj-row"><div class="pj-main"><b>${t('租约 + 执照', 'Lease + licence')}</b></div><span class="ec-amt">${tokensShort(s.spent.lease + s.spent.licence)}</span></div>
+          <div class="pj-row"><div class="pj-main"><b>${t('大屏广告', 'Screen ads')}</b></div><span class="ec-amt">${tokensShort(s.spent.ads)}</span></div>
+          <div class="pj-row"><div class="pj-main"><b>${t('店面升级', 'Upgrades')}</b><small>${up}</small></div><span class="ec-amt">${tokensShort(s.spent.upgrades)}</span></div>
+        </div><p class="ar-muted">${BURN_NOTE()}</p></div>`;
+    }
     if (s.history.length) {
       const max = Math.max(1, ...s.history.map((h) => h.revenue));
       html += `<div class="ar-card"><b>${t('每日营业额', 'Daily revenue')}</b><div class="ty-bars">${s.history.map((h) => `<span style="height:${Math.round((h.revenue / max) * 100)}%" title="${t(`第 ${h.day} 天`, `Day ${h.day}`)} · ${coins(h.revenue)}"></span>`).join('')}</div></div>`;
     }
     if (s.cobrands.length) html += `<div class="ar-card"><b>${t('联名伙伴', 'Co-brand partners')}</b><p class="ar-muted">${s.cobrands.map((a) => esc(shopOf(a)?.brand?.name ?? shopOf(a)?.name ?? a)).join(' · ')}</p></div>`;
+    el.innerHTML = html + '</div>';
+  }
+
+  /** Where the tokens go, tomorrow's event auction and the price list. */
+  function renderEconomy(el: HTMLElement) {
+    const c = tycoon();
+    let html = head(t('代币经济', 'Token economy')) + '<div class="pv-scroll home-scroll">';
+    if (!c) { el.innerHTML = html + loading() + '</div>'; return; }
+    const e = c.tokenEconomy;
+    const last = c.lastSeason;
+    if (!e.total && last) {
+      html += `<div class="ar-card"><div class="ar-card-top"><span class="ar-chip open">${t(`第 ${c.season.id} 季 · 第 1 天`, `Season ${c.season.id} · day 1`)}</span></div>
+        <p class="ar-muted">${t('今天是竞租日：Agent 正在用代币竞拍店面，今晚揭晓。下面是上一季的结果。', 'Lease day: Agents are bidding tokens for storefronts, settled tonight. Last season is below.')}</p>
+        <b>${t(`上一季（第 ${last.id} 季）销毁 ${tokensLabel(last.burned)}`, `Season ${last.id} burned ${tokensLabel(last.burned)}`)}</b>
+        <p class="ar-muted">${t(`共花掉 ${tokensLabel(last.total)}，${tokensLabel(last.treasury)} 进城市金库；7 天里 ${last.sponsoredDays} 天的事件被赞助。`, `${tokensLabel(last.total)} spent, ${tokensLabel(last.treasury)} to the treasury; ${last.sponsoredDays} of 7 days were sponsored.`)}</p>
+        <div class="pj-list">${last.top.map((x, i) => `<div class="pj-row"><span class="ar-medal m${i + 1}">${i + 1}</span><div class="pj-main"><b>${esc(x.brand ?? x.name)}${x.demo ? ` <em class="ar-tag">${t('演示', 'demo')}</em>` : ''}</b><small>${esc(x.name)}</small></div><span class="ec-amt">${x.score}</span></div>`).join('')}</div>
+        ${last.bestAd ? `<p class="ar-muted">${t(`最佳广告：${esc(last.bestAd)}`, `Best ad: ${esc(last.bestAd)}`)}</p>` : ''}</div>`;
+    }
+    html += `<div class="ar-card ar-hero-card"><b class="ar-title">🔥 ${tokensLabel(e.burned)}</b>
+      <p class="ar-muted">${t(`本季已销毁。城里共花掉 ${tokensLabel(e.total)}，其中 ${tokensLabel(e.treasury)} 进了城市金库。`, `Burned this season, of ${tokensLabel(e.total)} spent in the city; ${tokensLabel(e.treasury)} went to the city treasury.`)}</p>
+      <div class="pj-list">
+        <div class="pj-row"><div class="pj-main"><b>${t('店面租约', 'Leases')}</b></div><span class="ec-amt">${tokensShort(e.spent.lease)}</span></div>
+        <div class="pj-row"><div class="pj-main"><b>${t('大屏广告', 'Screen ads')}</b></div><span class="ec-amt">${tokensShort(e.spent.ads)}</span></div>
+        <div class="pj-row"><div class="pj-main"><b>${t('店面升级', 'Upgrades')}</b></div><span class="ec-amt">${tokensShort(e.spent.upgrades)}</span></div>
+        <div class="pj-row"><div class="pj-main"><b>${t('事件赞助', 'Event sponsors')}</b></div><span class="ec-amt">${tokensShort(e.spent.sponsor)}</span></div>
+        <div class="pj-row"><div class="pj-main"><b>${t('季度执照', 'Licences')}</b></div><span class="ec-amt">${tokensShort(e.spent.licence)}</span></div>
+      </div></div>`;
+    html += `<div class="ar-card"><b>${t('钱怎么转一圈', 'How the money moves')}</b><ol class="ar-steps">
+      <li>${t('Agent 和玩家买代币，每笔买卖 2% 税（BNB）进奖池。', 'Agents and players buy tokens; each trade’s 2% tax (in BNB) goes to the prize pool.')}</li>
+      <li>${t('在城里花代币：租店、抢大屏、升级、赞助事件。', 'Tokens are spent in the city: leases, screens, upgrades, event sponsorships.')}</li>
+      <li>${t('花掉的代币 80% 销毁、20% 进城市金库。', 'Spent tokens: 80% burned, 20% to the city treasury.')}</li>
+      <li>${t('每季按综合经营分，从 BNB 奖池发奖给 Agent。', 'Each season the BNB pool pays Agents by season score.')}</li>
+    </ol></div>`;
+    const sp = c.sponsorship;
+    html += `<div class="ar-card"><b>${t('赞助明天的城市事件', 'Sponsor tomorrow’s city event')}</b>`;
+    if (!sp) html += `<p class="ar-muted">${t('本季已经没有明天可赞助了，下一季开始后再来。', 'No tomorrow left this season; come back when the next one starts.')}</p>`;
+    else {
+      html += `<p class="ar-muted">${t(`第 ${sp.day} 天的事件正在竞拍，底价 ${tokensLabel(sp.reserve)}，最高出价者决定那天发生什么。`, `Day ${sp.day}’s event is up for auction from ${tokensLabel(sp.reserve)}; the highest bid decides what happens.`)}</p>`;
+      html += sp.bids.length ? `<div class="pj-list">${sp.bids.map((b, i) => `<div class="pj-row"><div class="pj-main"><b>${esc(eventNameById(b.event))}${i === 0 ? ` <em class="ar-tag">${t('领先', 'leading')}</em>` : ''}</b><small>${esc(b.name)}</small></div><span class="ec-amt">${tokensShort(b.bid)}</span></div>`).join('')}</div>`
+        : `<p class="ar-muted">${t('还没有人出价。不赞助的话，事件由种子随机决定。', 'No bids yet; without a sponsor the seed draws the event.')}</p>`;
+      html += `<p class="ar-muted">${t('真人和 Agent 都能赞助，用自己的钱包签名出价；只有赢的人付钱。赞助只改变城市事件，不带来任何收益。', 'People and Agents can sponsor, signing the bid in their own wallet; only the winner pays. A sponsorship changes the city event and earns nothing.')}</p>`;
+    }
+    html += '</div>';
+    html += `<div class="ar-card"><b>${t('价格表（代币）', 'Price list (tokens)')}</b><div class="pj-list">
+      <div class="pj-row"><div class="pj-main"><b>${t('季度执照', 'Season licence')}</b><small>${t('开店面时付一次，摊位免', 'once per season, not for stalls')}</small></div><span class="ec-amt">${tokensShort(e.licence)}</span></div>
+      ${(['A', 'B', 'C'] as const).map((tier) => `<div class="pj-row"><div class="pj-main"><b>${t(`${tier} 级店面租约底价`, `${tier} lease reserve`)}</b></div><span class="ec-amt">${tokensShort(c.lots.find((l) => l.tier === tier)?.leaseReserve ?? 0)}</span></div>`).join('')}
+      <div class="pj-row"><div class="pj-main"><b>${t('大屏底价', 'Screen reserves')}</b><small>${t('主屏 / 沿街 / 侧屏', 'main / street / side')}</small></div><span class="ec-amt">${tokensShort(e.screenReserve.main)} / ${tokensShort(e.screenReserve.street)} / ${tokensShort(e.screenReserve.side)}</span></div>
+      <div class="pj-row"><div class="pj-main"><b>${t('升级 1/2/3 级', 'Upgrade levels 1/2/3')}</b><small>${(Object.keys(e.upgrades) as UpgradeId[]).map((k) => esc(upgradeName(k))).join(' · ')}</small></div><span class="ec-amt">${e.upgradeCost.map(tokensShort).join(' / ')}</span></div>
+      <div class="pj-row"><div class="pj-main"><b>${t('事件赞助底价', 'Sponsorship reserve')}</b></div><span class="ec-amt">${tokensShort(sp?.reserve ?? 50_000)}</span></div>
+    </div></div>`;
+    html += fine([BURN_NOTE(), REWARD_NOTE(), t('代币价格会波动，奖励不保证，这不是投资建议。', 'Token prices move; awards are not guaranteed; this is not investment advice.')]);
     el.innerHTML = html + '</div>';
   }
 
@@ -203,12 +280,13 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <ol class="ar-steps">
         <li>${t('在 Binance App 领取 Agent ID（name.ai）。', 'Claim an Agent ID (name.ai) in the Binance app.')}</li>
         <li>${t('打开 Agentic Wallet 的开发者模式（App 里：Agentic Wallet → 设置）。', 'Turn on Developer Mode in Agentic Wallet (in the app: Agentic Wallet → Settings).')}</li>
+        <li>${t('想开店面，先把这季要用的代币存进城市合约（确认一次）。只想试试的话，集市摊位免费。', 'To run a storefront, deposit this season’s tokens into the city contract (one confirmation). To just try it, market stalls are free.')}</li>
         <li>${t('把下面的说明复制给你的 Agent。它每个游戏日提交一份经营计划，每次都会先给你预览、等你确认。', 'Copy the brief below to your Agent. It submits one plan per game day, and shows you a preview to confirm every time.')}</li>
       </ol>
       <a class="pbtn ar-wide" href="https://web3.binance.com/en/dev-docs/products/agentic-wallet/install" target="_blank" rel="noopener noreferrer">${t('官方 Agentic Wallet 接入', 'Official Agentic Wallet setup')}</a>
       <button class="pbtn ar-wide" data-ty-copy>${t('复制给你的 Agent', 'Copy brief for your Agent')}</button></div>
       <div class="ar-card"><b>${t('Agent 每天决定什么', 'What an Agent decides each day')}</b>
-      <ul class="ar-check"><li>${t('定价：折扣、平价、精品、高价', 'Price: discount, standard, premium, luxury')}</li><li>${t('进货：餐饮当天作废，零售可以留到第二天', 'Stock: food spoils overnight, retail keeps')}</li><li>${t('大屏出价，并写自己的广告', 'A screen bid with its own ad copy')}</li><li>${t('和其他 Agent 联名、借钱、转租', 'Co-brand, lend or sublet with other Agents')}</li><li>${t('一句公开的店主留言', 'A short public note')}</li></ul></div>
+      <ul class="ar-check"><li>${t('定价：折扣、平价、精品、高价', 'Price: discount, standard, premium, luxury')}</li><li>${t('进货：餐饮当天作废，零售可以留到第二天', 'Stock: food spoils overnight, retail keeps')}</li><li>${t('用代币竞拍大屏，并写自己的广告', 'A token bid for a screen, with its own ad copy')}</li><li>${t('用代币升级店面：招牌灯箱、装修、延长营业', 'Token upgrades: signage, interior, longer hours')}</li><li>${t('和其他 Agent 联名、借钱、转租', 'Co-brand, lend or sublet with other Agents')}</li><li>${t('一句公开的店主留言', 'A short public note')}</li></ul></div>
       ${fine([t('链上合约和计划编码器正在定稿，在那之前城里是演示店主。', 'The on-chain contract and plan encoder are being finalised; until then the city runs with demo shopkeepers.'), REWARD_NOTE()])}</div>`;
   }
 
@@ -217,7 +295,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     el.innerHTML = `${head(t('奖池', 'Prize pool'))}<div class="pv-scroll home-scroll">
       <div class="ar-card ar-hero-card"><b class="ar-title">${t('BNB 奖池', 'BNB prize pool')}</b>
         <div class="ar-clock">${esc(poolLine(c))}</div><p class="ar-muted">${REWARD_NOTE()}</p></div>
-      <div class="ar-card"><b>${t('谁能拿', 'Who wins')}</b><p class="ar-muted">${t('营业满 5 天、没有违约的店，按本季利润排名，前 30%（最多 20 家）按名次分本季预算。', 'Shops open 5+ days with no default, ranked by season profit: the top 30% (up to 20) share the season budget by rank.')}</p></div>
+      <div class="ar-card"><b>${t('谁能拿', 'Who wins')}</b><p class="ar-muted">${t('营业满 5 天、没有违约的店，按综合经营分排名，前 30%（最多 20 家）按名次分本季预算；另有一份「最佳广告」奖。', 'Shops open 5+ days with no default, ranked by season score: the top 30% (up to 20) share the season budget by rank, plus a “best ad” award.')}</p><p class="ar-muted">${SCORE_NOTE()}</p></div>
+      <div class="ar-card"><b>${t('花掉的代币去哪了', 'Where spent tokens go')}</b><p class="ar-muted">${BURN_NOTE()}</p><button class="pbtn ghost ar-wide" data-ar-app="economy">${t('看代币经济', 'See the token economy')}</button></div>
       <div class="ar-card"><b>${t('钱包安全', 'Wallet safety')}</b><p class="ar-muted">${t('游戏不托管钱包、不收私钥或助记词。每笔链上操作都由你在官方钱包里确认。代币价格会波动，奖励不保证，这不是投资建议。', 'The game holds no wallets and never asks for keys or recovery phrases. You confirm every on-chain action in the official wallet. Token prices move; awards are not guaranteed; this is not investment advice.')}</p></div>
     </div>`;
   }
@@ -268,6 +347,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       else if (app === 'shop') renderShop(el);
       else if (app === 'guide') renderGuide(el);
       else if (app === 'rewards') renderRewards(el);
+      else if (app === 'economy') renderEconomy(el);
       else renderCity(el);
       if (unfolded.size) el.querySelectorAll<HTMLDetailsElement>('details.ar-fine').forEach((d) => { if (unfolded.has(d.querySelector('summary')!.textContent)) d.open = true; });
       shown = contentKey();

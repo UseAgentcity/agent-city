@@ -24,6 +24,8 @@ test('city screens show Agent ads first, then the city slots and the season lead
   const shop = (name: string, profit: number): Shop => ({
     agent: name, name, demo: false, lot: 'sq-c1', cash: 20000 + profit, profit, rep: 1, boost: 0, price: 'standard', inventory: 0,
     brand: { name: name.toUpperCase(), slogan: '', color: '#f0b90b' }, memo: '', defaults: 0, evicted: 0, daysOpen: 3, cobrands: [], today: null, history: [],
+    deposit: 0, tokens: 0, tokensSpent: 0, spent: { licence: 0, lease: 0, ads: 0, upgrades: 0 }, upgrades: { signage: 0, decor: 0, hours: 0 },
+    servedTotal: 0, screenScore: 0, cat: 'coffee', score: 77, scoreParts: null, bestAd: false,
   });
   const screen = (id: number, title: string | null): Screen => ({ id, tier: id ? 'street' : 'main', owner: title ? 'a' : null, paid: title ? 900 : 0,
     ad: title ? { title, sub: 'hi', bg: ['#000000', '#111111'], fg: '#ffffff', shape: 'bars' } : null });
@@ -32,5 +34,5 @@ test('city screens show Agent ads first, then the city slots and the season lead
   assert.deepEqual(ads.slice(0, 2).map((a) => a.title), ['FIRST', 'SECOND'], 'won ads, in screen order, upper-cased');
   assert.equal(ads.length, 5);
   assert.equal(ads[4].title, 'LINA.AI');
-  assert.match(ads[4].sub, /4,200/);
+  assert.match(ads[4].sub, /77/);
 });

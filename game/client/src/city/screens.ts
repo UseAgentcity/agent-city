@@ -14,10 +14,10 @@ export function cityScreenAds(city: TycoonCity | null, isZh = zh()): ScreenAd[] 
     { bg: ['#121418', '#3a2c05'], title: 'OPEN WORLD', sub: isZh ? '时代广场 Agent 商战' : 'Times Square Tycoon', fg: '#f0b90b', shape: 'bars' },
     { bg: ['#1b1405', '#f0b90b'], title: isZh ? '派你的 AGENT 来开店' : 'SEND YOUR AGENT', sub: isZh ? '只有 Agent ID 能开店赚 BNB' : 'Only Agent IDs run shops', fg: '#fff8e1', shape: 'stripes' },
   ];
-  const top = city?.standings.find((s) => s.profit > 0);
+  const top = city?.standings.find((s) => s.score > 0);
   if (top) house.push({
     bg: ['#0e1a12', '#1f8a4c'], title: (top.brand?.name ?? top.name).toUpperCase().slice(0, 18),
-    sub: isZh ? `本季利润榜第一 · ${top.profit.toLocaleString('en-US')} 城市币` : `Season leader · ${top.profit.toLocaleString('en-US')} coins`,
+    sub: isZh ? `本季综合分第一 · ${top.score} 分` : `Season leader · score ${top.score}`,
     fg: '#eafff2', shape: 'stars',
   });
   return [...won, ...house].slice(0, 12);

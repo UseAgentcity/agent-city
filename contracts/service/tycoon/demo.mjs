@@ -1,7 +1,7 @@
 // Demo shopkeepers: a handful of reference Agents with different temperaments, so the city has life
 // before real Agents arrive and the trial mode has opponents. They only ever produce ordinary plans —
 // the same events a real Agent would send — and are always labelled as demo.
-import { CATS, DAYS, PRICE_LEVELS, SCREENS, SCREEN_RESERVE, TIERS, eventOf, rng, runSeason } from './engine.mjs';
+import { CATS, DAYS, EVENTS, PRICE_LEVELS, SCREENS, SCREEN_RESERVE, TIERS, TOKEN, UPGRADES, UPGRADE_COST, eventFor, rng, runSeason } from './engine.mjs';
 
 const AD_COPY = {
   coffee: [['第一口就醒', '广场最快的一杯'], ['早安时代广场', '现磨咖啡 6 城市币起'], ['ESPRESSO RUSH', 'Two minutes from the bowtie']],
@@ -53,16 +53,19 @@ const CAT_MEMOS = {
 };
 
 /** One demo Agent's plan for `day`, from what it can see of the city after the previous day. */
-export function demoPlan(bot, day, city, seed, lots) {
+export function demoPlan(bot, day, city, seed, lots, events = []) {
   const r = rng(`${seed}:${bot.agent}:${day}`);
   const me = city.standings.find((s) => s.agent === bot.agent);
-  const ev = eventOf(seed, day);
+  const ev = eventFor(seed, day, events);
+  const tokens = me?.tokens ?? depositOf(bot);
   const actions = {};
   if (day === 1 || !me?.lot) {
     const free = lots.filter((l) => !city.lots.find((x) => x.id === l.id)?.owner);
     const mine = free.filter((l) => l.cat === bot.cat).sort((a, b) => TIERS[b.tier].traffic - TIERS[a.tier].traffic);
-    const picks = (mine.length ? mine : free).slice(0, 3);
-    actions.lease = picks.map((l) => ({ lot: l.id, bid: Math.round(TIERS[l.tier].rent * (day === 1 ? bot.bid * (0.9 + r() * 0.25) : 1)) }));
+    // Bid tokens for the season lease: temperament over the reserve, never more than the deposit allows.
+    const affordable = (mine.length ? mine : free).filter((l) => TIERS[l.tier].lease + (l.tier === 'S' ? 0 : TOKEN.licence) <= tokens);
+    const picks = affordable.slice(0, 3);
+    actions.lease = picks.map((l) => ({ lot: l.id, bid: Math.min(Math.max(0, tokens - TOKEN.licence), Math.round(TIERS[l.tier].lease * (day === 1 ? bot.bid * (0.9 + r() * 0.25) : 1))) }));
     actions.brand = { name: bot.brand[0], slogan: bot.brand[1], color: bot.brand[2] };
   }
   const lot = lots.find((l) => l.id === (me?.lot ?? actions.lease?.[0]?.lot));
@@ -84,11 +87,16 @@ export function demoPlan(bot, day, city, seed, lots) {
   const last = y?.customers || guess;
   actions.stock = Math.round(last * mult * (1 / PRICE_LEVELS[level]) ** (cat.elastic * 0.6) * (0.95 + r() * 0.3));
   // Screen: the bold ones bid for tomorrow's screens.
-  if (me?.lot && r() < bot.ad) {
+  if (me?.lot && r() < bot.ad && tokens > SCREEN_RESERVE.side * 2) {
     const screen = SCREENS[Math.floor(r() ** 2 * SCREENS.length)];
     const copy = AD_COPY[catId][Math.floor(r() * AD_COPY[catId].length)];
     const colors = COLORS[Math.floor(r() * COLORS.length)];
     actions.ad = { screen: screen.id, bid: Math.round(SCREEN_RESERVE[screen.tier] * (1 + r() * 1.2)), title: copy[0], sub: copy[1], bg: colors, fg: '#ffffff', shape: ['circle', 'bars', 'stripes', 'stars'][Math.floor(r() * 4)] };
+  }
+  // Upgrades: the ambitious ones spend tokens on signage, then the interior, early in the season.
+  if (me?.lot && lot?.tier !== 'S' && day >= 2 && day <= 4 && r() < bot.ad) {
+    const kind = me.upgrades.signage <= me.upgrades.decor ? 'signage' : r() < 0.5 ? 'decor' : 'hours';
+    if (UPGRADE_COST[me.upgrades[kind]] && UPGRADE_COST[me.upgrades[kind]] < tokens * 0.4) actions.upgrade = kind;
   }
   // Deals: theatre and bar/dining partners co-brand early in the season.
   const partners = { theatre: ['bar', 'dining'], bar: ['theatre'], dining: ['theatre'] }[catId];
@@ -104,14 +112,37 @@ export function demoPlan(bot, day, city, seed, lots) {
   return { type: 'plan', agent: bot.agent, day, actions, memo: memos[Math.floor(r() * memos.length)] };
 }
 
+/** Token deposit per temperament: bolder bidders bring more. */
+export const depositOf = (bot) => (bot.cat === 'stall' ? 0 : Math.round((bot.bid * 500_000 + bot.ad * 500_000) / 10_000) * 10_000);
+
+/** Demo spectators who sometimes sponsor tomorrow's city event with tokens (always labelled as demo). */
+export const DEMO_SPONSORS = [
+  { who: 'demo:fan-broadway', name: 'broadway_fan（演示）', likes: ['premiere', 'broadway-out'] },
+  { who: 'demo:fan-market', name: 'market_lover（演示）', likes: ['market-weekend', 'tourists'] },
+  { who: 'demo:fan-chaos', name: 'storm_chaser（演示）', likes: ['rain', 'supply-up'] },
+];
+export function demoSponsors(seed, day) {
+  const out = [];
+  for (const s of DEMO_SPONSORS) {
+    const r = rng(`${seed}:${s.who}:${day}`);
+    if (r() > 0.35) continue;
+    const event = s.likes[Math.floor(r() * s.likes.length)];
+    if (!EVENTS.some((e) => e.id === event)) continue;
+    out.push({ type: 'sponsor', who: s.who, name: s.name, day, event, bid: Math.round(TOKEN.sponsorReserve * (1 + r() * 1.5) / 1000) * 1000 });
+  }
+  return out;
+}
+
 /** A whole season played by demo Agents (optionally alongside other events, e.g. a person's trial plans). */
 export function demoEvents(seed, lots, upToDay = DAYS, extra = []) {
-  const events = DEMO_AGENTS.map((b) => ({ type: 'enter', agent: b.agent, name: b.name }));
+  const events = DEMO_AGENTS.map((b) => ({ type: 'enter', agent: b.agent, name: b.name, deposit: depositOf(b) }));
   events.push(...extra.filter((e) => e.type === 'enter'));
   for (let day = 1; day <= upToDay; day++) {
+    // Sponsorships for a day are settled before the day starts.
+    if (day > 1) events.push(...demoSponsors(seed, day));
     const city = runSeason({ seed, lots, events, days: day - 1 });
-    for (const bot of DEMO_AGENTS) events.push(demoPlan(bot, day, city, seed, lots));
-    events.push(...extra.filter((e) => e.type === 'plan' && e.day === day));
+    for (const bot of DEMO_AGENTS) events.push(demoPlan(bot, day, city, seed, lots, events));
+    events.push(...extra.filter((e) => (e.type === 'plan' || e.type === 'sponsor') && e.day === day));
   }
   return events;
 }

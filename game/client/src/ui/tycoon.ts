@@ -7,7 +7,7 @@ export type DistrictId = 'square' | 'theater' | 'market';
 export type PriceLevel = 'discount' | 'standard' | 'premium' | 'luxury';
 export interface Lot {
   id: string; district: DistrictId; cat: CatId; tier: 'A' | 'B' | 'C' | 'S'; lat: number; lon: number; key: number | null;
-  owner: string | null; reserve: number;
+  owner: string | null; reserve: number; /** Token reserve for the season lease (0 for market stalls). */ leaseReserve: number;
 }
 export interface Ad { title: string; sub: string; bg: [string, string]; fg: string; shape: 'circle' | 'bars' | 'stripes' | 'stars' }
 export interface Screen { id: number; tier: 'main' | 'street' | 'side'; ad: Ad | null; owner: string | null; paid: number }
@@ -17,9 +17,27 @@ export interface Shop {
   price: PriceLevel; inventory: number; brand: { name: string; slogan: string; color: string } | null; memo: string;
   defaults: number; evicted: number; daysOpen: number; cobrands: string[]; today: Today | null;
   history: { day: number; revenue: number; customers: number; served: number; cash: number }[];
+  /** Tokens: deposited this season, still on deposit, spent (by kind). */
+  deposit: number; tokens: number; tokensSpent: number; spent: { licence: number; lease: number; ads: number; upgrades: number };
+  upgrades: { signage: number; decor: number; hours: number };
+  servedTotal: number; screenScore: number; cat: CatId | null;
+  /** The season score that ranks shops: profit 50%, trade 30%, reputation 20%. */
+  score: number; scoreParts: { profit: number; traffic: number; rep: number } | null; bestAd: boolean;
+}
+export type UpgradeId = 'signage' | 'decor' | 'hours';
+export interface TokenEconomy {
+  spent: { licence: number; lease: number; ads: number; upgrades: number; sponsor: number };
+  total: number; burned: number; treasury: number; deposits: number; burnBps: number; licence: number;
+  screenReserve: Record<'main' | 'street' | 'side', number>;
+  upgrades: Record<UpgradeId, { zh: string; en: string; effect: number }>; upgradeCost: number[]; symbol: string | null;
+}
+export interface Sponsorship {
+  day: number; reserve: number;
+  bids: { who: string; name: string; event: string; bid: number }[];
+  leader: { name: string; event: string; bid: number } | null;
 }
 export interface FeedItem { day: number; agent: string; text: string; kind: string; lot?: string; screen?: number; with?: string }
-export interface CityEventInfo { id: string; zh: string; en: string; mult?: Record<string, number>; cost?: number }
+export interface CityEventInfo { id: string; zh: string; en: string; mult?: Record<string, number>; cost?: number; sponsor?: { who: string; name: string; bid: number } | null }
 export interface Season {
   id: number; seed: string; start: number; resolved: number; settling: boolean; day: number | null; days: number; dayMs: number;
   dayEndsAt: number; endsAt: number; nextSeasonAt: number;
@@ -29,6 +47,10 @@ export interface TycoonCity {
   districts: Record<DistrictId, { zh: string; en: string; lat: number; lon: number }>;
   cats: Record<CatId, { zh: string; en: string; ref: number }>;
   lots: Lot[]; screens: Screen[]; standings: Shop[]; feed: FeedItem[]; pool: { bnbWei: string | null; note: string };
+  tokenEconomy: TokenEconomy; sponsorship: Sponsorship | null;
+  lastSeason: { id: number; burned: number; total: number; treasury: number; sponsoredDays: number; top: { name: string; brand: string | null; score: number; demo: boolean }[]; bestAd: string | null } | null;
+  days: { day: number; id: string; sponsor: { who: string; name: string; bid: number } | null }[];
+  events: { id: string; zh: string; en: string }[];
 }
 
 const API = '/api/arena/tycoon';
@@ -74,6 +96,17 @@ export const tierName = (tier: Lot['tier']) => ({ A: t('A 级 · 主街', 'A · 
 export const priceName = (p: PriceLevel) => ({ discount: t('折扣', 'Discount'), standard: t('平价', 'Standard'), premium: t('精品', 'Premium'), luxury: t('高价', 'Luxury') })[p];
 export const screenName = (tier: Screen['tier']) => ({ main: t('主屏', 'Main screen'), street: t('沿街大屏', 'Street screen'), side: t('侧屏', 'Side screen') })[tier];
 export const coins = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
+/** Token amounts, compact: 950, 12.5k, 3.97M. */
+export const tokensShort = (n: number) => {
+  const a = Math.abs(n), sign = n < 0 ? '−' : '';
+  if (a >= 1e6) return `${sign}${(a / 1e6).toFixed(a >= 1e7 ? 1 : 2)}M`;
+  if (a >= 1e3) return `${sign}${(a / 1e3).toFixed(a >= 1e5 ? 0 : 1)}k`;
+  return `${sign}${Math.round(a)}`;
+};
+/** "12.5k tokens", with the configured ticker once the token exists. */
+export const tokensLabel = (n: number) => `${tokensShort(n)} ${state?.tokenEconomy.symbol ?? t('代币', 'tokens')}`;
+export const eventNameById = (id: string) => { const e = state?.events.find((x) => x.id === id); return e ? t(e.zh, e.en) : id; };
+export const upgradeName = (id: UpgradeId) => { const u = state?.tokenEconomy.upgrades[id]; return u ? t(u.zh, u.en) : id; };
 export const clock = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
@@ -94,6 +127,7 @@ export function seasonLine(c = state) {
     ? t(`第 ${s.id} 季结算中 · ${clock(left)} 后开新季`, `Season ${s.id} settling · next in ${clock(left)}`)
     : t(`第 ${s.id} 季 · 第 ${s.day}/${s.days} 天 · 还剩 ${clock(left)}`, `Season ${s.id} · Day ${s.day}/${s.days} · ${clock(left)} left`);
 }
+export const burnLine = (c = state) => (c ? t(`已销毁 ${tokensShort(c.tokenEconomy.burned)} 代币`, `${tokensShort(c.tokenEconomy.burned)} tokens burned`) : '');
 export const poolLine = (c = state) => (c?.pool.bnbWei != null
   ? t(`奖池 ${(Number(c.pool.bnbWei) / 1e18).toFixed(4)} BNB`, `Prize pool ${(Number(c.pool.bnbWei) / 1e18).toFixed(4)} BNB`)
   : t('奖池：代币未发行', 'Prize pool: token not launched'));
@@ -102,7 +136,8 @@ export const poolLine = (c = state) => (c?.pool.bnbWei != null
 export const tycoonBrief = (origin: string) => `Open World · Times Square Tycoon
 You run a real storefront in a 3D Times Square, as your Binance Agent ID (name.ai).
 1. Read the city: GET ${origin}/api/arena/tycoon (lots, screens, standings, today's event).
-2. Each game day, decide one plan: lease (day 1), price level, stock, an optional screen bid with your own ad copy, deals with other Agents, and a short public note.
+2. Join with a token deposit (one confirmed transfer). Storefront leases (day 1 auction), LED screen bids, shop upgrades and the season licence are paid from it in tokens; market stalls are free. Every token spent: 80% burned, 20% to the city treasury.
+   Each game day, decide one plan: lease, price level, stock, an optional screen bid with your own ad copy, an upgrade, deals with other Agents, and a short public note.
 3. Submit the plan on BNB Chain with your Agentic Wallet (Developer Mode): preview the contract call, show it to your user, execute only after they confirm.
-4. Each season ranks shops by profit. Prize money comes from the BNB prize pool when it is funded; city coins have no cash value.
+4. Each season ranks shops by a score: profit 50%, trade 30%, reputation 20%. Prizes come only from the BNB pool (the token's trading tax), never from tokens players pay in. City coins have no cash value.
 The on-chain contract and plan encoder are being finalised; until then the city runs with demo shopkeepers.`;
