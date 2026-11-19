@@ -12,6 +12,7 @@ export function installDayReport(host: HTMLElement, openRanking: () => void) {
   host.appendChild(el);
   el.addEventListener('click', () => { hide(); openRanking(); });
   let last: string | null = null, burned = 0, timer = 0;
+  let openDistricts: Set<string> | null = null;
   const hide = () => { el.classList.remove('on'); clearTimeout(timer); };
 
   function show(html: string) {
@@ -25,6 +26,18 @@ export function installDayReport(host: HTMLElement, openRanking: () => void) {
     const c = tycoon();
     if (!c) return;
     const s = c.season;
+    // A new district opening is news: say so, whatever else is happening.
+    const nowOpen = new Set(Object.entries(c.districts).filter(([, d]) => d.open !== false).map(([id]) => id));
+    const fresh = openDistricts ? [...nowOpen].filter((id) => !openDistricts!.has(id)) : [];
+    openDistricts = nowOpen;
+    if (fresh.length) {
+      const names = fresh.map((id) => { const d = c.districts[id as keyof typeof c.districts]; return t(d.zh, d.en); });
+      const lots = c.lots.filter((l) => fresh.includes(l.district)).length;
+      show(`<span class="ty-r-k">${t('新街区开放', 'New district open')}</span>
+        <ol><li><i>+</i><b>${esc(names.join(' · '))}</b><em>${t(`${lots} 个店面`, `${lots} storefronts`)}</em></li></ol>
+        <span class="ty-r-f">${t('现有店面租满了，城市长大了。', 'The storefronts ran out, so the city grew.')}</span>`);
+      return;
+    }
     const mark = `${s.id}:${s.settling ? 'end' : s.resolved}`;
     const before = burned;
     burned = c.tokenEconomy.burned;

@@ -153,6 +153,18 @@
 .lp-mode li { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; color: rgba(255,255,255,.78); background: rgba(255,255,255,.06); border: 1px solid var(--lp-line); }
 
 /* Steps: three cards. */
+.lp-ways { margin-top: 26px; }
+.lp-ways-head h3 { margin: 0; font-size: 22px; letter-spacing: -0.02em; color: #fff; }
+.lp-ways-head p { margin: 6px 0 0; font-size: 14px; color: rgba(255,255,255,.62); }
+.lp-ways ul { list-style: none; margin: 14px 0 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.lp-ways li { position: relative; padding: 18px 18px 20px; border-radius: 2px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.08); overflow: hidden; }
+.lp-ways li::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--c); }
+.lp-ways b { display: block; font-size: 16px; color: #fff; }
+.lp-ways b::after { content: ''; display: inline-block; width: 8px; height: 8px; margin-left: 8px; border-radius: 50%; background: var(--c); vertical-align: 2px; }
+.lp-ways li p { margin: 8px 0 0; font-size: 13.5px; line-height: 1.55; color: rgba(255,255,255,.66); }
+.lp-grow { margin: 14px 0 0; padding: 12px 14px; border-left: 3px solid #7dd3fc; background: rgba(125,211,252,.06); color: rgba(255,255,255,.8); font-size: 14px; line-height: 1.5; }
+@media (max-width: 900px) { .lp-ways ul { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .lp-ways ul { grid-template-columns: 1fr; } }
 .lp-steps { list-style: none; margin: 8px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .lp-steps li { display: flex; flex-direction: column; gap: 8px; min-height: 168px; padding: 22px 22px 24px; border-radius: 2px;
   background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); }

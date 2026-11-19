@@ -32,6 +32,24 @@ function buildScooter(): { root: THREE.Group; box: THREE.MeshStandardMaterial } 
   return { root: g, box };
 }
 
+/** A small box truck for supplier deliveries: cab, cargo box in the supplier's colour, four wheels. */
+function buildVan(): { root: THREE.Group; box: THREE.MeshStandardMaterial } {
+  const g = new THREE.Group();
+  const dark = new THREE.MeshStandardMaterial({ color: 0x1d1f25, roughness: 0.7 });
+  const cab = new THREE.MeshStandardMaterial({ color: 0xeef0f4, roughness: 0.35, metalness: 0.2 });
+  const glass = new THREE.MeshStandardMaterial({ color: 0x223040, roughness: 0.1, metalness: 0.6 });
+  const box = new THREE.MeshStandardMaterial({ color: 0x8b5a2b, roughness: 0.6 });
+  const add = (geo: THREE.BufferGeometry, m: THREE.Material, x: number, y: number, z: number) => {
+    const mesh = new THREE.Mesh(geo, m); mesh.position.set(x, y, z); mesh.castShadow = true; g.add(mesh); return mesh;
+  };
+  add(new THREE.BoxGeometry(1.9, 2.0, 3.2), box, 0, 1.55, -0.7); // cargo box
+  add(new THREE.BoxGeometry(1.85, 1.5, 1.5), cab, 0, 1.25, 1.65); // cab
+  add(new THREE.BoxGeometry(1.7, 0.6, 0.05), glass, 0, 1.6, 2.41); // windscreen
+  for (const [x, z] of [[-0.85, 1.6], [0.85, 1.6], [-0.85, -1.4], [0.85, -1.4]]) add(new THREE.CylinderGeometry(0.38, 0.38, 0.28, 16).rotateZ(Math.PI / 2), dark, x, 0.38, z);
+  g.visible = false;
+  return { root: g, box };
+}
+
 const ease = (k: number) => k * k * (3 - 2 * k);
 
 export function installCouriers(group: THREE.Group, ground: (x: number, z: number) => number) {
@@ -42,6 +60,25 @@ export function installCouriers(group: THREE.Group, ground: (x: number, z: numbe
   });
   interface Stop { lot: Lot; f: LotFront; every: number; timer: number; color: string }
   const stops = new Map<string, Stop>();
+  // Supplier vans: fewer, slower, parking at the curb in front of the shops they stock.
+  interface Van { on: boolean; root: THREE.Group; box: THREE.MeshStandardMaterial; t: number; from: THREE.Vector3; stop: THREE.Vector3; to: THREE.Vector3; yaw: number }
+  const vans: Van[] = Array.from({ length: 3 }, () => {
+    const { root, box } = buildVan();
+    group.add(root);
+    return { on: false, root, box, t: 0, from: new THREE.Vector3(), stop: new THREE.Vector3(), to: new THREE.Vector3(), yaw: 0 };
+  });
+  const vanStops = new Map<string, Stop>();
+  function startVan(s: Stop) {
+    const v = vans.find((x) => !x.on);
+    if (!v) return;
+    const { f } = s;
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    const at = (along: number) => new THREE.Vector3(f.x + f.tx * along + f.nx * 4.2, 0, f.z + f.tz * along + f.nz * 4.2);
+    v.from.copy(at(-dir * 30)); v.stop.copy(at(0)); v.to.copy(at(dir * 30));
+    v.yaw = Math.atan2(v.to.x - v.from.x, v.to.z - v.from.z);
+    v.box.color.set(s.color);
+    v.t = 0; v.on = true; v.root.visible = true;
+  }
 
   function start(s: Stop) {
     const trip = trips.find((x) => !x.on);
@@ -75,6 +112,17 @@ export function installCouriers(group: THREE.Group, ground: (x: number, z: numbe
         else stops.set(lot.id, { lot, f, every, timer: Math.random() * every, color: courier?.brand?.color ?? '#22c3ee' });
       }
       for (const id of stops.keys()) if (!seen.has(id)) stops.delete(id);
+      const stocked = new Set<string>();
+      for (const { lot, f } of lots) {
+        const today = shopOf(lot.owner)?.today;
+        if (!today?.supplier) continue;
+        stocked.add(lot.id);
+        const sup = city?.standings.find((s) => (s.brand?.name ?? s.name) === today.supplier);
+        const color = sup?.brand?.color ?? '#8b5a2b';
+        const s = vanStops.get(lot.id);
+        if (s) { s.color = color; s.f = f; } else vanStops.set(lot.id, { lot, f, every: 75, timer: 5 + Math.random() * 60, color });
+      }
+      for (const id of vanStops.keys()) if (!stocked.has(id)) vanStops.delete(id);
     },
     update(dt: number, near: (x: number, z: number) => boolean) {
       for (const s of stops.values()) {
@@ -82,6 +130,24 @@ export function installCouriers(group: THREE.Group, ground: (x: number, z: numbe
         if (s.timer > 0) continue;
         s.timer = s.every * (0.8 + Math.random() * 0.4);
         if (near(s.f.x, s.f.z)) start(s); // only where someone could see it
+      }
+      for (const s of vanStops.values()) {
+        s.timer -= dt;
+        if (s.timer > 0) continue;
+        s.timer = s.every * (0.8 + Math.random() * 0.4);
+        if (near(s.f.x, s.f.z)) startVan(s);
+      }
+      for (const v of vans) {
+        if (!v.on) continue;
+        v.t += dt;
+        // 4 s in, 5 s unloading at the curb, 4 s out.
+        const p = new THREE.Vector3();
+        if (v.t < 4) p.lerpVectors(v.from, v.stop, ease(v.t / 4));
+        else if (v.t < 9) p.copy(v.stop);
+        else if (v.t < 13) p.lerpVectors(v.stop, v.to, ease((v.t - 9) / 4));
+        else { v.on = false; v.root.visible = false; continue; }
+        v.root.position.set(p.x, ground(p.x, p.z), p.z);
+        v.root.rotation.y = v.yaw;
       }
       for (const trip of trips) {
         if (!trip.on) continue;
