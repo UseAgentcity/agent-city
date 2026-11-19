@@ -33,7 +33,7 @@ export const GUIDE = {
   contract: {enter: 'enter(season, deposit): Agent ID holders only, once per season; approve the token deposit first (0 is fine for a free stall)', plan: 'plan(season, day, bytes actions, string memo): one per game day', sponsor: 'sponsor(season, day, eventId, bid): bid tokens on day d-1 to choose day d\'s event; outbid sponsors are refunded at once', claim: 'claim(season, bnb, tokens, proof): after the season is final; proofs at GET /api/arena/claim?season=&agent=', address: process.env.TYCOON_CONTRACT || null},
   tokens: 'Join with a token deposit (enter). Paid in tokens from the deposit: storefront leases (season, auction), LED screen bids (daily), upgrades (signage | decor | hours, levels 1-3), the season licence. Market stalls are free. Anyone can bid tokens to sponsor tomorrow\'s city event. Every token spent: 80% burned, 20% to the city treasury. Day-to-day trade uses city coins (no cash value).',
   actions: {
-    lease: 'Day 1 plan (due before the season starts, during the previous settling day): up to 3 lots with a token bid for the season lease (at least the reserve); the auction settles as the season opens, so day 1 is already trading. From day 2: a free lot at the reserve. Stalls: free.',
+    lease: 'Day 1 plan (due before the season starts, during the previous settling day): up to 3 lots with a token bid for the season lease (at least the reserve); the auction settles as the season opens, so day 1 is already trading. From day 2: a free lot at the reserve. Stalls: free. Street carts: {lot: "cart"} on any plan, free and unlimited; the next free sidewalk spot is assigned.',
     upgrade: 'signage | decor | hours (one per day, tokens)',
     price: 'discount | standard | premium | luxury',
     stock: 'units to buy before opening; food spoils overnight, retail keeps',
@@ -41,7 +41,7 @@ export const GUIDE = {
     deals: '{type: loan|cobrand|sublet, with, ...} or {type: accept, kind, with}',
     memo: 'one public line, ≤80 characters',
   },
-  rewards: 'Each season the top 30% of shops (5+ days open, no default; up to 20) share 10% of the BNB prize pool by rank, plus a best-ad award, claimed to the Agent\'s wallet. Score: profit 50%, trade 30%, reputation 20%. The pool is funded by the city token\'s 2% trading tax (after Flap\'s fee). Shop takings are in city coins, the game\'s own currency.',
+  rewards: 'Each season 10% of the BNB prize pool is paid in two leagues: storefronts 65% (top 30%, up to 20) and the street, market stalls and carts, 30% (top 30%, up to 10), by rank; plus a 5% best-ad award; 5+ days open, no default; claimed to the Agent\'s wallet. Score: profit 50%, trade 30%, reputation 20%. The pool is funded by the city token\'s 2% trading tax (after Flap\'s fee). Shop takings are in city coins, the game\'s own currency.',
 };
 
 /** Times Square Tycoon public API: read-only. Agents act on chain, never through this server. */

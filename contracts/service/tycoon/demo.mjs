@@ -28,6 +28,11 @@ export const DEMO_AGENTS = [
   { agent: 'demo:juno', name: 'juno.demo', cat: 'bar', bid: 1.15, price: 'standard', ad: 0.35, brand: ['JUNO BAR', '散场来一杯', '#38bdf8'] },
   { agent: 'demo:kai', name: 'kai.demo', cat: 'bar', bid: 1.0, price: 'discount', ad: 0.1, brand: ['Kai Tavern', '啤酒买一送一', '#a3e635'] },
   { agent: 'demo:tess', name: 'tess.demo', cat: 'stall', bid: 1.0, price: 'standard', ad: 0.05, brand: ['Tess Cocoa', '热可可在这里', '#ffb291'] },
+  // Street carts (free, any number): invented names.
+  { agent: 'demo:pretz', name: 'pretz.demo', cat: 'cart', bid: 1.0, price: 'standard', ad: 0, brand: ['Pretzel Pilot', '刚出炉的椒盐卷饼', '#e8a33d'] },
+  { agent: 'demo:halo', name: 'halo.demo', cat: 'cart', bid: 1.0, price: 'discount', ad: 0, brand: ['Halo Halal', '鸡肉饭加白酱', '#2bb673'] },
+  { agent: 'demo:dogo', name: 'dogo.demo', cat: 'cart', bid: 1.0, price: 'standard', ad: 0, brand: ['Dog Day', '一美元热狗', '#e5484d'] },
+  { agent: 'demo:nuts', name: 'nuts.demo', cat: 'cart', bid: 1.0, price: 'premium', ad: 0, brand: ['Nutty Nook', '焦糖坚果', '#a0522d'] },
   { agent: 'demo:bo', name: 'bo.demo', cat: 'stall', bid: 1.0, price: 'premium', ad: 0.05, brand: ['Bo Crafts', '手作礼物', '#d08a4f'] },
   { agent: 'demo:ivy', name: 'ivy.demo', cat: 'coffee', bid: 1.15, price: 'standard', ad: 0.3, brand: ['Ivy Roasters', '慢一点的咖啡', '#3ddc97'] },
 ];
@@ -50,6 +55,7 @@ const CAT_MEMOS = {
   theatre: ['今晚的票还剩一些', '散场后和隔壁酒吧联名', '口碑比票价更重要'],
   bar: ['散场后才是我们的主场', '今晚 happy hour 到 9 点', '啤酒备足了'],
   stall: ['热可可快卖完了', '手作礼物每天只做这么多', '集市的灯串亮起来了'],
+  cart: ['午饭时间排到街角了', '推车停在剧院门口最好卖', '白酱多给一勺'],
 };
 
 /** One demo Agent's plan for `day`, from what it can see of the city after the previous day. */
@@ -59,7 +65,10 @@ export function demoPlan(bot, day, city, seed, lots, events = []) {
   const ev = eventFor(seed, day, events);
   const tokens = me?.tokens ?? depositOf(bot);
   const actions = {};
-  if (day === 1 || !me?.lot) {
+  if ((day === 1 || !me?.lot) && bot.cat === 'cart') {
+    actions.lease = [{ lot: 'cart', bid: 0 }];
+    actions.brand = { name: bot.brand[0], slogan: bot.brand[1], color: bot.brand[2] };
+  } else if (day === 1 || !me?.lot) {
     const free = lots.filter((l) => !city.lots.find((x) => x.id === l.id)?.owner);
     const mine = free.filter((l) => l.cat === bot.cat).sort((a, b) => TIERS[b.tier].traffic - TIERS[a.tier].traffic);
     // Bid tokens for the season lease: temperament over the reserve, never more than the deposit allows.
@@ -143,7 +152,8 @@ export function demoEvents(seed, lots, upToDay = DAYS, extra = []) {
     const city = runSeason({ seed, lots, events, days: day - 1 });
     // Real Agents go first and the demo shopkeepers make way: no demo bid on a lot a real Agent asked for.
     const real = extra.filter((e) => (e.type === 'plan' || e.type === 'sponsor') && e.day === day);
-    const wanted = new Set(real.flatMap((e) => (e.type === 'plan' && Array.isArray(e.actions?.lease) ? e.actions.lease.map((x) => x?.lot) : [])));
+    // (Carts are unlimited, so asking for one never pushes anyone out.)
+    const wanted = new Set(real.flatMap((e) => (e.type === 'plan' && Array.isArray(e.actions?.lease) ? e.actions.lease.map((x) => x?.lot).filter((l) => l !== 'cart') : [])));
     events.push(...real);
     for (const bot of DEMO_AGENTS) {
       const p = demoPlan(bot, day, city, seed, lots, events);

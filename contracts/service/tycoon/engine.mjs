@@ -14,6 +14,8 @@
 //   { type: 'sponsor', who, name, day, event, bid }          anyone bids tokens to set `day`'s city event
 // Output: the city after `days` resolved game days.
 
+import { CART_SPOTS, cartLot } from './lots.mjs';
+
 export const DAYS = 7;
 export const START_CASH = 20000;
 export const MAX_LEASE_PICKS = 3;
@@ -28,6 +30,9 @@ export const CATS = {
   theatre: { zh: '剧院', en: 'Theatre', ref: 110, cost: 38, elastic: 1.3, base: 78, perishable: true },
   bar: { zh: '酒吧', en: 'Bar', ref: 14, cost: 4.5, elastic: 1.5, base: 640, perishable: true },
   stall: { zh: '集市摊位', en: 'Market stall', ref: 9, cost: 3.2, elastic: 1.3, base: 470, perishable: false },
+  // Street carts: unlimited and free. More carts make a livelier street, so the trade's demand grows almost in step
+  // with their number (scale 0.85, where storefront trades grow with the square root).
+  cart: { zh: '街头餐车', en: 'Street cart', ref: 8, cost: 2.8, elastic: 1.4, base: 260, perishable: true, scale: 0.85 },
 };
 /**
  * Per lot tier: foot traffic, daily operating rent (city coins) and the token reserve for the season lease.
@@ -38,6 +43,7 @@ export const TIERS = {
   B: { traffic: 1.0, rent: 1600, lease: 150_000 },
   C: { traffic: 0.6, rent: 900, lease: 60_000 },
   S: { traffic: 0.5, rent: 350, lease: 0 },
+  K: { traffic: 0.45, rent: 150, lease: 0 }, // a street cart: no lease, no licence, any number of them
 };
 /** Token prices other than auctions. */
 export const TOKEN = {
@@ -128,8 +134,19 @@ export function cleanAd(ad) {
  * tenants (day 1 plans, bids included, are due before the season starts: during the last one's settling day).
  * Pure: the same arguments always give the same city.
  */
-export function runSeason({ seed, lots, events, days = DAYS, opening = false }) {
+export function runSeason({ seed, lots, events, days = DAYS, opening = false, carts = CART_SPOTS }) {
   const lotById = new Map(lots.map((l) => [l.id, l]));
+  const cartLots = []; // cart spots handed out this season, in order
+  /** The first free cart spot for an Agent asking for `lot: 'cart'`, or null when the street is full. */
+  const takeCart = () => {
+    for (let i = 0; i < carts.length; i++) {
+      const id = `cart-${i + 1}`;
+      if (lotOwner.has(id)) continue;
+      if (!lotById.has(id)) { const l = cartLot(i); lotById.set(id, l); cartLots.push(l); }
+      return lotById.get(id);
+    }
+    return null;
+  };
   const agents = new Map();
   const lotOwner = new Map(); // lot id -> agent
   const screens = SCREENS.map((s) => ({ ...s, ad: null, owner: null, paid: 0 }));
@@ -220,12 +237,19 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false }) 
         }
         if (best) lease(best.a, lot, best.bid, day);
       }
+      // Then carts, for anyone still without a shop who asked for one.
+      for (const p of plans) {
+        const a = agents.get(p.agent);
+        if (a.lot || !a.lease.some((x) => x?.lot === 'cart')) continue;
+        const cart = takeCart();
+        if (cart) lease(a, cart, 0, day);
+      }
     } else {
       for (const p of plans) {
         const a = agents.get(p.agent);
         if (a.lot) continue;
         for (const pick of a.lease) {
-          const lot = lotById.get(pick?.lot);
+          const lot = pick?.lot === 'cart' ? takeCart() : lotById.get(pick?.lot);
           if (!lot || lotOwner.has(lot.id) || TIERS[lot.tier].lease + licenceFor(a, lot) > a.tokens) continue;
           lease(a, lot, TIERS[lot.tier].lease, day);
           break;
@@ -267,7 +291,7 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false }) 
       const open = [...agents.values()].filter((a) => a.lot && lotById.get(a.lot).cat === catId);
       if (!open.length) continue;
       const cat = CATS[catId];
-      const demand = cat.base * (ev.mult[catId] ?? 1) * Math.sqrt(open.length);
+      const demand = cat.base * (ev.mult[catId] ?? 1) * open.length ** (cat.scale ?? 0.5);
       const attract = open.map((a) => {
         const lot = lotById.get(a.lot);
         const level = PRICE_LEVELS[a.price];
@@ -351,7 +375,7 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false }) 
   }
 
   function repCap(a) { return 1.4 + UPGRADES.decor.effect * a.upgrades.decor; }
-  function licenceFor(a, lot) { return lot.tier === 'S' || a.licensed ? 0 : TOKEN.licence; }
+  function licenceFor(a, lot) { return lot.tier === 'S' || lot.tier === 'K' || a.licensed ? 0 : TOKEN.licence; }
   function lease(a, lot, bid, day) {
     const licence = licenceFor(a, lot);
     if (!spend(a, 'licence', licence) || !spend(a, 'lease', bid)) return;
@@ -427,7 +451,8 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false }) 
     seed, day: resolved,
     event: resolved ? dayEvents[resolved - 1] : null,
     days: dayEvents,
-    lots: lots.map((l) => ({ ...l, owner: lotOwner.get(l.id) ?? null, reserve: TIERS[l.tier].rent, leaseReserve: TIERS[l.tier].lease })),
+    // Storefronts and stalls always; cart spots only while someone runs a cart there.
+    lots: [...lots, ...cartLots.filter((l) => lotOwner.has(l.id))].map((l) => ({ ...l, owner: lotOwner.get(l.id) ?? null, reserve: TIERS[l.tier].rent, leaseReserve: TIERS[l.tier].lease })),
     screens, standings: list, feed: feed.slice(-120),
     openOffers: offers.filter((o) => !o.done).map(({ done, ...o }) => o),
     tokens: { spent: tokens, total, burned, treasury: total - burned, deposits: list.reduce((s, x) => s + x.deposit, 0) },

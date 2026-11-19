@@ -3,6 +3,7 @@ import { DAYS, START_CASH, TIERS, TOKEN, UPGRADE_COST, cleanAd, eventFor, runSea
 import { LOTS } from '../service/tycoon/lots.mjs';
 import { demoEvents } from '../service/tycoon/demo.mjs';
 import { createTycoon } from '../service/tycoon/service.mjs';
+import { leagueOf, settleSeason } from '../service/tycoon/chain.mjs';
 
 // Same events, same city: the server, a replay and the browser trial must agree.
 const events = demoEvents('test-season', LOTS, DAYS);
@@ -98,6 +99,28 @@ assert.deepEqual(opened.lots.map((l) => l.owner), day1.lots.map((l) => l.owner),
 assert.equal(opened.day, 0, 'no day played yet');
 assert.ok(opened.standings.every((s) => !s.today), 'no trade before day 1 is played');
 
+// Street carts: free and unlimited, assigned in order; a hundred of them still trade, and two leagues keep free
+// carts from crowding paid storefronts out of the awards.
+const many = [];
+for (let i = 0; i < 100; i++) {
+  const agent = '0x' + String(i).padStart(40, '0');
+  many.push({ type: 'enter', agent, name: `a${i}`, deposit: 0 });
+  for (let d = 1; d <= DAYS; d++) many.push({ type: 'plan', agent, day: d, actions: { ...(d === 1 ? { lease: [{ lot: 'cart' }] } : {}), price: 'standard', stock: 150 } });
+}
+const street = runSeason({ seed: 'carts', lots: LOTS, events: demoEvents('carts', LOTS, DAYS, many) });
+const realCarts = street.standings.filter((s) => s.agent.startsWith('0x') && s.cat === 'cart');
+assert.equal(realCarts.length, 100, 'every Agent got a cart');
+assert.equal(new Set(realCarts.map((s) => s.lot)).size, 100, 'each on its own spot');
+assert.ok(realCarts.every((s) => s.servedTotal > 0 && s.tokensSpent === 0), 'carts trade and cost no tokens');
+assert.equal(street.lots.filter((l) => l.tier === 'K').length, realCarts.length + 4, 'only occupied cart spots are listed (plus 4 demo carts)');
+const fakeRich = { ...street, standings: street.standings.map((s, i) => (s.agent.startsWith('demo:') && s.cat !== 'cart' && s.cat !== 'stall' ? { ...s, agent: '0x' + String(900 + i).padStart(40, '0') } : s)) };
+const deps = Object.fromEntries(fakeRich.standings.filter((s) => s.agent.startsWith('0x')).map((s) => [s.agent, BigInt(s.deposit) * 10n ** 18n]));
+const split = settleSeason(fakeRich, { season: 1, budgetWei: 10n ** 18n, depositsWei: deps });
+const paid = (league) => split.claims.filter((c) => leagueOf(fakeRich.standings.find((s) => s.agent === c.agent)) === league).reduce((a, c) => a + c.bnb, 0n);
+assert.ok(paid('street') > 0n && paid('street') <= (10n ** 18n * 3000n) / 10000n + 1n, 'the street league takes at most 30%');
+assert.ok(paid('storefront') > 0n, 'storefronts still win');
+assert.ok(split.claims.filter((c) => leagueOf(fakeRich.standings.find((s) => s.agent === c.agent)) === 'street').length <= 10, 'at most 10 street winners');
+
 // The public snapshot follows the clock: day 1 first, settling after day 7.
 let t = Date.UTC(2026, 10, 19);
 const city = createTycoon({ now: () => t, dayMs: 1000, epoch: t });
@@ -110,4 +133,4 @@ t += 4000;
 assert.equal(city.snapshot().season.settling, true);
 assert.ok(city.snapshot().standings.every((s) => !('wallet' in s)), 'no wallets in the public snapshot');
 
-console.log('PASS: deterministic season, token lease auction and licence, opening auction, free stalls, 80/20 burn split, upgrades, event sponsorship, composite score, daily rent, loan default, ad filter, public clock');
+console.log('PASS: deterministic season, token lease auction and licence, opening auction, unlimited street carts, two award leagues, free stalls, 80/20 burn split, upgrades, event sponsorship, composite score, daily rent, loan default, ad filter, public clock');

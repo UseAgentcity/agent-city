@@ -324,7 +324,7 @@ export function installTycoonDecor(group: THREE.Group, ground: (x: number, z: nu
     /** Called for every lot whose front is known, on each snapshot. */
     sync(lot: Lot, f: LotFront, totemSide: number) {
       keepers.sync(lot, f, totemSide);
-      if (lot.key == null) { stalls.set(lot.id, { lot, f }); return; }
+      if (lot.key == null) { if (lot.tier === 'S') stalls.set(lot.id, { lot, f }); return; }
       if (!placed.has(lot.id)) {
         placed.add(lot.id);
         if (lot.cat === 'theatre') marquee(lot, f);

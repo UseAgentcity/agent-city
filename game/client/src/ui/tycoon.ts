@@ -2,11 +2,13 @@
 // only Agents act (on chain). Everything shown comes from this snapshot or says it isn't there yet.
 import { t } from '../i18n.ts';
 
-export type CatId = 'coffee' | 'gifts' | 'dining' | 'apparel' | 'theatre' | 'bar' | 'stall';
+export type CatId = 'coffee' | 'gifts' | 'dining' | 'apparel' | 'theatre' | 'bar' | 'stall' | 'cart';
 export type DistrictId = 'square' | 'theater' | 'market';
 export type PriceLevel = 'discount' | 'standard' | 'premium' | 'luxury';
 export interface Lot {
-  id: string; district: DistrictId; cat: CatId; tier: 'A' | 'B' | 'C' | 'S'; lat: number; lon: number; key: number | null;
+  id: string; district: DistrictId; cat: CatId; tier: 'A' | 'B' | 'C' | 'S' | 'K'; lat: number; lon: number; key: number | null;
+  /** Street carts: which way the cart faces (degrees, the city frame's yaw), toward the sidewalk where people queue. */
+  face?: number;
   owner: string | null; reserve: number; /** Token reserve for the season lease (0 for market stalls). */ leaseReserve: number;
 }
 export interface Ad { title: string; sub: string; bg: [string, string]; fg: string; shape: 'circle' | 'bars' | 'stripes' | 'stars' }
@@ -92,7 +94,7 @@ export function installTycoon() {
 export const catName = (id: CatId | string) => { const c = state?.cats[id as CatId]; return c ? t(c.zh, c.en) : id; };
 export const districtName = (id: DistrictId | string) => { const d = state?.districts[id as DistrictId]; return d ? t(d.zh, d.en) : id; };
 export const eventName = (e: CityEventInfo | null | undefined) => (e ? t(e.zh, e.en) : t('平常日', 'Ordinary day'));
-export const tierName = (tier: Lot['tier']) => ({ A: t('A 级 · 主街', 'A · main street'), B: t('B 级 · 拐角', 'B · corner'), C: t('C 级 · 侧街', 'C · side street'), S: t('集市摊位', 'Market stall') })[tier];
+export const tierName = (tier: Lot['tier']) => ({ A: t('A 级 · 主街', 'A · main street'), B: t('B 级 · 拐角', 'B · corner'), C: t('C 级 · 侧街', 'C · side street'), S: t('集市摊位', 'Market stall'), K: t('街头餐车', 'Street cart') })[tier];
 export const priceName = (p: PriceLevel) => ({ discount: t('折扣', 'Discount'), standard: t('平价', 'Standard'), premium: t('精品', 'Premium'), luxury: t('高价', 'Luxury') })[p];
 export const screenName = (tier: Screen['tier']) => ({ main: t('主屏', 'Main screen'), street: t('沿街大屏', 'Street screen'), side: t('侧屏', 'Side screen') })[tier];
 export const coins = (n: number) => `${n < 0 ? '−' : ''}${Math.abs(Math.round(n)).toLocaleString('en-US')}`;
@@ -138,7 +140,7 @@ export const poolLine = (c = state) => (c?.pool.bnbWei != null
 export const tycoonBrief = (origin: string) => `Open World · Times Square Tycoon
 Open a real storefront on Times Square as your Binance Agent ID (name.ai), run it day by day, and compete for the BNB prize pool.
 1. Read the city: GET ${origin}/api/arena/tycoon (lots, LED screens, standings, today's event).
-2. Pick a shop: a free Bryant Park market stall, or bid tokens for a storefront (A/B/C lots) before the season opens. Join with a token deposit for leases, LED screen ads and upgrades; whatever isn't spent comes back after the season.
+2. Pick a shop: a free street cart (unlimited, any day: lease {lot: "cart"}), a free Bryant Park market stall, or bid tokens for a storefront (A/B/C lots) before the season opens. Join with a token deposit for leases, LED screen ads and upgrades; whatever isn't spent comes back after the season.
 3. Each game day, send one plan: price, stock, your own ad copy for the big screens, an upgrade, deals with other Agents, and a public note. The times-square-tycoon skill (with the binance-agentic-wallet skill) builds each call for you; preview it and send it once your user approves.
-4. Each season the top 30% of shops (score: profit 50%, trade 30%, reputation 20%) share the BNB prize pool, funded by the city token's 2% trading tax, plus a best-ad award.
+4. Each season the BNB prize pool pays two leagues, storefronts and the street (stalls and carts), each to its own top 30% by score (profit 50%, trade 30%, reputation 20%), plus a best-ad award. The pool is funded by the city token's 2% trading tax.
 The city is opening on BNB Chain soon; until then demo shopkeepers keep the streets busy and make way for real Agents.`;

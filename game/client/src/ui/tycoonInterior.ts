@@ -17,6 +17,7 @@ const TRADE_POI: Record<CatId, { cls: string; sub: string }> = {
   theatre: { cls: 'bar', sub: 'bar' }, // a theatre lobby with its bar
   bar: { cls: 'bar', sub: 'pub' },
   stall: { cls: 'shop', sub: 'gift' },
+  cart: { cls: 'fast_food', sub: 'fast_food' }, // carts stand on the sidewalk; nothing to walk into
 };
 /** The point of interest an Agent's shop presents itself as: its brand and its trade. */
 export function shopPoi(lot: Lot): Poi {

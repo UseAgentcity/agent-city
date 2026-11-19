@@ -25,7 +25,11 @@ export function lotFrontOf(earth: EarthApi, lot: Lot): LotFront | null {
   const p = earth.frame.toLocal(lot.lat, lot.lon);
   const c = earth.frame.toLocal(d.lat, d.lon);
   let front: LotFront | null = null;
-  if (lot.key == null) {
+  if (lot.face != null) {
+    // A street cart: placed on a surveyed sidewalk spot, facing the walkway.
+    const a = (lot.face * Math.PI) / 180, nx = Math.sin(a), nz = Math.cos(a);
+    front = { x: p.x, z: p.z, nx, nz, tx: -nz, tz: nx, wall: 2 };
+  } else if (lot.key == null) {
     const dx = c.x - p.x, dz = c.z - p.z, l = Math.hypot(dx, dz) || 1;
     front = { x: p.x, z: p.z, nx: dx / l, nz: dz / l, tx: -dz / l, tz: dx / l, wall: 3 };
   } else {
@@ -245,6 +249,38 @@ function buildStall(color: THREE.Color): THREE.Group {
   return g;
 }
 
+// ---------- street carts ----------
+function buildCart(color: THREE.Color): THREE.Group {
+  const g = new THREE.Group();
+  const steel = new THREE.MeshStandardMaterial({ color: 0xc9ced6, roughness: 0.35, metalness: 0.65 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x23252b, roughness: 0.8 });
+  const brand = new THREE.MeshStandardMaterial({ color, roughness: 0.55 });
+  const white = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.7 });
+  const box = (m: THREE.Material, w: number, h: number, d: number, x: number, y: number, z: number) => {
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    b.position.set(x, y, z); b.castShadow = true; b.receiveShadow = true; g.add(b);
+    return b;
+  };
+  box(steel, 1.7, 0.9, 0.85, 0, 0.75, 0); // body
+  box(brand, 1.72, 0.42, 0.02, 0, 0.78, 0.435); // brand panel facing the customers
+  box(steel, 1.84, 0.05, 0.95, 0, 1.22, 0); // counter
+  box(dark, 0.08, 0.6, 0.08, -0.95, 0.95, -0.2); // push handle
+  for (const x of [-0.6, 0.6]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.08, 16), dark);
+    w.rotation.x = Math.PI / 2; w.position.set(x, 0.22, 0.46); g.add(w);
+  }
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 1.45, 8), steel);
+  pole.position.set(0, 1.95, -0.1); g.add(pole);
+  // Striped umbrella: alternating brand and white wedges.
+  for (let i = 0; i < 8; i++) {
+    const wedge = new THREE.Mesh(new THREE.ConeGeometry(1.25, 0.42, 1, 1, true, (i / 8) * Math.PI * 2, Math.PI / 4), i % 2 ? white : brand);
+    (wedge.material as THREE.Material).side = THREE.DoubleSide;
+    wedge.position.set(0, 2.62, -0.1); wedge.castShadow = true; g.add(wedge);
+  }
+  for (let i = 0; i < 4; i++) box(i % 2 ? white : brand, 0.18, 0.12 + (i % 2) * 0.06, 0.18, -0.55 + i * 0.36, 1.31, 0.18);
+  return g;
+}
+
 export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: (x: number, z: number) => number) {
   const group = new THREE.Group();
   group.name = 'tycoon-world';
@@ -397,7 +433,8 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
   }
   function placeStall(lot: Lot, f: LotFront) {
     const color = new THREE.Color(shopOf(lot.owner)?.brand?.color ?? '#5b6170');
-    const root = buildStall(color);
+    const cart = lot.tier === 'K';
+    const root = cart ? buildCart(color) : buildStall(color);
     root.position.set(f.x, ground(f.x, f.z), f.z);
     root.rotation.y = Math.atan2(f.nx, f.nz);
     group.add(root);
@@ -406,12 +443,13 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
     canvas.width = SIGN_W; canvas.height = SIGN_H;
     const tex = new THREE.CanvasTexture(canvas);
     tex.colorSpace = THREE.SRGBColorSpace;
-    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
-    mesh.position.set(0, 3.25, 0.75);
+    const mesh = new THREE.Mesh(cart ? new THREE.PlaneGeometry(1.8, 0.45) : new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+    const [sy, sz] = cart ? [3.12, -0.08] : [3.25, 0.75];
+    mesh.position.set(0, sy, sz);
     root.add(mesh);
-    // The same sign on the back, so it reads the right way round from either side of the row.
+    // The same sign on the back, so it reads the right way round from either side.
     const back = new THREE.Mesh(mesh.geometry, mesh.material);
-    back.position.set(0, 3.25, 0.73);
+    back.position.set(0, sy, sz - 0.02);
     back.rotation.y = Math.PI;
     root.add(back);
     signs.set(lot.id, { mesh, canvas, tex, key: '' });
@@ -463,7 +501,14 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       l.every = 9 - 6 * Math.min(1, ratio);
       decor.sync(lot, f, -queueSide(lot));
     }
-    decor.done(city.lots.filter((l) => l.key == null).length);
+    decor.done(city.lots.filter((l) => l.tier === 'S').length);
+    // A cart whose Agent gave up the spot leaves the street.
+    for (const [id, st] of stalls) {
+      if (city.lots.some((l) => l.id === id)) continue;
+      group.remove(st.root);
+      signs.delete(id);
+      stalls.delete(id);
+    }
     beams.sync(city.lots.flatMap((lot) => { const f = lotFrontOf(earth, lot); return f ? [{ lot, f }] : []; }));
   }
   onTycoon(sync);

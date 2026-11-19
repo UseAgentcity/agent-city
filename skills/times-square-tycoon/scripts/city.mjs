@@ -133,9 +133,9 @@ async function suggest(api, agent) {
   const actions = {};
   const shop = me.shop;
   if (!shop?.lot) {
-    // No shop yet: list three open lots, best first, at the reserve. Stalls cost no tokens.
-    const free = city.lots.filter((l) => !l.owner).sort((a, b) => b.leaseReserve - a.leaseReserve);
-    actions.lease = free.slice(0, 3).map((l) => ({ lot: l.id, bid: l.leaseReserve }));
+    // No shop yet: the two best open lots at the reserve, and a free street cart as the fallback (always available).
+    const free = city.lots.filter((l) => !l.owner && l.tier !== 'K').sort((a, b) => b.leaseReserve - a.leaseReserve);
+    actions.lease = [...free.slice(0, 2).map((l) => ({ lot: l.id, bid: l.leaseReserve })), { lot: 'cart', bid: 0 }];
     actions.price = 'standard';
   } else {
     const cat = city.lots.find((l) => l.id === shop.lot)?.cat;

@@ -95,8 +95,9 @@ export function installKeepers(group: THREE.Group, ground: (x: number, z: number
     if (k) return k;
     let x: number, z: number, dx: number, dz: number;
     if (lot.key == null) {
-      // Behind the stall counter, facing the walkway.
-      x = f.x - f.nx * 0.12; z = f.z - f.nz * 0.12; dx = f.nx; dz = f.nz;
+      // Behind the stall counter (or the cart), facing the walkway.
+      const back = lot.tier === 'K' ? 0.85 : 0.12;
+      x = f.x - f.nx * back; z = f.z - f.nz * back; dx = f.nx; dz = f.nz;
     } else {
       // Between the door and the totem, turned a little toward the line on the other side.
       x = f.x + f.nx * 1.25 + f.tx * totemSide * 0.85; z = f.z + f.nz * 1.25 + f.tz * totemSide * 0.85;

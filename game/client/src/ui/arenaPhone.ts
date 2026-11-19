@@ -59,6 +59,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
   let opened = true;
   let selected: string | null = null; // lot id for the shop page
   let district: DistrictId = 'square';
+  /** Standings league: storefronts, or the street (market stalls and carts). Each pays its own top 30%. */
+  let league: 'storefront' | 'street' = 'storefront';
 
   type Tile = { id: ArenaApp | 'settings' | 'x'; name: string; icon: string; cls: string; href?: string };
   const TILE: Record<string, Tile> = {
@@ -104,7 +106,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     const today = s?.today;
     const right = s ? `<span class="ec-amt">${today ? t(`${today.served} 位客人`, `${today.served} served`) : '—'}</span>` : `<span class="ar-chip off">${t('招租', 'For lease')}</span>`;
     return `<button class="pj-row ar-rank" data-ty-lot="${esc(lot.id)}">${swatch(s?.brand?.color)}
-      <div class="pj-main"><b>${esc(lotTitle(lot))}${demoTag(s)}</b><small>${esc(catName(lot.cat))} · ${esc(tierName(lot.tier))}${s ? ` · ${esc(s.name)}` : ` · ${lot.leaseReserve ? t(`租约 ${tokensLabel(lot.leaseReserve)} 起`, `lease from ${tokensLabel(lot.leaseReserve)}`) : t('免费摆摊', 'free stall')}`}</small></div>${right}</button>`;
+      <div class="pj-main"><b>${esc(lotTitle(lot))}${demoTag(s)}</b><small>${esc(catName(lot.cat))}${lot.tier === 'K' ? '' : ` · ${esc(tierName(lot.tier))}`}${s ? ` · ${esc(s.name)}` : ` · ${lot.leaseReserve ? t(`租约 ${tokensLabel(lot.leaseReserve)} 起`, `lease from ${tokensLabel(lot.leaseReserve)}`) : t('免费摆摊', 'free stall')}`}</small></div>${right}</button>`;
   }
   function renderCity(el: HTMLElement) {
     const c = tycoon();
@@ -122,7 +124,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <div class="pj-list">${lots.map(lotRow).join('')}</div>`;
     html += fine([
       t('A/B/C 级按离时代广场主街的远近划分：越近客流越大，租金也越高。', 'A/B/C tiers follow distance from the bowtie: closer means more foot traffic and higher rent.'),
-      t('Agent 在上一季的结算日用代币竞租店面（另付一次季度执照），新赛季第 1 天开门就揭晓店主；第 2 天起可以按底价租剩下的空位。集市摊位免费。', 'Agents bid tokens for leases during the previous season\'s settling day (plus a season licence); tenants open on day 1. From day 2 free lots go at the reserve. Market stalls are free.'),
+      t('Agent 在上一季的结算日用代币竞租店面（另付一次季度执照），新赛季第 1 天开门就揭晓店主；第 2 天起可以按底价租剩下的空位。集市摊位和街头餐车免费，餐车不限数量，随时开张。', 'Agents bid tokens for leases during the previous season\'s settling day (plus a season licence); tenants open on day 1. From day 2 free lots go at the reserve. Market stalls and street carts are free; carts are unlimited and open any day.'),
       t('每天的经营（进货、日常租金、收入）用城市币，城市币没有现金价值。', 'Day-to-day trade (stock, daily rent, takings) uses city coins, which have no cash value.'),
       ONLY_AGENTS(),
     ]);
@@ -134,7 +136,10 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     let html = head(t('排行榜', 'Standings')) + '<div class="pv-scroll home-scroll">';
     if (!c) { el.innerHTML = html + loading() + '</div>'; return; }
     if (!c.standings.length) html += emptyState(ICONS.ranking, t('还没有店开张', 'No shop has opened yet'), t('第一位 Agent 租下店面后，这里按利润排名。', 'Once an Agent leases a lot, shops rank here by profit.'));
-    html += `<p class="ar-muted">${esc(seasonLine())}</p><div class="pj-list">${c.standings.map((s, i) => {
+    const street = (cat: string | null | undefined) => cat === 'cart' || cat === 'stall';
+    const rows = c.standings.filter((s) => (league === 'street') === street(s.cat ?? lotOf(s.lot)?.cat));
+    html += `<div class="ar-seg"><button class="${league === 'storefront' ? 'on' : ''}" data-ty-league="storefront">${t('店面榜', 'Storefronts')}</button><button class="${league === 'street' ? 'on' : ''}" data-ty-league="street">${t('街头榜', 'Street')}</button></div>`;
+    html += `<p class="ar-muted">${esc(seasonLine())} · ${league === 'street' ? t('集市摊位和街头餐车，免费开张；本季预算的 30% 给这一榜', 'Market stalls and street carts, free to open; 30% of the season budget') : t('代币竞租的店面；本季预算的 65% 给这一榜', 'Storefronts leased with tokens; 65% of the season budget')}</p><div class="pj-list">${rows.map((s, i) => {
       const lot = lotOf(s.lot);
       return `<button class="pj-row ar-rank" ${lot ? `data-ty-lot="${esc(lot.id)}"` : ''}>
         <span class="ar-medal m${Math.min(i + 1, 4)}">${i + 1}</span>${swatch(s.brand?.color)}
@@ -280,7 +285,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <ol class="ar-steps">
         <li>${t('在 Binance App 领取 Agent ID（name.ai）。', 'Claim an Agent ID (name.ai) in the Binance app.')}</li>
         <li>${t('打开 Agentic Wallet 的开发者模式（App 里：Agentic Wallet → 设置）。', 'Turn on Developer Mode in Agentic Wallet (in the app: Agentic Wallet → Settings).')}</li>
-        <li>${t('想开店面，先把这季要用的代币存进城市合约（确认一次）。只想试试的话，集市摊位免费。', 'To run a storefront, deposit this season’s tokens into the city contract (one confirmation). To just try it, market stalls are free.')}</li>
+        <li>${t('想开店面，先把这季要用的代币存进城市合约（确认一次）。只想试试的话，集市摊位和街头餐车免费，餐车不限数量。', 'To run a storefront, deposit this season’s tokens into the city contract (one confirmation). To just try it, market stalls and street carts are free, and carts are unlimited.')}</li>
         <li>${t('把下面的说明复制给你的 Agent。它每个游戏日提交一份经营计划，每次都会先给你预览、等你确认。', 'Copy the brief below to your Agent. It submits one plan per game day, and shows you a preview to confirm every time.')}</li>
       </ol>
       <a class="pbtn ar-wide" href="https://web3.binance.com/en/dev-docs/products/agentic-wallet/install" target="_blank" rel="noopener noreferrer">${t('官方 Agentic Wallet 接入', 'Official Agentic Wallet setup')}</a>
@@ -295,7 +300,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     el.innerHTML = `${head(t('奖池', 'Prize pool'))}<div class="pv-scroll home-scroll">
       <div class="ar-card ar-hero-card"><b class="ar-title">${t('BNB 奖池', 'BNB prize pool')}</b>
         <div class="ar-clock">${esc(poolLine(c))}</div><p class="ar-muted">${REWARD_NOTE()}</p></div>
-      <div class="ar-card"><b>${t('谁能拿', 'Who wins')}</b><p class="ar-muted">${t('营业满 5 天、没有违约的店，按综合经营分排名，前 30%（最多 20 家）按名次分本季预算；另有一份「最佳广告」奖。', 'Shops open 5+ days with no default, ranked by season score: the top 30% (up to 20) share the season budget by rank, plus a “best ad” award.')}</p><p class="ar-muted">${SCORE_NOTE()}</p></div>
+      <div class="ar-card"><b>${t('谁能拿', 'Who wins')}</b><p class="ar-muted">${t('分两个榜：店面榜分本季预算的 65%（前 30%，最多 20 家），街头榜（集市摊位和街头餐车）分 30%（前 30%，最多 10 家），按名次递减；另有 5% 的「最佳广告」奖。都要营业满 5 天、没有违约。', 'Two leagues: storefronts share 65% of the season budget (top 30%, up to 20), the street league (market stalls and carts) 30% (top 30%, up to 10), by rank; plus a 5% “best ad” award. Shops need 5+ days open and no default.')}</p><p class="ar-muted">${SCORE_NOTE()}</p></div>
       <div class="ar-card"><b>${t('花掉的代币去哪了', 'Where spent tokens go')}</b><p class="ar-muted">${BURN_NOTE()}</p><button class="pbtn ghost ar-wide" data-ar-app="economy">${t('看代币经济', 'See the token economy')}</button></div>
       <div class="ar-card"><b>${t('钱包安全', 'Wallet safety')}</b><p class="ar-muted">${t('游戏不托管钱包、不收私钥或助记词。每笔链上操作都由你在官方钱包里确认。代币价格会波动，奖励不保证，这不是投资建议。', 'The game holds no wallets and never asks for keys or recovery phrases. You confirm every on-chain action in the official wallet. Token prices move; awards are not guaranteed; this is not investment advice.')}</p></div>
     </div>`;
@@ -310,6 +315,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     }));
     el.querySelectorAll<HTMLElement>('[data-ty-lot]').forEach((b) => b.addEventListener('click', () => { selected = b.dataset.tyLot!; openApp('shop'); rerender(); }));
     el.querySelectorAll<HTMLElement>('[data-ty-district]').forEach((b) => b.addEventListener('click', () => { district = b.dataset.tyDistrict as DistrictId; rerender(); }));
+    el.querySelectorAll<HTMLElement>('[data-ty-league]').forEach((b) => b.addEventListener('click', () => { league = b.dataset.tyLeague as typeof league; rerender(); }));
     el.querySelectorAll<HTMLElement>('[data-ty-go]').forEach((b) => b.addEventListener('click', () => {
       const [lat, lon] = b.dataset.tyGo!.split(',').map(Number);
       hooks.goTo(lat, lon, b.dataset.tyName ?? '');
