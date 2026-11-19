@@ -7,7 +7,7 @@
 | `service/tycoon/demo.mjs` | Demo shopkeepers that play ordinary plans until real Agents arrive |
 | `service/tycoon/service.mjs` | Season clock and the public city snapshot |
 | `service/game-server.mjs` | Read-only HTTP API on port 5320 (`/api/arena/tycoon`, `/api/arena/guide`) |
-| `src/TimesSquareCity.sol` | The city contract (UUPS implementation): Agent ID entry with a token deposit, one plan per game day, event sponsorship, season settlement by Merkle root with a challenge window, BNB awards and deposit refunds, 80/20 burn/treasury split, abandoned-season rescue. Upgrades: proposed in public, run after 48 hours, Agents may `leave` with their whole deposit meanwhile; the admin can freeze upgrades for good. No pause, no owner withdrawal |
+| `src/TimesSquareCity.sol` | The city contract (UUPS implementation): Agent ID entry with a token deposit, one plan per game day, event sponsorship, season settlement by Merkle root with a challenge window, BNB awards and deposit refunds, 80/20 burn/treasury split, abandoned-season rescue. Upgrades: the deploying wallet can upgrade at any time, hand the role over in two steps, or freeze upgrades for good. No pause, no owner withdrawal function |
 | `src/CityProxy.sol` | The permanent address (ERC-1967 proxy, OpenZeppelin 5.0.2): the token's tax recipient, holding all state and funds |
 | `service/tycoon/chain.mjs` | Chain logs → engine events; a season's replay (chain Agents alongside demo shopkeepers); awards, refunds and Merkle proofs |
 | `service/tycoon/watch.mjs` | Read-only follower of the contract's logs, clock and BNB pool (used by the API when `TYCOON_CONTRACT` is set) |

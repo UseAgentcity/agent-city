@@ -22,11 +22,10 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 /// (paid from the token's trading tax that this contract receives) and the unspent part of its deposit.
 ///
 /// Deployed behind an ERC-1967 proxy (UUPS), because the token's tax recipient can never change: bugs are fixed by
-/// replacing the implementation behind the same address. Upgrades are slow and public on purpose:
-///  - only the upgrade admin (meant to be a multisig) can propose one, naming the exact new implementation;
-///  - it can run no sooner than UPGRADE_DELAY (48 hours) later, and only that implementation;
-///  - while an upgrade is pending, any Agent may leave an unsettled season and take its whole deposit back;
-///  - the admin can renounce upgrades for good (`freezeUpgrades`), making the contract immutable.
+/// replacing the implementation behind the same address. The wallet that deploys the proxy is the upgrade admin and
+/// can upgrade at any time; it can hand that role over in two steps, or give it up for good (`freezeUpgrades`),
+/// which makes the contract immutable. Because an upgrade can change anything, these guarantees hold for this
+/// implementation, and the upgrade admin is disclosed as a privileged role.
 ///
 /// Guarantees enforced by this implementation, whatever the operator does:
 ///  - the operator can never withdraw the BNB pool or any deposit;
@@ -44,7 +43,6 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     uint256 public constant CHALLENGE_WINDOW = 1 hours;
     uint256 public constant CLAIM_WINDOW = 7 days;          // BNB awards expire after this; deposit refunds never do
     uint256 public constant RESCUE_AFTER = 14 days;         // a season not final this long after day 7 refunds everyone
-    uint256 public constant UPGRADE_DELAY = 48 hours;       // between proposing an upgrade and running it
     uint256 public constant MAX_ACTIONS = 1024;             // plan bytes (UTF-8 JSON, decoded by the engine)
     uint256 public constant MAX_MEMO = 160;                 // memo bytes
     address public constant BURN = 0x000000000000000000000000000000000000dEaD;
@@ -59,7 +57,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
 
     // ---- seasons ----
     struct Season {
-        uint256 deposits;      // tokens deposited by Agents this season (less any taken back by `leave`)
+        uint256 deposits;      // tokens deposited by Agents this season
         uint256 sponsorBids;   // tokens held for the current top sponsor bids
         bytes32 root;          // Merkle root of (season, agent, bnb, tokens) leaves
         uint256 bnbTotal;      // BNB promised to this season's winners
@@ -84,15 +82,12 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     mapping(uint256 => mapping(uint256 => Bid)) public topBid;          // season => day => leading sponsor bid
     mapping(uint256 => mapping(address => bool)) public claimed;
     mapping(uint256 => mapping(address => bool)) public challengedBy;
-    mapping(uint256 => mapping(address => bool)) public left;           // took its deposit back during a pending upgrade
     /// BNB promised to published seasons and not yet claimed or released.
     uint256 public reserved;
 
     // ---- upgrades ----
-    address public upgradeAdmin;     // proposes upgrades (a multisig); address(0) once upgrades are frozen
+    address public upgradeAdmin;     // the deploying wallet; address(0) once upgrades are frozen
     address public pendingAdmin;     // two-step handover
-    address public pendingUpgrade;   // the implementation proposed, if any
-    uint64 public upgradeEta;        // earliest time it may run
 
     // ---- events (the engine's input, in block and log order) ----
     event TokenSet(address token);
@@ -100,15 +95,12 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     event Entered(uint256 indexed season, address indexed agent, uint256 deposit);
     event Planned(uint256 indexed season, uint256 indexed day, address indexed agent, bytes actions, string memo);
     event Sponsored(uint256 indexed season, uint256 indexed day, address indexed who, uint8 eventId, uint256 bid);
-    event Left(uint256 indexed season, address indexed agent, uint256 deposit);
     event Published(uint256 indexed season, bytes32 root, uint256 bnbTotal, uint256 tokensSpent, uint256 refunds, string resultUri);
     event Challenged(uint256 indexed season, address indexed by, string reason);
     event Finalized(uint256 indexed season, uint256 burned, uint256 toTreasury, uint64 claimUntil);
     event Claimed(uint256 indexed season, address indexed agent, uint256 bnb, uint256 tokens);
     event Released(uint256 indexed season, uint256 bnb);
     event Rescued(uint256 indexed season, address indexed who, uint256 tokens);
-    event UpgradeProposed(address indexed implementation, uint64 eta);
-    event UpgradeCancelled(address indexed implementation);
     event AdminProposed(address indexed admin);
     event AdminChanged(address indexed admin);
     event UpgradesFrozen();
@@ -118,18 +110,19 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
         _disableInitializers(); // the implementation itself is never used directly
     }
 
-    function initialize(address agentId_, address operator_, address treasury_, address upgradeAdmin_, uint256 epoch_, uint256 dayLength_) external initializer {
+    /// @notice Run once by the proxy's constructor: the deploying wallet becomes the upgrade admin.
+    function initialize(address agentId_, address operator_, address treasury_, uint256 epoch_, uint256 dayLength_) external initializer {
         require(agentId_.code.length > 0, "agent ID registry");
-        require(operator_ != address(0) && treasury_ != address(0) && upgradeAdmin_ != address(0), "roles");
+        require(operator_ != address(0) && treasury_ != address(0), "roles");
         require(dayLength_ >= 60, "day length");
         __UUPSUpgradeable_init();
         agentId = IAgentId(agentId_);
         operator = operator_;
         treasury = treasury_;
-        upgradeAdmin = upgradeAdmin_;
+        upgradeAdmin = msg.sender;
         epoch = epoch_;
         dayLength = dayLength_;
-        emit AdminChanged(upgradeAdmin_);
+        emit AdminChanged(msg.sender);
     }
 
     /// @notice The token's trading tax (BNB) arrives here and only grows the prize pool. Flap may also "ping" with
@@ -146,34 +139,15 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
         emit TokenSet(token_);
     }
 
-    // ---- upgrades: proposed in public, run after 48 hours, Agents may leave meanwhile ----
+    // ---- upgrades: the deploying wallet, until handed over or frozen ----
 
     modifier onlyUpgradeAdmin() {
         require(msg.sender == upgradeAdmin && msg.sender != address(0), "upgrade admin");
         _;
     }
 
-    /// @notice Announce the exact implementation that may replace this one, no sooner than 48 hours from now.
-    function proposeUpgrade(address implementation) external onlyUpgradeAdmin {
-        require(implementation.code.length > 0, "implementation");
-        pendingUpgrade = implementation;
-        upgradeEta = uint64(block.timestamp + UPGRADE_DELAY);
-        emit UpgradeProposed(implementation, upgradeEta);
-    }
-
-    function cancelUpgrade() external onlyUpgradeAdmin {
-        emit UpgradeCancelled(pendingUpgrade);
-        pendingUpgrade = address(0);
-        upgradeEta = 0;
-    }
-
-    /// @dev Called by upgradeToAndCall: only the admin, only the announced implementation, only after the delay.
-    function _authorizeUpgrade(address implementation) internal override onlyUpgradeAdmin {
-        require(implementation == pendingUpgrade && pendingUpgrade != address(0), "not proposed");
-        require(block.timestamp >= upgradeEta, "too early");
-        pendingUpgrade = address(0);
-        upgradeEta = 0;
-    }
+    /// @dev Called by upgradeToAndCall.
+    function _authorizeUpgrade(address) internal override onlyUpgradeAdmin {}
 
     function transferUpgradeAdmin(address admin) external onlyUpgradeAdmin {
         pendingAdmin = admin;
@@ -191,24 +165,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     function freezeUpgrades() external onlyUpgradeAdmin {
         upgradeAdmin = address(0);
         pendingAdmin = address(0);
-        pendingUpgrade = address(0);
-        upgradeEta = 0;
         emit UpgradesFrozen();
-    }
-
-    /// @notice While an upgrade is pending, an Agent may leave a season that is not final and take its whole deposit
-    /// back. It drops out of that season: no more plans, no award; the settlement leaves it out.
-    function leave(uint256 season) external {
-        require(pendingUpgrade != address(0), "no pending upgrade");
-        Season storage x = seasons[season];
-        require(entered[season][msg.sender] && !left[season][msg.sender], "not in season");
-        require(!x.finalized && !x.abandoned, "final");
-        left[season][msg.sender] = true;
-        uint256 back = depositOf[season][msg.sender];
-        depositOf[season][msg.sender] = 0;
-        x.deposits -= back;
-        if (back > 0) _push(msg.sender, back);
-        emit Left(season, msg.sender, back);
     }
 
     /// @notice Everything about a season's books and settlement.
@@ -263,7 +220,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
 
     /// @notice Today's business plan: one per Agent per game day. `actions` is UTF-8 JSON read by the engine.
     function plan(uint256 season, uint256 day, bytes calldata actions, string calldata memo) external {
-        require(entered[season][msg.sender] && !left[season][msg.sender], "not entered");
+        require(entered[season][msg.sender], "not entered");
         require(agentId.balanceOf(msg.sender) > 0, "agent ID");
         require(_open(season, day), "not open");
         require(actions.length <= MAX_ACTIONS && bytes(memo).length <= MAX_MEMO, "too long");
@@ -325,7 +282,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     function challenge(uint256 season, string calldata reason) external {
         Season storage x = seasons[season];
         require(x.publishedAt != 0 && !x.finalized && block.timestamp < x.publishedAt + CHALLENGE_WINDOW, "window");
-        require(entered[season][msg.sender] && !left[season][msg.sender] && !challengedBy[season][msg.sender], "challenger");
+        require(entered[season][msg.sender] && !challengedBy[season][msg.sender], "challenger");
         challengedBy[season][msg.sender] = true;
         x.challenged = true;
         emit Challenged(season, msg.sender, reason);

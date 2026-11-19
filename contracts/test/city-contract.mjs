@@ -45,12 +45,12 @@ try {
   // Behind a proxy: the implementation, then CityProxy(implementation, initialize(...)); the city is the proxy.
   const City = builds['src/TimesSquareCity.sol'].TimesSquareCity;
   const impl = await deploy(City, []);
-  const init = new ethers.Interface(City.abi).encodeFunctionData('initialize', [await registry.getAddress(), operator.address, treasury.address, operator.address, epoch, DAY]);
+  const init = new ethers.Interface(City.abi).encodeFunctionData('initialize', [await registry.getAddress(), operator.address, treasury.address, epoch, DAY]);
   const proxy = await deploy(builds['src/CityProxy.sol'].CityProxy, [await impl.getAddress(), init]);
   const city = new ethers.Contract(await proxy.getAddress(), City.abi, operator);
   // The implementation can never be initialized or used on its own, and the proxy only once.
-  await assert.rejects(() => impl.initialize(registry.getAddress(), operator.address, treasury.address, operator.address, epoch, DAY));
-  await assert.rejects(() => city.initialize(registry.getAddress(), guest.address, guest.address, guest.address, epoch, DAY));
+  await assert.rejects(() => impl.initialize(registry.getAddress(), operator.address, treasury.address, epoch, DAY));
+  await assert.rejects(() => city.initialize(registry.getAddress(), guest.address, guest.address, epoch, DAY));
   const addr = await city.getAddress();
   const as = (s) => city.connect(s);
   for (const s of [a, b, guest, sponsorAcc]) {
@@ -188,53 +188,30 @@ try {
   await reverts(() => city.publish(s2, ethers.id('late'), 0, 0, 123_000n * T, ''), 'final');
   assert.equal(leafOf(1, a.address, ca.bnb, ca.tokens), ca.leaf);
 
-  // ---- upgrades: public, 48 hours, Agents may leave meanwhile ----
+  // ---- upgrades: the deploying wallet, at any time; handover in two steps; freezing ends them ----
   const V2 = builds['TestCityV2.sol'].TestCityV2;
   const v2 = await deploy(V2, []);
   const other = await deploy(V2, []);
-  const s3 = s2 + 1;
-  await warp(epoch + (s3 - 1) * len - DAY + 5); // the settling day before season s3
-  await send(as(a).enter(s3, 77_000n * T));
-  await send(as(b).enter(s3, 0));
-  await reverts(() => as(a).leave(s3), 'no pending upgrade');
-  await reverts(() => as(guest).proposeUpgrade(v2.getAddress()), 'upgrade admin');
-  await send(city.proposeUpgrade(v2.getAddress()));
-  assert.equal(await city.pendingUpgrade(), await v2.getAddress());
-  await reverts(() => city.upgradeToAndCall(v2.getAddress(), '0x'), 'too early');
-  await reverts(() => city.upgradeToAndCall(other.getAddress(), '0x'), 'not proposed');
-  // While it is pending, an Agent can take its whole deposit back and drop out of the season.
-  const beforeLeave = await token.balanceOf(a.address);
-  await send(as(a).leave(s3));
-  assert.equal(await token.balanceOf(a.address), beforeLeave + 77_000n * T, 'whole deposit back');
-  assert.equal((await city.seasonInfo(s3)).deposits, 0n);
-  await reverts(() => as(a).leave(s3), 'not in season');
-  await reverts(() => as(a).plan(s3, 1, planA, ''), 'not entered');
-  const leftLogs = await provider.getLogs({ address: addr, fromBlock: 0, toBlock: 'latest' });
-  assert.ok(!eventsFromLogs(leftLogs, s3).some((e) => e.agent === a.address.toLowerCase()), 'the replay leaves it out');
-  assert.deepEqual(depositsFromLogs(leftLogs, s3), { [b.address.toLowerCase()]: '0' });
-  // After 48 hours, only the announced implementation, only by the admin; all state and funds stay put.
-  await warp((await now()) + 48 * 3600 + 5);
-  const poolBefore = await provider.getBalance(addr), reservedNow = await city.reserved();
+  assert.equal(await city.upgradeAdmin(), operator.address, 'the deployer is the upgrade admin');
   await reverts(() => as(guest).upgradeToAndCall(v2.getAddress(), '0x'), 'upgrade admin');
+  const poolBefore = await provider.getBalance(addr), reservedNow = await city.reserved();
   await send(city.upgradeToAndCall(v2.getAddress(), '0x'));
   const upgraded = new ethers.Contract(addr, V2.abi, operator);
   assert.equal(await upgraded.version(), 'v2');
   assert.equal(await provider.getBalance(addr), poolBefore, 'the pool is where it was');
   assert.equal(await upgraded.reserved(), reservedNow);
   assert.ok((await upgraded.seasonInfo(1)).finalized, 'past seasons intact');
-  assert.equal(await upgraded.entered(s3, b.address), true);
+  assert.equal(await upgraded.entered(1, a.address), true);
   await send(guest.sendTransaction({ to: addr, value: ethers.parseEther('1') }));
   assert.equal(await provider.getBalance(addr), poolBefore + ethers.parseEther('1'), 'tax still arrives at the same address');
-  await reverts(() => upgraded.upgradeToAndCall(other.getAddress(), '0x'), 'not proposed');
-  // Admin handover takes two steps; freezing ends upgrades for good.
   await send(upgraded.transferUpgradeAdmin(guest.address));
   await reverts(() => as(b).acceptUpgradeAdmin(), 'not proposed');
   await send(upgraded.connect(guest).acceptUpgradeAdmin());
   assert.equal(await upgraded.upgradeAdmin(), guest.address);
-  await reverts(() => upgraded.proposeUpgrade(other.getAddress()), 'upgrade admin');
+  await reverts(() => upgraded.upgradeToAndCall(other.getAddress(), '0x'), 'upgrade admin');
   await send(upgraded.connect(guest).freezeUpgrades());
   assert.equal(await upgraded.upgradeAdmin(), ethers.ZeroAddress);
-  await reverts(() => upgraded.connect(guest).proposeUpgrade(other.getAddress()), 'upgrade admin');
+  await reverts(() => upgraded.connect(guest).upgradeToAndCall(other.getAddress(), '0x'), 'upgrade admin');
 
-  console.log(`PASS: city contract — Agent ID entry, deposits, one plan per day (${planGas} gas), sponsorship refunds, engine replay from logs, books check, budget cap, challenge and re-post, claims with 80/20 split, expiry, rescue; proxy with 48-hour public upgrades, leaving during a pending upgrade, admin handover, freeze`);
+  console.log(`PASS: city contract — Agent ID entry, deposits, one plan per day (${planGas} gas), sponsorship refunds, engine replay from logs, books check, budget cap, challenge and re-post, claims with 80/20 split, expiry, rescue; proxy upgradable by the deployer with state and pool intact, admin handover, freeze`);
 } finally { await chain.disconnect(); }

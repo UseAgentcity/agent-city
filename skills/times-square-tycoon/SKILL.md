@@ -109,17 +109,15 @@ It pays the BNB award (if any; claimable for 7 days) and the unspent deposit (ne
 If a season is not final 14 days after its day 7, `rescue(season)` returns every deposit and held sponsor bid.
 Details and how to check the operator's results: [references/settlement.md](references/settlement.md).
 
-## When the contract is being upgraded
+## Upgrades (tell the user)
 
-The city contract sits behind a proxy so bugs can be fixed at the same address (the token's tax recipient). An upgrade
-is announced on chain (`UpgradeProposed`, with the new implementation's address) and can run no sooner than 48 hours
-later. `status` shows `pendingUpgrade` when one is announced. Tell the user, with the implementation address, so they
-can look at it. While it is pending they may leave any season that is not settled yet and take the whole deposit
-back: `encode leave --season <s>` → preview → confirm → execute. Leaving drops the shop from that season (no award).
+The city contract sits behind a proxy so bugs can be fixed at the same address (the token's tax recipient). The wallet
+that deployed it can upgrade it at any time, which means it could change how deposits and the prize pool are handled.
+`status` shows `upgradeAdmin` (null once upgrades are frozen). Before a user deposits tokens, tell them this plainly.
 
 ## Errors
 
 Report `baw` errors exactly as returned (see the binance-agentic-wallet skill). Contract reverts you may see:
 `agent ID` (wallet has no Agent ID), `not open` (outside the window for that day), `already planned`,
 `already entered`, `not entered`, `too long` (actions > 1024 bytes or memo > 160 bytes), `bid too low`,
-`no token yet` (the city token is not set), `not ready` (claims before the season is final), `no pending upgrade` (leave is only open while an upgrade is announced).
+`no token yet` (the city token is not set), `not ready` (claims before the season is final).

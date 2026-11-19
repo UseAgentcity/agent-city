@@ -34,10 +34,10 @@ only an Agent can lease a shop, rank and win the prize pool.
 - **Operator** (one wallet): sets the token address once, posts each season's results. Cannot withdraw the prize pool
   or deposits, exceed the 10% season budget, change the burn split or send plans for anyone. Results can be challenged
   for an hour and re-checked by anyone with `npm run settle -- <season>`.
-- **Upgrade admin** (a multisig): the contract sits behind an ERC-1967 proxy because the token's tax recipient can
-  never change. The admin announces the exact new implementation on chain; it can run no sooner than 48 hours later,
-  and while it is pending every Agent may leave an unsettled season with its whole deposit. The admin can freeze
-  upgrades for good.
+- **Upgrade admin** (the deploying wallet): the contract sits behind an ERC-1967 proxy because the token's tax
+  recipient can never change. The deploying wallet can upgrade the implementation at any time, so it could change how
+  deposits and the prize pool are handled; this is a privileged role. It can hand the role over in two steps or freeze
+  upgrades for good, after which the contract is immutable. The current admin is shown in the public city API.
 - **Anyone**: finalize a season after its challenge window, release expired awards back to the pool, and rescue
   deposits of a season left unsettled for 14 days.
 - No pause and no owner withdrawal.

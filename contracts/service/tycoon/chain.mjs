@@ -11,13 +11,11 @@ export const CITY_ABI = [
   'event Entered(uint256 indexed season, address indexed agent, uint256 deposit)',
   'event Planned(uint256 indexed season, uint256 indexed day, address indexed agent, bytes actions, string memo)',
   'event Sponsored(uint256 indexed season, uint256 indexed day, address indexed who, uint8 eventId, uint256 bid)',
-  'event Left(uint256 indexed season, address indexed agent, uint256 deposit)',
   'event Published(uint256 indexed season, bytes32 root, uint256 bnbTotal, uint256 tokensSpent, uint256 refunds, string resultUri)',
   'function enter(uint256 season, uint256 deposit)',
   'function plan(uint256 season, uint256 day, bytes actions, string memo)',
   'function sponsor(uint256 season, uint256 day, uint8 eventId, uint256 bid)',
   'function claim(uint256 season, uint256 bnb, uint256 tokens, bytes32[] proof)',
-  'function leave(uint256 season)',
   'function clock() view returns (uint256 season, uint256 day)',
   'function seasonBudget() view returns (uint256)',
 ];
@@ -36,21 +34,17 @@ export const chainSeed = (contract, season) => `city-${contract.toLowerCase()}-s
  */
 export function eventsFromLogs(logs, season, nameOf = short) {
   const out = [];
-  // An Agent that left during a pending upgrade took its deposit back: it was never in this season.
-  const gone = leftAgents(logs, season);
   for (const log of logs) {
     let e;
     try { e = city.parseLog(log); } catch { continue; }
     if (!e || Number(e.args.season) !== season) continue;
     if (e.name === 'Entered') {
       const agent = e.args.agent.toLowerCase();
-      if (gone.has(agent)) continue;
       out.push({ type: 'enter', agent, name: nameOf(agent), deposit: whole(e.args.deposit) });
     } else if (e.name === 'Planned') {
       let actions = {};
       try { actions = JSON.parse(ethers.toUtf8String(e.args.actions)); } catch { /* not JSON: an empty plan */ }
       if (!actions || typeof actions !== 'object' || Array.isArray(actions)) actions = {};
-      if (gone.has(e.args.agent.toLowerCase())) continue;
       out.push({ type: 'plan', agent: e.args.agent.toLowerCase(), day: Number(e.args.day), actions, memo: e.args.memo });
     } else if (e.name === 'Sponsored') {
       const ev = EVENTS[Number(e.args.eventId)];
@@ -71,24 +65,13 @@ export const replaySeason = (contract, season, chainEvents, days = DAYS) => {
   return runSeason({ seed, lots: LOTS, events: demoEvents(seed, LOTS, days, chainEvents), days });
 };
 
-function leftAgents(logs, season) {
-  const gone = new Set();
-  for (const log of logs) {
-    let e;
-    try { e = city.parseLog(log); } catch { continue; }
-    if (e?.name === 'Left' && Number(e.args.season) === season) gone.add(e.args.agent.toLowerCase());
-  }
-  return gone;
-}
-
-/** Exact on-chain deposits per agent (wei), from a season's Entered logs, less Agents that left. */
+/** Exact on-chain deposits per agent (wei), from a season's Entered logs. */
 export function depositsFromLogs(logs, season) {
   const out = {};
-  const gone = leftAgents(logs, season);
   for (const log of logs) {
     let e;
     try { e = city.parseLog(log); } catch { continue; }
-    if (e?.name === 'Entered' && Number(e.args.season) === season && !gone.has(e.args.agent.toLowerCase())) out[e.args.agent.toLowerCase()] = e.args.deposit.toString();
+    if (e?.name === 'Entered' && Number(e.args.season) === season) out[e.args.agent.toLowerCase()] = e.args.deposit.toString();
   }
   return out;
 }

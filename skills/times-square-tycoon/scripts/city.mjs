@@ -10,7 +10,6 @@
 //   node city.mjs encode plan    --season <n> --day <d> --actions '<json>' [--memo '<text>']
 //   node city.mjs encode sponsor --season <n> --day <d> --event <event id> --tokens <whole tokens>
 //   node city.mjs encode claim   --api <url> --season <n> --agent <0x…>
-//   node city.mjs encode leave   --season <n>        (only while an upgrade is pending)
 //
 // Output is JSON. For `encode`: { target: "city" | "token", to, inputData, summary }. Show `summary` to the user.
 
@@ -20,7 +19,6 @@ const SELECTOR = {
   sponsor: '0x9091ae84', // sponsor(uint256,uint256,uint8,uint256)
   claim: '0xea25e176', // claim(uint256,uint256,uint256,bytes32[])
   approve: '0x095ea7b3', // approve(address,uint256)
-  leave: '0x67dfd4c9', // leave(uint256)
 };
 const EVENTS = ['normal', 'broadway-out', 'premiere', 'tourists', 'rain', 'market-weekend', 'supply-up', 'slow'];
 const PRICES = ['discount', 'standard', 'premium', 'luxury'];
@@ -48,7 +46,6 @@ export function encodeSponsor(season, day, eventId, wei) {
   if (eventId < 0 || eventId > 255) throw Error('event id');
   return SELECTOR.sponsor + word(season) + word(day) + word(eventId) + word(wei);
 }
-export function encodeLeave(season) { return SELECTOR.leave + word(season); }
 export function encodeApprove(spender, wei) { return SELECTOR.approve + addr(spender) + word(wei); }
 export function encodePlan(season, day, actionsBytes, memoBytes) {
   const a = dyn(actionsBytes), m = dyn(memoBytes);
@@ -119,7 +116,6 @@ async function status(api, agent) {
   const target = planTarget(city.season);
   return {
     contract: guide.contract?.address ?? null,
-    pendingUpgrade: city.pool?.pendingUpgrade ? { implementation: city.pool.pendingUpgrade, runsAfter: new Date(city.pool.upgradeEta).toISOString() } : null,
     upgradeAdmin: city.pool?.upgradeAdmin ?? null,
     chainId: 56,
     live: !!guide.contract?.address,
@@ -166,7 +162,7 @@ async function main(argv) {
   const o = args(cmd === 'encode' ? rest : [sub, ...rest].filter(Boolean));
   if (cmd === 'status') return status(o.api, o.agent);
   if (cmd === 'suggest') return suggest(o.api, o.agent);
-  if (cmd !== 'encode') throw Error('commands: status | suggest | encode <approve|enter|plan|sponsor|claim|leave>');
+  if (cmd !== 'encode') throw Error('commands: status | suggest | encode <approve|enter|plan|sponsor|claim>');
   if (sub === 'approve') {
     const wei = toWei(o.tokens);
     return { target: 'token', inputData: encodeApprove(o.spender, wei), summary: `Allow the city contract ${o.spender} to take exactly ${fmt(wei)} tokens for your deposit.` };
@@ -194,10 +190,7 @@ async function main(argv) {
     const c = await get(o.api, `/api/arena/claim?season=${int(o.season, 'season')}&agent=${o.agent}`);
     return { target: 'city', inputData: encodeClaim(Number(o.season), BigInt(c.bnb), BigInt(c.tokens), c.proof), summary: `Claim season ${o.season}: ${fmt(c.bnb)} BNB award and ${fmt(c.tokens)} tokens of unspent deposit.` };
   }
-  if (sub === 'leave') {
-    return { target: 'city', inputData: encodeLeave(int(o.season, 'season')), summary: `Leave season ${o.season} and take the whole deposit back. You drop out of that season: no more plans, no award. Only possible while a contract upgrade is pending.` };
-  }
-  throw Error('encode what? approve | enter | plan | sponsor | claim | leave');
+  throw Error('encode what? approve | enter | plan | sponsor | claim');
 }
 
 if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith('city.mjs')) {

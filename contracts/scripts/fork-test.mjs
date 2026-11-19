@@ -99,7 +99,7 @@ try {
   // Deployed as on mainnet: the implementation, then CityProxy(implementation, initialize(...)).
   const impl = await (await new ethers.ContractFactory(art.abi, art.evm.bytecode.object, operator).deploy()).waitForDeployment();
   const proxyArt = build['src/CityProxy.sol'].CityProxy;
-  const init = new ethers.Interface(art.abi).encodeFunctionData('initialize', [AGENT_ID, operator.address, treasury.address, operator.address, epoch, DAY]);
+  const init = new ethers.Interface(art.abi).encodeFunctionData('initialize', [AGENT_ID, operator.address, treasury.address, epoch, DAY]);
   const proxy = await (await new ethers.ContractFactory(proxyArt.abi, proxyArt.evm.bytecode.object, operator).deploy(await impl.getAddress(), init)).waitForDeployment();
   const addr = await proxy.getAddress();
   const city = new ethers.Contract(addr, art.abi, operator);

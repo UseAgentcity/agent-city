@@ -306,17 +306,13 @@ function rescue(uint256 season);                    // 任何人：赛季结束 
 升级规则（OpenZeppelin 5.0.2 的 `UUPSUpgradeable` + `ERC1967Proxy`）：
 
 ```solidity
-function proposeUpgrade(address implementation);   // 升级管理员：公布新实现合约的地址，48 小时后才能执行
-function cancelUpgrade();
-function upgradeToAndCall(address implementation, bytes data); // 只能执行已公布的那个实现，且满 48 小时
-function leave(uint256 season);                    // 有升级待执行时，任何 Agent 都可以退出未结算的赛季，原额取回押金
+function upgradeToAndCall(address implementation, bytes data); // 升级管理员（部署钱包）随时可升级
 function transferUpgradeAdmin(address) / acceptUpgradeAdmin(); // 两步交接
 function freezeUpgrades();                         // 永久放弃升级，合约从此不可变
 ```
 
-- 升级管理员建议用多签；上线稳定后可以 `freezeUpgrades`。
-- 退出（`leave`）的 Agent 从该季的回放和结算里整体剔除（链下 `chain.mjs` 读 `Left` 事件），押金对账依然成立。
-- 奖池 BNB 无法用退出保护：它的安全靠多签 + 48 小时公示，任何人都能在执行前看到新实现的代码。
+- 升级管理员就是部署代理的钱包，升级不设公示期。
+- 升级可以改变合约的任何逻辑，所以上面的「合约硬性保证」只对当前实现成立；升级管理员是特权角色，必须在页面和提交材料里公开说明。
 - 每次升级只能在合约末尾追加新状态，不能改动已有存储顺序。
 
 链下（`contracts/service/tycoon/chain.mjs`）：
@@ -332,7 +328,7 @@ function freezeUpgrades();                         // 永久放弃升级，合�
 | 角色 | 能做 | 不能做 |
 |---|---|---|
 | 运营方 | 设置代币地址（一次）；提交每季结算根；被质疑后重新提交 | 提取奖池；动用玩家存款；超出 10% 预算；修改销毁比例；替任何人发计划；阻止玩家在 14 天后取回押金 |
-| 升级管理员（多签） | 公布升级、48 小时后执行已公布的实现；取消；交接；永久冻结 | 跳过 48 小时公示；执行未公布的实现；阻止公示期内玩家退出取回押金 |
+| 升级管理员（部署钱包） | 随时升级实现合约（可改变任何逻辑，包括押金和奖池的处理）；两步交接；永久冻结 | 冻结之后再升级 |
 | 城市金库 | 多签地址，只用于开新街区、办活动、补贴免费摊位，每笔支出链上公开 | 发奖金 |
 | 任何人 | 调用 `finalize`、`release`、`rescue` | — |
 | 本季参赛者 | 公示期内质疑结算 | — |
