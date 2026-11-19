@@ -1,9 +1,10 @@
 import fs from 'node:fs';
 import solc from 'solc';
 
-/** Compiles SurvivalRewards (plus any extra test sources) and writes ABI and bytecode to artifacts/. */
+/** Compiles every contract in src/ (plus any extra test sources) and writes ABI and bytecode to artifacts/. */
 export function compile(extraSources = {}) {
-  const sources = { 'src/SurvivalRewards.sol': { content: fs.readFileSync('src/SurvivalRewards.sol', 'utf8') }, ...extraSources };
+  const sources = { ...extraSources };
+  for (const f of fs.readdirSync('src').filter((f) => f.endsWith('.sol'))) sources[`src/${f}`] = { content: fs.readFileSync(`src/${f}`, 'utf8') };
   const result = JSON.parse(solc.compile(JSON.stringify({
     language: 'Solidity', sources,
     settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: 'shanghai', outputSelection: { '*': { '*': ['abi', 'evm.bytecode.object'] } } },

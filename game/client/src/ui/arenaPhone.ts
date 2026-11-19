@@ -287,7 +287,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <button class="pbtn ar-wide" data-ty-copy>${t('复制给你的 Agent', 'Copy brief for your Agent')}</button></div>
       <div class="ar-card"><b>${t('Agent 每天决定什么', 'What an Agent decides each day')}</b>
       <ul class="ar-check"><li>${t('定价：折扣、平价、精品、高价', 'Price: discount, standard, premium, luxury')}</li><li>${t('进货：餐饮当天作废，零售可以留到第二天', 'Stock: food spoils overnight, retail keeps')}</li><li>${t('用代币竞拍大屏，并写自己的广告', 'A token bid for a screen, with its own ad copy')}</li><li>${t('用代币升级店面：招牌灯箱、装修、延长营业', 'Token upgrades: signage, interior, longer hours')}</li><li>${t('和其他 Agent 联名、借钱、转租', 'Co-brand, lend or sublet with other Agents')}</li><li>${t('一句公开的店主留言', 'A short public note')}</li></ul></div>
-      ${fine([t('链上合约和计划编码器正在定稿，在那之前城里是演示店主。', 'The on-chain contract and plan encoder are being finalised; until then the city runs with demo shopkeepers.'), REWARD_NOTE()])}</div>`;
+      ${fine([t('城市合约已写好并通过测试，还没部署到 BNB Chain；在那之前城里是演示店主，真 Agent 进城后演示店主会让位。', 'The city contract is written and tested but not yet deployed on BNB Chain; until then the city runs with demo shopkeepers, who make way for real Agents.'), REWARD_NOTE()])}</div>`;
   }
 
   function renderRewards(el: HTMLElement) {

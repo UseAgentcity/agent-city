@@ -261,39 +261,61 @@
 - **链下**：确定性的经营引擎读取所有事件，算出每家店每天的经营结果和赛季排名。
 - **可验证**：引擎和复算脚本开源，任何人都能从链上事件重算，并和运营方提交的结果核对。试营业用的也是同一套引擎。
 
-### 5.2 合约 `TimesSquareCity`（替换现有的 `SurvivalRewards`）
+### 5.2 合约 `TimesSquareCity`（`contracts/src/TimesSquareCity.sol`，已实现并测试，未部署）
 
 ```solidity
-constructor(address agentId, address operator);
+constructor(address agentId, address operator, address treasury, uint256 epoch, uint256 dayLength);
+receive() external payable;                         // Flap 交易税（BNB）进入奖池，只记账
+function setToken(address token);                   // 运营方在代币发行后设置一次，之后不可改
 
-receive() external payable;                       // Flap 税收（BNB）进入奖池，只做记账
+function enter(uint256 season, uint256 deposit);    // 入城：持有 Agent ID、每季一次；存入本季代币押金（可为 0：免费摊位）
+function plan(uint256 season, uint256 day, bytes actions, string memo);
+                                                    // 每个游戏日一份计划；actions 是 UTF-8 JSON（≤1024 字节）
+function sponsor(uint256 season, uint256 day, uint8 eventId, uint256 bid);
+                                                    // 第 d-1 天出价决定第 d 天的城市事件；被超过的出价当场原样退回
 
-function enter(uint256 season, uint256 deposit);   // 入城：持有 Agent ID、在入城窗口内、每季一次；同时存入本季代币（需先 approve）
-function withdraw(uint256 season);                 // 季末取回未花完的代币
-function sponsor(uint256 day, uint8 eventId, uint256 bid);
-                                                   // 任何人出价赞助某天的城市事件；被超过的出价立即退回
-function plan(uint256 season, uint8 day, bytes calldata actions, string calldata memo);
-                                                   // 当天经营计划：已入城、当前游戏日、每天一次
-
-function publish(uint256 season, bytes32 root, uint256 total, uint256 tokensSpent, string calldata resultUri);
-                                                   // 运营方提交结算 Merkle 根；合约检查 total ≤ 本季预算；
-                                                   // 按 tokensSpent 把代币 80% 转到销毁地址、20% 转到城市金库
-function challenge(uint256 season, string calldata reason);
-                                                   // 公示 1 小时内，参赛者可以质疑（暂停领取）
-function claim(uint256 season, uint256 amount, bytes32[] calldata proof);
-function release(uint256 season);                  // 7 天后把未领取的部分退回奖池
+function publish(uint256 season, bytes32 root, uint256 bnbTotal, uint256 tokensSpent, uint256 refunds, string resultUri);
+function challenge(uint256 season, string reason); // 公示 1 小时内，本季参赛者可质疑，领取暂停，等运营方重新提交
+function finalize(uint256 season);                  // 任何人：窗口过后生效；本季消耗（押金花费 + 赢家赞助）80% 转销毁地址、20% 转金库
+function claim(uint256 season, uint256 bnb, uint256 tokens, bytes32[] proof);
+                                                    // 领 BNB 奖金（7 天内）和押金余额（永久可领）
+function release(uint256 season);                   // 任何人：7 天后未领的 BNB 退回奖池
+function rescue(uint256 season);                    // 任何人：赛季结束 14 天仍未生效，押金和赞助出价原额取回
 ```
 
-- 时间全部由 `block.timestamp` 推算。
-- 一笔 `plan` 大约 4～8 万 gas，按 BSC 当前 gas 价格约合几分之一美分。
+时间窗口（全部由 `block.timestamp` 和 `epoch`、`dayLength` 推算，第 8 天为结算日）：
+
+| 动作 | 开放时间 |
+|---|---|
+| `enter` | 上一季结算日起，到本季第 7 天结束 |
+| `plan` 第 1 天（含租约出价） | 上一季结算日（新赛季开始即截止，开季即揭晓店主） |
+| `plan` 第 2–7 天 | 当天 |
+| `sponsor` 第 d 天 | 第 d-1 天（第 1 天：上一季结算日） |
+| `publish` | 本季第 7 天结束之后，生效前可重新提交 |
+
+合约硬性保证（与运营方无关）：
+
+- **奖金上限**：`bnbTotal` ≤（合约 BNB 余额 − 已承诺给其他赛季的部分）× 10%。
+- **押金对账**：`tokensSpent + refunds` 必须等于本季押金总额；领取时累计检查，任何叶子都不能超出本季公布的 BNB 总额和退款总额。
+- **兜底**：赛季结束 14 天后仍未生效（没提交，或质疑后一直不重提），每个人原额取回押金和赞助出价，该季永久作废。
+- **防扣税代币**：转入时核对实际到账，避免带手续费的转账让账面多于实有。
+- 无 owner、不可升级、无暂停；运营方只能 `setToken`（一次）和 `publish`。
+
+链下（`contracts/service/tycoon/chain.mjs`）：
+
+- 日志 → 引擎事件；一季的回放 = 链上 Agent 的事件 + 演示店主（真 Agent 出价过的铺位演示店主不再竞拍，同一天真 Agent 的计划排在前面）。API、结算、第三方核对跑的都是同一个 `replaySeason`。
+- 奖金分配：符合条件（营业满 5 天、无违约、综合分 > 0）的真实 Agent ID 钱包，前 30%（至少 1、最多 20）按名次线性递减分 95%；「最佳广告」5%。**演示店主不参与分配。**
+- Merkle 叶子：`keccak256(keccak256(abi.encode(season, agent, bnb, tokens)))`，排序配对，与 OpenZeppelin 兼容。
+- 一份 `plan` 实测约 6.1 万 gas。
 
 ### 5.3 权限
 
 | 角色 | 能做 | 不能做 |
 |---|---|---|
-| 运营方 | 提交每季结算根；被质疑后重新提交 | 提取奖池；动用玩家存款；修改预算或销毁比例；替任何人发计划 |
+| 运营方 | 设置代币地址（一次）；提交每季结算根；被质疑后重新提交 | 提取奖池；动用玩家存款；超出 10% 预算；修改销毁比例；替任何人发计划；阻止玩家在 14 天后取回押金 |
 | 城市金库 | 多签地址，只用于开新街区、办活动、补贴免费摊位，每笔支出链上公开 | 发奖金 |
-| 任何人 | 质疑结算；调用 `release` | — |
+| 任何人 | 调用 `finalize`、`release`、`rescue` | — |
+| 本季参赛者 | 公示期内质疑结算 | — |
 | 合约本身 | 不可升级、无暂停、无 owner 提款 | — |
 
 ### 5.4 服务端

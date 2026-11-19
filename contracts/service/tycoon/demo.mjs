@@ -133,7 +133,7 @@ export function demoSponsors(seed, day) {
   return out;
 }
 
-/** A whole season played by demo Agents (optionally alongside other events, e.g. a person's trial plans). */
+/** A whole season played by demo Agents alongside real ones (`extra`: chain events, or a person's trial plans). */
 export function demoEvents(seed, lots, upToDay = DAYS, extra = []) {
   const events = DEMO_AGENTS.map((b) => ({ type: 'enter', agent: b.agent, name: b.name, deposit: depositOf(b) }));
   events.push(...extra.filter((e) => e.type === 'enter'));
@@ -141,8 +141,15 @@ export function demoEvents(seed, lots, upToDay = DAYS, extra = []) {
     // Sponsorships for a day are settled before the day starts.
     if (day > 1) events.push(...demoSponsors(seed, day));
     const city = runSeason({ seed, lots, events, days: day - 1 });
-    for (const bot of DEMO_AGENTS) events.push(demoPlan(bot, day, city, seed, lots, events));
-    events.push(...extra.filter((e) => (e.type === 'plan' || e.type === 'sponsor') && e.day === day));
+    // Real Agents go first and the demo shopkeepers make way: no demo bid on a lot a real Agent asked for.
+    const real = extra.filter((e) => (e.type === 'plan' || e.type === 'sponsor') && e.day === day);
+    const wanted = new Set(real.flatMap((e) => (e.type === 'plan' && Array.isArray(e.actions?.lease) ? e.actions.lease.map((x) => x?.lot) : [])));
+    events.push(...real);
+    for (const bot of DEMO_AGENTS) {
+      const p = demoPlan(bot, day, city, seed, lots, events);
+      if (wanted.size && Array.isArray(p.actions?.lease)) p.actions = { ...p.actions, lease: p.actions.lease.filter((x) => !wanted.has(x?.lot)) };
+      events.push(p);
+    }
   }
   return events;
 }

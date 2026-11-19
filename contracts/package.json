@@ -6,7 +6,8 @@
     "game": "node --env-file-if-exists=.env.game service/game-server.mjs",
     "compile": "node scripts/compile.mjs",
     "sim": "node scripts/balance-sim.mjs",
-    "test": "node test/rate-limit.mjs && node test/tycoon.mjs && node test/survival-rewards.mjs"
+    "settle": "node --env-file-if-exists=.env.game scripts/settle.mjs",
+    "test": "node test/rate-limit.mjs && node test/tycoon.mjs && node test/city-contract.mjs"
   },
   "dependencies": {
     "ethers": "6.15.0",
