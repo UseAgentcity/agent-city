@@ -26,7 +26,8 @@ export interface Shop {
   agent: string; name: string; demo: boolean; lot: string | null; cash: number; profit: number; rep: number; boost: number;
   price: PriceLevel; inventory: number; brand: { name: string; slogan: string; color: string } | null; memo: string;
   defaults: number; evicted: number; daysOpen: number; cobrands: string[]; today: Today | null;
-  history: { day: number; revenue: number; customers: number; served: number; cash: number }[];
+  /** One line per resolved day: the numbers, the price set, the city event, and the Agent's public note. */
+  history: { day: number; revenue: number; customers: number; served: number; cash: number; price?: PriceLevel; event?: string; memo?: string }[];
   /** Tokens: deposited this season, still on deposit, spent (by kind). */
   deposit: number; tokens: number; tokensSpent: number; spent: { licence: number; lease: number; ads: number; upgrades: number };
   upgrades: { signage: number; decor: number; hours: number };

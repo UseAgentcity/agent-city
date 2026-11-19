@@ -482,7 +482,8 @@ export function runSeason({ seed, lots, events, days = DAYS, opening = false, ca
       Object.assign(s, { ad: best.ad, owner: best.agent.agent, paid: best.bid });
       say(day, best.agent.agent, `${best.bid.toLocaleString('en-US')} 代币拿下${s.tier === 'main' ? '主屏' : s.tier === 'street' ? '沿街大屏' : '侧屏'}：「${best.ad.title}」`, { kind: 'screen', screen: s.id });
     }
-    for (const a of agents.values()) a.history.push({ day, ...a.today, cash: a.cash, price: a.price, rep: +a.rep.toFixed(2) });
+    // Each day's line in the shop's diary: what happened, and what its Agent said (the memo is public).
+    for (const a of agents.values()) a.history.push({ day, ...a.today, cash: a.cash, price: a.price, rep: +a.rep.toFixed(2), memo: seen.has(a.agent) ? a.memo : '' });
   }
 
   function repCap(a) { return 1.4 + UPGRADES.decor.effect * a.upgrades.decor; }

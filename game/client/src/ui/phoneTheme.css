@@ -262,3 +262,10 @@
 #phone.arena-phone .ar-seg.scroll::-webkit-scrollbar { display: none; }
 #phone.arena-phone .ar-seg.scroll button { flex: none; padding: 7px 12px; white-space: nowrap; }
 #phone.arena-phone .ar-seg button.locked { opacity: .55; }
+
+/* Shop page: league place and medals, and the owner's diary. */
+#phone.arena-phone .ty-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+#phone.arena-phone .ar-chip.gold { background: linear-gradient(180deg, #ffe08a, #c8901a); color: #2a1d00; }
+#phone.arena-phone .ty-diary small { white-space: normal; color: var(--t-text-2, #c9d1dc); font-style: italic; }
+#phone.arena-phone .ty-diary small.dim { font-style: normal; opacity: .55; }
+#phone.arena-phone .ty-diary b { white-space: normal; }

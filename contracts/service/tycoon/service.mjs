@@ -84,7 +84,7 @@ export function createTycoon({ now = () => Date.now(), dayMs = 4 * 60_000, epoch
       cats: CATS, tiers: TIERS, roles: ROLES, delivery: DELIVERY, supplierCost: SUPPLIER_COST, events: EVENTS.map(({ id, zh, en }) => ({ id, zh, en })),
       lots: c.lots,
       screens: c.screens.map((s, i) => ({ ...s, tier: SCREENS[i].tier })),
-      standings: c.standings.map(({ history, ...s }) => ({ ...s, demo: s.agent.startsWith('demo:'), history: history.map((h) => ({ day: h.day, revenue: h.revenue, customers: h.customers, served: h.served, cash: h.cash })) })),
+      standings: c.standings.map(({ history, ...s }) => ({ ...s, demo: s.agent.startsWith('demo:'), history: history.map((h) => ({ day: h.day, revenue: h.revenue, customers: h.customers, served: h.served, cash: h.cash, price: h.price, event: h.event, memo: h.memo })) })),
       feed: c.feed.slice(-60).reverse(),
       demoAgents: DEMO_AGENTS.length,
       pool: chain?.pool() ? { ...chain.pool(), note: 'contract', contract: chain.address } : { bnbWei: null, note: 'not-launched' },

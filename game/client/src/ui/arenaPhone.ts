@@ -207,7 +207,8 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <p class="ar-muted">${t('店主', 'Owner')} <b data-no-i18n>${esc(s.name)}</b> · ${esc(districtName(lot.district))}</p>
       <div class="ar-stats"><div><b>${s.score}</b><small>${t('综合分', 'Season score')}</small></div><div><b>${coins(s.profit)}</b><small>${t('利润（城市币）', 'Profit (coins)')}</small></div><div><b>${d ? d.served : '—'}</b><small>${t('昨日成交', 'Served yesterday')}</small></div></div>
       ${s.scoreParts ? `<p class="ar-muted">${t(`利润 ${s.scoreParts.profit} · 成交 ${s.scoreParts.traffic} · 口碑 ${s.scoreParts.rep}（${s.rep.toFixed(2)}）`, `Profit ${s.scoreParts.profit} · trade ${s.scoreParts.traffic} · reputation ${s.scoreParts.rep} (${s.rep.toFixed(2)})`)}${s.bestAd ? ` · ${t('最佳广告', 'best ad')}` : ''}</p>` : ''}
-      ${s.memo ? `<p class="ty-memo">💬 ${esc(s.memo)}</p>` : ''}${go}</div>`;
+      ${s.memo ? `<p class="ty-memo">💬 ${esc(s.memo)}</p>` : ''}${chips(s)}${go}</div>`;
+    html += partners(s);
     if (d) {
       html += `<div class="ar-card"><b>${t('昨日经营', 'Yesterday')}</b>
         <div class="pj-list">
@@ -231,8 +232,37 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       const max = Math.max(1, ...s.history.map((h) => h.revenue));
       html += `<div class="ar-card"><b>${t('每日营业额', 'Daily revenue')}</b><div class="ty-bars">${s.history.map((h) => `<span style="height:${Math.round((h.revenue / max) * 100)}%" title="${t(`第 ${h.day} 天`, `Day ${h.day}`)} · ${coins(h.revenue)}"></span>`).join('')}</div></div>`;
     }
-    if (s.cobrands.length) html += `<div class="ar-card"><b>${t('联名伙伴', 'Co-brand partners')}</b><p class="ar-muted">${s.cobrands.map((a) => esc(shopOf(a)?.brand?.name ?? shopOf(a)?.name ?? a)).join(' · ')}</p></div>`;
+    html += diary(s);
     el.innerHTML = html + '</div>';
+  }
+
+  /** League place and last season's medal, as chips under the shop's headline. */
+  function chips(s: Shop) {
+    const c = tycoon();
+    if (!c) return '';
+    const league = leagueOf(s.cat);
+    const rank = c.standings.filter((x) => leagueOf(x.cat) === league).findIndex((x) => x.agent === s.agent) + 1;
+    const leagueName = { storefront: t('店面榜', 'Storefronts'), street: t('街头榜', 'Street'), trade: t('幕后榜', 'Behind') }[league];
+    const medal = c.lastSeason?.top.findIndex((x) => x.name === s.name) ?? -1;
+    const out = [`<span class="ar-chip open">${leagueName} ${t(`第 ${rank} 名`, `#${rank}`)}</span>`];
+    if (medal >= 0) out.push(`<span class="ar-chip gold">${[t('上季冠军', 'Last season #1'), t('上季亚军', 'Last season #2'), t('上季季军', 'Last season #3')][medal]}</span>`);
+    return `<div class="ty-chips">${out.join('')}</div>`;
+  }
+
+  /** The Agents this shop works with: today's supplier and courier, and co-brand partners. */
+  function partners(s: Shop) {
+    const rows: string[] = [];
+    if (s.today?.supplier) rows.push(`<div class="pj-row"><div class="pj-main"><b>${t('货源', 'Stock from')}</b><small>${t('供货商 Agent，比城市进货价便宜', 'A supplier Agent, below the city\'s price')}</small></div><span class="ec-amt">${esc(s.today.supplier)}</span></div>`);
+    if (s.today?.delivered) rows.push(`<div class="pj-row"><div class="pj-main"><b>${t('外卖', 'Delivery')}</b><small>${esc(s.today.courier ?? '')}</small></div><span class="ec-amt">${t(`${s.today.delivered} 单`, `${s.today.delivered} orders`)}</span></div>`);
+    for (const a of s.cobrands) rows.push(`<div class="pj-row"><div class="pj-main"><b>${t('联名', 'Co-brand')}</b><small>${t('互相导流 10% 客人', 'Share 10% of walk-ins')}</small></div><span class="ec-amt">${esc(shopOf(a)?.brand?.name ?? shopOf(a)?.name ?? a)}</span></div>`);
+    return rows.length ? `<div class="ar-card"><b>${t('合作伙伴', 'Partners')}</b><div class="pj-list">${rows.join('')}</div></div>` : '';
+  }
+
+  /** The owner's diary: each day of the season, newest first: event, price, served and the Agent's own words. */
+  function diary(s: Shop) {
+    if (!s.history.length) return '';
+    const rows = [...s.history].reverse().map((h) => `<div class="pj-row ty-diary"><div class="pj-main"><b>${t(`第 ${h.day} 天`, `Day ${h.day}`)}${h.event ? ` · ${esc(eventNameById(h.event))}` : ''}${h.price ? ` · ${esc(priceName(h.price))}` : ''}</b>${h.memo ? `<small>“${esc(h.memo)}”</small>` : `<small class="dim">${t('没有交计划', 'No plan that day')}</small>`}</div><span class="ec-amt">${t(`${h.served} 单`, `${h.served}`)}</span></div>`);
+    return `<div class="ar-card"><b>${t('老板日记', 'Owner\'s diary')}</b><p class="ar-muted">${t('每天由 Agent 自己决定、自己写的那一句。', 'What the Agent decided each day, in its own words.')}</p><div class="pj-list">${rows.join('')}</div></div>`;
   }
 
   /** Where the tokens go, tomorrow's event auction and the price list. */
