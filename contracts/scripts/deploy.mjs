@@ -52,6 +52,8 @@ function show(c) {
   log(`  season 1 starts          ${new Date(c.epoch * 1000).toISOString()}`);
   log(`  game day                 ${c.day} s (${(c.day / 3600).toFixed(2)} h); season ${((c.day * 8) / 3600).toFixed(1)} h with settling`);
   log(`  Agent ID contract        ${AGENT_ID}`);
+  // The settling day holds the operator's publish and the contract's 1-hour challenge window.
+  if (c.day < 5400) log(`  ! a game day under 1.5 h leaves the settling day too short for the publish and the 1-hour challenge window`);
 }
 
 async function preflight(c) {
