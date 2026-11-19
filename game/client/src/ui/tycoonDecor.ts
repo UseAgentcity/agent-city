@@ -66,6 +66,21 @@ function drawBlade(c: HTMLCanvasElement, lot: Lot) {
   g.shadowBlur = 0;
 }
 
+/** An awning's valance: the shop's name in white on its colour. */
+function drawValance(c: HTMLCanvasElement, lot: Lot) {
+  rawCanvases.add(c);
+  const g = c.getContext('2d')!;
+  const shop = shopOf(lot.owner);
+  const W = c.width, H = c.height;
+  g.fillStyle = shop?.brand?.color ?? '#f0b90b'; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(0,0,0,.18)'; g.fillRect(0, H - 6, W, 6);
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillStyle = '#ffffff';
+  const name = (shop?.brand?.name ?? shop?.name ?? '').toUpperCase();
+  fitFont(g, name, 900, 42, W - 40);
+  g.fillText(name, W / 2, H / 2 + 1);
+}
+
 function drawGate(c: HTMLCanvasElement) {
   rawCanvases.add(c);
   const g = c.getContext('2d')!;
@@ -269,6 +284,43 @@ export function installTycoonDecor(group: THREE.Group, ground: (x: number, z: nu
 
   const keepers = installKeepers(group, ground);
 
+  // ---- awnings: a striped canopy in the shop's colours over the door, its name on the valance ----
+  interface Awning { root: THREE.Group; stripe: THREE.MeshStandardMaterial; valance: Board; key: string }
+  const awnings = new Map<string, Awning>();
+  function awning(lot: Lot, f: LotFront) {
+    // At most 3 m wide, centred on the door, so it clears the sidewalk sign 1.9 m to the side.
+    const W = Math.max(2.2, Math.min(3, f.wall - 1)), D = 1.35, hi = 3.65, lo = 3.05;
+    const root = new THREE.Group();
+    const base = ground(f.x, f.z);
+    root.position.set(f.x, base, f.z);
+    root.rotation.y = Math.atan2(f.nx, f.nz);
+    const stripe = new THREE.MeshStandardMaterial({ color: 0xf0b90b, roughness: 0.7, side: THREE.DoubleSide });
+    const white = new THREE.MeshStandardMaterial({ color: 0xf4f1ea, roughness: 0.7, side: THREE.DoubleSide });
+    const slope = Math.atan2(hi - lo, D), len = Math.hypot(D, hi - lo);
+    const n = 7;
+    for (let i = 0; i < n; i++) {
+      const strip = new THREE.Mesh(new THREE.PlaneGeometry(W / n, len), i % 2 ? white : stripe);
+      strip.rotation.x = -Math.PI / 2 + slope;
+      strip.position.set(-W / 2 + (i + 0.5) * (W / n), (hi + lo) / 2, D / 2 + 0.04);
+      strip.castShadow = true;
+      root.add(strip);
+    }
+    const v = board(512, 64, drawValance);
+    const valance = new THREE.Mesh(new THREE.PlaneGeometry(W, 0.36), new THREE.MeshBasicMaterial({ map: v.tex, toneMapped: false }));
+    valance.position.set(0, lo - 0.17, D + 0.05);
+    root.add(valance);
+    // Thin side arms back to the wall.
+    for (const sx of [-W / 2, W / 2]) {
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, len), dark);
+      arm.position.set(sx, (hi + lo) / 2 - 0.02, D / 2 + 0.04);
+      arm.rotation.x = slope;
+      root.add(arm);
+    }
+    root.visible = false;
+    group.add(root);
+    awnings.set(lot.id, { root, stripe, valance: v, key: '' });
+  }
+
   // ---- a sale: "+ the average ticket" floats up over the door in the shop's colour ----
   const tickets = new Map<string, { key: string; tex: THREE.CanvasTexture }>();
   const ticketTex = (lot: Lot) => {
@@ -329,6 +381,20 @@ export function installTycoonDecor(group: THREE.Group, ground: (x: number, z: nu
         placed.add(lot.id);
         if (lot.cat === 'theatre') marquee(lot, f);
         else if (lot.cat === 'bar') blade(lot, f, totemSide);
+        else awning(lot, f);
+      }
+      const aw = awnings.get(lot.id);
+      if (aw) {
+        // Shown while an Agent runs the shop, in its colours, with its name.
+        const shop = shopOf(lot.owner);
+        aw.root.visible = !!shop && !lot.locked;
+        const akey = `${shop?.brand?.name ?? ''}|${shop?.brand?.color ?? ''}`;
+        if (shop && aw.key !== akey) {
+          aw.key = akey;
+          aw.stripe.color.set(shop.brand?.color ?? '#f0b90b');
+          aw.valance.draw(aw.valance.canvas, lot);
+          aw.valance.tex.needsUpdate = true;
+        }
       }
       const b = boards.get(lot.id);
       if (!b) return;
