@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { BokehPass } from 'three/examples/jsm/postprocessing/BokehPass.js';
 import type { Engine, DayNight } from '../engine.ts';
+import { DAY_SPEED } from '../engine.ts';
 import type { Input } from '../input.ts';
 import { esc } from '../interact.ts';
 import { toast } from './panel.ts';
@@ -39,7 +40,7 @@ export class PhotoMode {
   private focusOnYou = true;
   private focusDist = 6;
   private lapse = 0; // 0, 10, 40
-  private savedSpeed = 1 / 60;
+  private savedSpeed = DAY_SPEED;
   private sel = 0;
   private hidden = false;
   private rows: Row[];

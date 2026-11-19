@@ -307,9 +307,12 @@ const dayOfYear = (d: Date) => Math.floor((Date.UTC(d.getFullYear(), d.getMonth(
 const FOG_K = 0.62;
 
 /** Sun, moon, physically based sky, clouds, haze and environment lighting, driven by a 24h clock. */
+/** Normal clock: game hours per real second. One game day lasts two real hours, so an evening on the square lasts. */
+export const DAY_SPEED = 24 / 7200;
+
 export class DayNight {
   hour = 16.5;
-  speed = 1 / 60; // game hours per real second (1 game day = 24 real minutes)
+  speed = DAY_SPEED; // game hours per real second
   sun = new THREE.DirectionalLight(0xffffff, 3);
   hemi = new THREE.HemisphereLight(0xbfd9ff, 0x3a3226, 0.6);
   /** Show the cloud layer. */
@@ -344,7 +347,7 @@ export class DayNight {
   /** How misty mornings are (0 never, 1 a ground fog most calm mornings). */
   mist = 1;
   private lapse = false;
-  private baseSpeed = 1 / 60;
+  private baseSpeed = DAY_SPEED;
   private envWeather = -1;
   private windV = new THREE.Vector2();
 

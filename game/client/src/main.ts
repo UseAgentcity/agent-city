@@ -4,7 +4,7 @@ import './fonts.ts';
 import * as THREE from 'three';
 import type { AgentInfo, CityId, GeoPlace, Repo } from '../../shared/types.ts';
 import { track } from './api.ts';
-import { Engine, DayNight, quality } from './engine.ts';
+import { Engine, DayNight, DAY_SPEED, quality } from './engine.ts';
 import { makeCityView } from './rooms/cityView.ts';
 import { Input } from './input.ts';
 import { loadCharacters, setNpcFocus } from './characters.ts';
@@ -595,7 +595,7 @@ async function start(where: CityId | GeoPlace) {
       settings: [
         { label: 'Clouds', value: () => (dayNight.clouds ? 'On' : 'Off'), next: () => { dayNight.clouds = !dayNight.clouds; } },
         { label: 'Time of day', value: () => dayNight.label(), next: () => { dayNight.hour = (dayNight.hour + 3) % 24; } },
-        { label: 'Time speed', value: () => (dayNight.speed > 0.05 ? 'Fast' : 'Normal'), next: () => { dayNight.speed = dayNight.speed > 0.05 ? 1 / 60 : 0.5; } },
+        { label: 'Time speed', value: () => (dayNight.speed > 0.05 ? 'Fast' : 'Normal'), next: () => { dayNight.speed = dayNight.speed > 0.05 ? DAY_SPEED : 0.5; } },
         { label: 'Weather', value: () => (dayNight.weather.mode === 'live' ? 'Live' : dayNight.weather.kind[0].toUpperCase() + dayNight.weather.kind.slice(1)), next: () => {
           const order = ['live', 'clear', 'cloudy', 'rain', 'storm', 'snow', 'fog', 'dust'] as const;
           const cur = dayNight.weather.mode === 'live' ? 'live' : dayNight.weather.kind;
