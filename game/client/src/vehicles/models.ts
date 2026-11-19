@@ -120,13 +120,13 @@ export function jeepModel(color = 0x7fbcb4): Model {
   // Grille slots and headlights.
   for (let i = -3; i <= 3; i++) b.add(new THREE.BoxGeometry(0.06, 0.32, 0.02), dark, i * 0.13, 0.95, 1.81);
   for (const s of [-1, 1]) b.add(new THREE.CylinderGeometry(0.12, 0.12, 0.05, 14).rotateX(Math.PI / 2), light, s * 0.62, 0.98, 1.81);
-  // Windshield frame + glass, roll bar, canvas top.
-  b.add(new THREE.BoxGeometry(1.6, 0.05, 0.05), body, 0, 1.75, 0.52, -0.3);
-  for (const s of [-1, 1]) b.add(new THREE.BoxGeometry(0.06, 0.62, 0.06), body, s * 0.78, 1.45, 0.45, -0.3);
-  b.add(new THREE.BoxGeometry(1.5, 0.52, 0.02), glass, 0, 1.44, 0.46, -0.3);
-  for (const s of [-1, 1]) b.add(new THREE.BoxGeometry(0.07, 0.8, 0.07), chrome, s * 0.75, 1.42, -0.55);
-  b.add(new THREE.BoxGeometry(1.57, 0.07, 0.07), chrome, 0, 1.8, -0.55);
-  b.add(new THREE.BoxGeometry(1.66, 0.06, 1.55), sand, 0, 1.82, -0.15);
+  // Windshield frame + glass, roll bar, canvas top (high enough to clear the driver's beanie).
+  b.add(new THREE.BoxGeometry(1.6, 0.05, 0.05), body, 0, 1.93, 0.47, -0.3);
+  for (const s of [-1, 1]) b.add(new THREE.BoxGeometry(0.06, 0.8, 0.06), body, s * 0.78, 1.54, 0.43, -0.3);
+  b.add(new THREE.BoxGeometry(1.5, 0.7, 0.02), glass, 0, 1.53, 0.44, -0.3);
+  for (const s of [-1, 1]) b.add(new THREE.BoxGeometry(0.07, 0.98, 0.07), chrome, s * 0.75, 1.51, -0.55);
+  b.add(new THREE.BoxGeometry(1.57, 0.07, 0.07), chrome, 0, 1.98, -0.55);
+  b.add(new THREE.BoxGeometry(1.66, 0.06, 1.55), sand, 0, 2.0, -0.15);
   // Seats, wheel, spare tyre.
   for (const s of [-1, 1]) {
     b.add(new THREE.BoxGeometry(0.55, 0.12, 0.55), seat, s * 0.4, 1.02, -0.3);
