@@ -29,10 +29,10 @@ export interface XrPhoneSource {
 export function cityPhoneSource(): XrPhoneSource {
   const zh = (document.documentElement.lang || 'zh').startsWith('zh');
   const thread: XrThread = {
-    id: 'agent-city', title: 'Open World', sub: zh ? '社区项目' : 'Community project', unread: 0, typing: false, replies: [],
-    messages: [{ me: false, who: 'Open World', text: zh
-      ? '摘下头显后按 P 打开 Open World 手机：城市、我的 Agent、观战、战绩、出行。目前仅迪拜开放比赛。'
-      : 'Take off the headset and press P for the Open World phone: city, my Agent, watch, records and travel. Only Dubai runs races for now.' }],
+    id: 'agent-city', title: 'Agent City', sub: zh ? '社区项目' : 'Community project', unread: 0, typing: false, replies: [],
+    messages: [{ me: false, who: 'Agent City', text: zh
+      ? '摘下头显后按 P 打开 Agent City 手机：城市、我的 Agent、观战、战绩、出行。目前仅迪拜开放比赛。'
+      : 'Take off the headset and press P for the Agent City phone: city, my Agent, watch, records and travel. Only Dubai runs races for now.' }],
   };
   return { threads: () => [thread], open: () => {}, send: () => {}, agents: () => [], stopAgent: () => {}, version: () => 0 };
 }

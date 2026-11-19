@@ -718,7 +718,7 @@ export function installPhone(ctx: GameCtx, hooks: PhoneHooks): Phone {
 
   /** A small in-phone banner for results of taps. */
   function toastIn(text: string) {
-    bannerIn.innerHTML = `<div class="pn-app">${ICON.check}<span>OPEN WORLD</span><time>now</time></div><p>${esc(text)}</p>`;
+    bannerIn.innerHTML = `<div class="pn-app">${ICON.check}<span>AGENT CITY</span><time>now</time></div><p>${esc(text)}</p>`;
     bannerIn.onclick = () => bannerIn.classList.remove('show');
     bannerIn.classList.add('show');
     clearTimeout(bannerTimer);

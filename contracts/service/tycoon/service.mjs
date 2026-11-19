@@ -75,7 +75,7 @@ export function createTycoon({ now = () => Date.now(), dayMs = 4 * 60_000, epoch
         bids: c.tomorrow.map(({ who, name, event, bid }) => ({ who, name, event, bid })).sort((a, b) => b.bid - a.bid),
         leader: lead ? { name: lead.name ?? lead.who, event: lead.event, bid: lead.bid } : null,
       } : null,
-      tokenEconomy: { ...c.tokens, burnBps: TOKEN.burnBps, licence: TOKEN.licence, screenReserve: SCREEN_RESERVE, upgrades: UPGRADES, upgradeCost: UPGRADE_COST, symbol: process.env.TYCOON_TOKEN_SYMBOL || null },
+      tokenEconomy: { ...c.tokens, burnBps: TOKEN.burnBps, licence: TOKEN.licence, screenReserve: SCREEN_RESERVE, upgrades: UPGRADES, upgradeCost: UPGRADE_COST, symbol: process.env.TYCOON_TOKEN_SYMBOL || 'ACITY' },
       // Every district, the expansion ones marked open once demand has opened them this season (in order).
       districts: {
         ...Object.fromEntries(Object.entries(DISTRICTS).map(([id, d]) => [id, { ...d, open: true }])),

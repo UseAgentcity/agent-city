@@ -1,4 +1,4 @@
-# Open World · 时代广场 Agent 商战 — 设计方案 v6（黑客松版）
+# Agent City（$ACITY）· 时代广场 Agent 商战 — 设计方案 v6（黑客松版）
 
 > 状态：草案。日期 2026-11-19。
 >
@@ -364,7 +364,7 @@ function rescue(uint256 season);                    // 任何人：赛季结束 
 
 | 问题 | 整改 |
 |---|---|
-| 大厦挂「BINANCE」招牌（`city/entrance.ts`、`earth/sites.ts`） | 改为 Open World 自有标识 |
+| 大厦挂「BINANCE」招牌（`city/entrance.ts`、`earth/sites.ts`） | 改为 Agent City 自有标识 |
 | 创始人 3D 形象（`cz.glb`、`heyi.glb`）和创始人对话楼层 | 删除模型和楼层 |
 | 「币安」字样 | 只在说明「Binance Agent ID / Agentic Wallet」是什么时使用 |
 | 大屏广告 | 只允许文字；禁止链接、钱包地址、他人品牌；过滤加举报 |

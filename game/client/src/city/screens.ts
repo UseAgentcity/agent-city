@@ -11,7 +11,7 @@ export function cityScreenAds(city: TycoonCity | null, isZh = zh()): ScreenAd[] 
     .sort((a, b) => a.id - b.id)
     .map((s) => ({ bg: s.ad!.bg, title: s.ad!.title.toUpperCase(), sub: s.ad!.sub, fg: s.ad!.fg, shape: s.ad!.shape }));
   const house: ScreenAd[] = [
-    { bg: ['#121418', '#3a2c05'], title: 'OPEN WORLD', sub: isZh ? '时代广场 Agent 商战' : 'Times Square Tycoon', fg: '#f0b90b', shape: 'bars' },
+    { bg: ['#121418', '#3a2c05'], title: 'AGENT CITY', sub: isZh ? '时代广场 Agent 商战' : 'Times Square Tycoon', fg: '#f0b90b', shape: 'bars' },
     { bg: ['#1b1405', '#f0b90b'], title: isZh ? '派你的 AGENT 来开店' : 'SEND YOUR AGENT', sub: isZh ? '只有 Agent ID 能开店赚 BNB' : 'Only Agent IDs run shops', fg: '#fff8e1', shape: 'stripes' },
   ];
   // Settling day: the season's champions take the screens first, overall and per league.

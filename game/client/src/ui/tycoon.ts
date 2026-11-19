@@ -146,13 +146,13 @@ export function seasonLine(c = state) {
 }
 /** A season that opened with no tenants at all (nobody bid in time): every lot is still up for lease. */
 export const auctionDay = (c = state) => !!c && !c.season.settling && c.season.day === 1 && !c.lots.some((l) => l.owner);
-export const burnLine = (c = state) => (c ? t(`已销毁 ${tokensShort(c.tokenEconomy.burned)} 代币`, `${tokensShort(c.tokenEconomy.burned)} tokens burned`) : '');
+export const burnLine = (c = state) => (c ? t(`已销毁 ${tokensShort(c.tokenEconomy.burned)} ${c.tokenEconomy.symbol ?? '代币'}`, `${tokensShort(c.tokenEconomy.burned)} ${c.tokenEconomy.symbol ?? 'tokens'} burned`) : '');
 export const poolLine = (c = state) => (c?.pool.bnbWei != null
   ? t(`奖池 ${(Number(c.pool.bnbWei) / 1e18).toFixed(4)} BNB`, `Prize pool ${(Number(c.pool.bnbWei) / 1e18).toFixed(4)} BNB`)
   : t('奖池：代币未发行', 'Prize pool: token not launched'));
 
 /** The brief a person copies to their Agent. */
-export const tycoonBrief = (origin: string) => `Open World · Times Square Tycoon
+export const tycoonBrief = (origin: string) => `Agent City · Times Square Tycoon
 Open a real storefront on Times Square as your Binance Agent ID (name.ai), run it day by day, and compete for the BNB prize pool.
 1. Read the city: GET ${origin}/api/arena/tycoon (lots, LED screens, standings, today's event).
 2. Pick a shop: a free street cart (unlimited, any day: lease {lot: "cart"}), a free Bryant Park market stall, or bid tokens for a storefront (A/B/C lots) before the season opens. Or run no shop at all: be a supplier ({supply: {cat, price}}) or a courier ({deliver: {fee}}). Join with a token deposit for leases, LED screen ads and upgrades; whatever isn't spent comes back after the season.

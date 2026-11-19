@@ -82,7 +82,7 @@ addText([
   ['Checking which agents this computer can run…', '正在检查这台电脑可运行的 Agent…'], ['Use', '使用'], ['your own', '你自己的'],
   ['agents. Keys are saved only on this computer (in', 'Agent。密钥只保存在这台电脑上（位于'], ['), sent only to the company that made the agent, and never shown again here.', '），只发送给该 Agent 的提供方，之后不会再在这里显示。'],
   ['Coding agents', '编程 Agent'], ['Conversations', '对话模型'], ['Connected as', '已连接为'], ['Saved. The key works.', '已保存，密钥可用。'], ['Pick a model first (Test connection lists them).', '请先选择模型（点「测试连接」会列出可用模型）。'],
-  ['Saved. The office now talks with', '已保存。办公室现在使用'], ['Removed.', '已移除。'], ['Key removed from this computer.', '密钥已从这台电脑移除。'], ["Couldn't reach Open World:", '无法连接 Open World：'],
+  ['Saved. The office now talks with', '已保存。办公室现在使用'], ['Removed.', '已移除。'], ['Key removed from this computer.', '密钥已从这台电脑移除。'], ["Couldn't reach Agent City:", '无法连接 Agent City：'],
   // Boardroom
   ['Chair', '主席'], ['Head of Product', '产品负责人'], ['Design Lead', '设计负责人'], ['Growth & Revenue', '增长与营收'],
   ['What is the single most important thing to build next for', '接下来最重要的一件事是什么：'], ['Should we charge for this? If so, how?', '要不要收费？怎么收？'],
@@ -101,13 +101,13 @@ addText([
   ['Sun', '周日'], ['Mon', '周一'], ['Tue', '周二'], ['Wed', '周三'], ['Thu', '周四'], ['Fri', '周五'], ['Sat', '周六'], ['Every', '每'], ['Every day at', '每天'],
   ['Unknown template', '未知模板'], ['Delete', '删除'], ['Add a schedule', '添加排程'], ['Custom task…', '自定义任务…'], ['Any repo, any instructions, daily or weekly.', '任意仓库、任意指令，每天或每周。'],
   ['started in', '已开始于'], ['Tap to confirm', '点按确认'], ['How often', '频率'], ['Every day', '每天'], ['Every week', '每周'], ['Day', '日期'], ['Turn on schedule', '开启排程'],
-  ["Runs on this computer while Open World is open. A run missed while it was off happens once when it starts again (if it was within 12 hours).", '在 Open World 开着的时候于本机执行。关掉期间错过的任务会在重新打开后补跑一次（12 小时内）。'],
+  ["Runs on this computer while Agent City is open. A run missed while it was off happens once when it starts again (if it was within 12 hours).", '在 Agent City 开着的时候于本机执行。关掉期间错过的任务会在重新打开后补跑一次（12 小时内）。'],
   // Home (New York apartment)
   ['Go home', '回家'], ['Take the lift down', '乘电梯下楼'], ['Sit on the sofa', '坐到沙发上'], ['Watch the park (time-lapse)', '看公园（延时摄影）'], ['Go to sleep', '睡觉'],
   ['Until morning', '睡到早上'], ['Read your briefing', '阅读简报'], ['What your agents did while you were away', '你不在时 Agent 做了什么'], ['Open the window', '打开窗户'],
   ['(thrusters ready)', '（推进器就绪）'],
   // 3D textures
-  ['RECEPTION', '前台'], ['AGENT HEADQUARTERS  ·  DUBAI', 'Agent 智能总部  ·  迪拜'], ['AGENT HEADQUARTERS', 'Agent 智能总部'], ['DUBAI', '迪拜'], ['NEW YORK', '纽约'], ['OPEN WORLD  /  UAE', 'OPEN WORLD  /  阿联酋'], ['OPEN WORLD  /  NYC', 'OPEN WORLD  /  纽约'], ['LIVE', '直播'],
+  ['RECEPTION', '前台'], ['AGENT HEADQUARTERS  ·  DUBAI', 'Agent 智能总部  ·  迪拜'], ['AGENT HEADQUARTERS', 'Agent 智能总部'], ['DUBAI', '迪拜'], ['NEW YORK', '纽约'], ['AGENT CITY  /  UAE', 'AGENT CITY  /  阿联酋'], ['AGENT CITY  /  NYC', 'AGENT CITY  /  纽约'], ['LIVE', '直播'],
   ['Available desk', '空闲工位'], ['No agents running yet. Use the kiosk to hire one.', '还没有 Agent 在运行。到自助终端雇用一个。'], ['Board decisions', '董事会决议'],
   ['READY FOR REVIEW', '等待审查'], ['AI AGENT', 'AI Agent'], ['Open issues', '未关闭的问题'], ['Inbox zero. Nothing open on GitHub.', '清空了，GitHub 上没有未关闭的问题。'],
   ['No open pull requests. The shelf is empty.', '没有未合并的拉取请求，架子是空的。'], ['RUNNING', '运行中'], ['DONE', '已完成'], ['ERROR', '出错'], ['STOPPED', '已停止'], ['PREPARING', '准备中'], ['NEEDS_INPUT', '需要输入'],

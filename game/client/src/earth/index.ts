@@ -175,12 +175,12 @@ export async function buildEarthPlace(place: GeoPlace, repos: Repo[], say: (m: s
     console.info(`[earth] ${pick.leftovers.length} projects found no building within ${Math.round(r)} m: ${pick.leftovers.map((p) => `${p.name} (${p.tier})`).join(", ")}`);
   }
   const sitesGroup = new THREE.Group();
-  const headquarters = repos.find((repo) => repo.fullName === 'open-world/agent-tower');
+  const headquarters = repos.find((repo) => repo.fullName === 'agent-city/agent-tower');
   for (const s of sites) {
     if (s.repo === headquarters) {
       chunks.quietLobby(s.fp.ring, s.fp.chunk, s.fp.key);
       const host = chunks.chunks.get(s.fp.chunk)?.footprints.find((fp) => fp.key === s.fp.key);
-      if (host) host.poi = { name: 'Open World 大厦', cls: 'office', sub: 'headquarters' };
+      if (host) host.poi = { name: 'Agent City 大厦', cls: 'office', sub: 'headquarters' };
     }
     sitesGroup.add(await buildEarthRepo(s));
   }

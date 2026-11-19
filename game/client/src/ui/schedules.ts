@@ -176,7 +176,7 @@ function drawAdd(el: HTMLElement, o: SchedulesAppOpts, m: Extract<Mode, { kind: 
       <button class="pbtn" type="submit">Turn on schedule</button>
       <button class="pbtn ghost" type="button" data-cancel>Cancel</button>
     </form>
-    <p class="sc-note">Runs on this computer while Open World is open. A run missed while it was off happens once when it starts again (if it was within 12 hours).</p></div>`;
+    <p class="sc-note">Runs on this computer while Agent City is open. A run missed while it was off happens once when it starts again (if it was within 12 hours).</p></div>`;
   o.bindCommon();
   const f = el.querySelector<HTMLFormElement>('form')!;
   const day = f.querySelector<HTMLElement>('.sc-day')!;

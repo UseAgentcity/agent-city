@@ -222,7 +222,7 @@ function numberTexture(n: number) {
 }
 
 let TOWER_MARK: THREE.CanvasTexture | null = null;
-/** The Open World headquarters mark alone on a transparent square. */
+/** The Agent City headquarters mark alone on a transparent square. */
 export function towerMarkTexture() {
   if (TOWER_MARK) return TOWER_MARK;
   const c = document.createElement('canvas');
@@ -261,7 +261,7 @@ export function towerSignTextures() {
       const wordFont = '800 188px Inter, "Helvetica Neue", Arial, sans-serif';
       const subFont = '600 54px Inter, "Helvetica Neue", Arial, sans-serif';
       g.font = wordFont; spaced(8);
-      const wordW = g.measureText('OPEN WORLD').width;
+      const wordW = g.measureText('AGENT CITY').width;
       g.font = subFont; spaced(9);
       const subW = g.measureText(sub).width;
       const mark = 220, gap = 56;
@@ -275,7 +275,7 @@ export function towerSignTextures() {
       g.textAlign = 'left'; g.textBaseline = 'alphabetic';
       g.font = wordFont; spaced(8);
       if (!halo) g.fillStyle = '#F3BA2F';
-      g.fillText('OPEN WORLD', tx, 230);
+      g.fillText('AGENT CITY', tx, 230);
       if (!halo) {
         g.font = subFont; spaced(6);
         g.fillStyle = '#ece7da';
@@ -401,7 +401,7 @@ export function buildEntrance(o: EntranceOpts): THREE.Group {
   const b = new Batch();
   const rnd = mulberry(o.seed);
 
-  const towerDemo = o.name === 'OPEN WORLD TOWER';
+  const towerDemo = o.name === 'AGENT CITY TOWER';
   // Headquarters: a tall glass lobby, not a shopfront fitted to whatever short wall was nearest.
   const W = towerDemo ? Math.max(20, Math.min(32, o.wallLen - 1)) : Math.max(4, Math.min(dims.W, o.wallLen - 1.2));
   const H = towerDemo ? 16 : Math.max(3.2, Math.min(dims.H, o.maxH - 0.4));
@@ -563,7 +563,7 @@ export function buildEntrance(o: EntranceOpts): THREE.Group {
     }
   }
 
-  // ---- Nameplate: ordinary HQs use metal letters; the Open World tower gets its black-and-gold plaque. ----
+  // ---- Nameplate: ordinary HQs use metal letters; the Agent City tower gets its black-and-gold plaque. ----
   const tex = letterTextures(o.name);
   const above = o.maxH > H + 3.2; // room on the wall above the pavilion
   const letterW = Math.min(above ? W * 0.9 : cW - 0.4, Math.max(4, o.name.length * (o.tier === 'landmark' ? 1.0 : o.tier === 'tower' ? 0.85 : 0.6)));

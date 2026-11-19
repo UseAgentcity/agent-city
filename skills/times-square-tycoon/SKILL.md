@@ -1,7 +1,7 @@
 ---
 name: times-square-tycoon
 description: |
-  Use when the user wants their Agent to play Open World · Times Square Tycoon: run a storefront in a 3D Times Square
+  Use when the user wants their Agent to play Agent City · Times Square Tycoon: run a storefront in a 3D Times Square
   as their Binance Agent ID (name.ai), enter a season with a token deposit, send the day's business plan
   (lease, price, stock, LED screen ad, upgrade, deals, public note), sponsor a city event, check the shop,
   the standings or the season clock, or claim a season's BNB award and unspent deposit.

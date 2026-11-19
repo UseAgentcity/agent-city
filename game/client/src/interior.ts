@@ -144,10 +144,10 @@ function aimBone(bone: THREE.Object3D | undefined, child: THREE.Object3D | undef
 // ---------- build ----------
 
 export async function buildInterior(ctx: GameCtx, repo: Repo, view?: CityViewPlacement): Promise<Interior> {
-  const businessDemo = repo.fullName === 'open-world/agent-tower';
+  const businessDemo = repo.fullName === 'agent-city/agent-tower';
   const emptyDetail: RepoDetail = { repo, readme: '', workers: [], decisions: [], agents: [] };
   // The Agent Tower is not a GitHub repo: nothing to ask the old project server for.
-  const detail: RepoDetail = repo.fullName === 'open-world/agent-tower' ? emptyDetail : await api.repo(repo.name).catch(() => emptyDetail);
+  const detail: RepoDetail = repo.fullName === 'agent-city/agent-tower' ? emptyDetail : await api.repo(repo.name).catch(() => emptyDetail);
   track('building_entered', { repo: repo.name, tier: repo.tier });
 
   const W = ({ landmark: 48, tower: 44, midrise: 40, small: 34 } as const)[repo.tier] ?? 40;
@@ -646,7 +646,7 @@ export async function buildInterior(ctx: GameCtx, repo: Repo, view?: CityViewPla
   };
   const openApp = (app: string) => () => window.dispatchEvent(new CustomEvent('agent-city:open-economy', { detail: { app } }));
   /** The countdown strip over the lift landing, on every tower floor. */
-  const liftStrip = () => liveScreen(2.2, 0.34, 1024, [0, Math.min(3.78, H - 0.45), LIFT_FRONT - 0.1], Math.PI, (c) => drawBanner(c, ui('时代广场 Agent 商战', 'TIMES SQUARE TYCOON'), 'OPEN WORLD', '#ffb698'), 12, 0.04);
+  const liftStrip = () => liveScreen(2.2, 0.34, 1024, [0, Math.min(3.78, H - 0.45), LIFT_FRONT - 0.1], Math.PI, (c) => drawBanner(c, ui('时代广场 Agent 商战', 'TIMES SQUARE TYCOON'), 'AGENT CITY', '#ffb698'), 12, 0.04);
 
   // =============================== LOBBY (ground floor) ===============================
   beginFloor(LOBBY_F);
@@ -759,11 +759,11 @@ export async function buildInterior(ctx: GameCtx, repo: Repo, view?: CityViewPla
       drawTowerMark(g, 430, (c.height - mark) / 2, mark, '#ffbd91');
       g.textAlign = 'left'; g.textBaseline = 'middle';
       g.fillStyle = '#ffbd91';
-      g.font = '700 138px Inter, Arial, sans-serif'; g.fillText('OPEN WORLD', 815, 307, 950);
+      g.font = '700 138px Inter, Arial, sans-serif'; g.fillText('AGENT CITY', 815, 307, 950);
       g.fillStyle = '#d9d5cc';
       g.font = '600 43px Inter, Arial, sans-serif'; g.fillText(ui('纽约城市运营总部', 'NEW YORK CITY OPERATIONS'), 850, 414);
       g.textAlign = 'right'; g.fillStyle = '#F3BA2F';
-      g.font = '700 28px Inter, Arial, sans-serif'; g.fillText(ui('OPEN WORLD  /  纽约', 'OPEN WORLD  /  NYC'), 1740, 530);
+      g.font = '700 28px Inter, Arial, sans-serif'; g.fillText(ui('AGENT CITY  /  纽约', 'AGENT CITY  /  NYC'), 1740, 530);
     };
     if (businessDemo) drawTowerWall(); else drawLogoWall(c, repo, null);
     const t = T(texFrom(c));
@@ -1283,7 +1283,7 @@ export async function buildInterior(ctx: GameCtx, repo: Repo, view?: CityViewPla
     solid(-2.25, officeZ + 3.3, -1.25, officeZ + 5.9, 1.1); solid(1.25, officeZ + 3.3, 2.25, officeZ + 5.9, 1.1);
     solid(-0.5, officeZ + 3.7, 0.5, officeZ + 5.5, 0.6); solid(-0.5, officeZ + 6.4, 0.5, officeZ + 7.4, 1.1);
     chandelier(0, officeZ + 4.6, 1.35, 3);
-    staticScreen(8.2, 1.48, 1000, [0, 3.2, fd - 0.32], Math.PI, (c) => drawBanner(c, ui('天际酒廊', 'SKYLINE LOUNGE'), ui('Open World 虚构体验 · 社区项目', 'Fictional Open World experience · community project')));
+    staticScreen(8.2, 1.48, 1000, [0, 3.2, fd - 0.32], Math.PI, (c) => drawBanner(c, ui('天际酒廊', 'SKYLINE LOUNGE'), ui('Agent City 虚构体验 · 社区项目', 'Fictional Agent City experience · community project')));
     b.box(mat.brass, 8.4, 1.6, 0.04, [0, 3.2, fd - 0.28]);
     liftStrip();
     endFloor();

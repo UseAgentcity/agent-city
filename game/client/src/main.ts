@@ -74,8 +74,8 @@ installLanding({
 });
 
 const DEMO_COMPANY: Repo = {
-  name: 'OPEN WORLD TOWER', owner: 'Open World', fullName: 'open-world/agent-tower',
-  description: 'Unofficial Open World venue. Agents manage work, equipment and living costs in New York.',
+  name: 'AGENT CITY TOWER', owner: 'Agent City', fullName: 'agent-city/agent-tower',
+  description: 'Unofficial Agent City venue. Agents manage work, equipment and living costs in New York.',
   url: '', homepageUrl: '', isPrivate: false, language: 'Agent Economy', languageColor: null,
   stars: 0, diskKb: 0, commits: 0, prs: 0, pushedAt: new Date().toISOString(), createdAt: new Date().toISOString(),
   score: 10000, tier: 'landmark', hasLogo: false, brandColor: '#E8B923',
@@ -221,7 +221,7 @@ async function start(where: CityId | GeoPlace) {
     if (!sitesHere()) return;
     const busy = agentsByRepo();
     for (const s of place.sites) {
-      // The Open World tower has a physical illuminated sign; floating repo labels sit on top of it.
+      // The Agent City tower has a physical illuminated sign; floating repo labels sit on top of it.
       if (s.repo.name === DEMO_COMPANY.name) continue;
       const n = busy.get(s.repo.name) ?? 0;
       labels.set(`b:${s.repo.name}`, new THREE.Vector3(s.top.x, s.top.y + 10, s.top.z),
@@ -255,7 +255,7 @@ async function start(where: CityId | GeoPlace) {
     busy = true;
     lastDoor = siteByRepo.get(repo.name) ?? null;
     if (player.vehicle !== 'foot') player.setVehicle('foot');
-    const title = repo.name === DEMO_COMPANY.name ? t('Open World 总部', 'Open World headquarters') : repo.name;
+    const title = repo.name === DEMO_COMPANY.name ? t('Agent City 总部', 'Agent City headquarters') : repo.name;
     await fade(true, t(`正在进入${title}…`, `Entering ${title}…`), t('第一次进入要多等几秒', 'The first visit takes a few seconds'));
     try {
       interactions.clear();
@@ -907,8 +907,8 @@ async function start(where: CityId | GeoPlace) {
     const hq = interior && lastDoor ? lastDoor : null;
     const anchor = hq ? hq.door : generic ? generic.hit.point : player.position;
     const g = earth ? earth.frame.toGeo(anchor.x, anchor.z) : null;
-    // HQ floors are FH apart; the Open World tower adds its lounge floor as stop 5.
-    const maxFloor = interior?.repo.fullName === 'open-world/agent-tower' ? 5 : 3;
+    // HQ floors are FH apart; the Agent City tower adds its lounge floor as stop 5.
+    const maxFloor = interior?.repo.fullName === 'agent-city/agent-tower' ? 5 : 3;
     const floor = interior ? Math.max(0, Math.min(maxFloor, Math.round(player.position.y / ((interior.repo.tier === 'landmark' ? 5 : 4.2) + 2.6)))) : 0;
     const inside: SavedSession['inside'] = hq ? { kind: 'hq', repo: hq.repo.name, floor } : atHomeInside() ? { kind: 'home' } : null;
     const outside = earth ? [earth.area(anchor.x, anchor.z).place, earth.area(anchor.x, anchor.z).sub].filter(Boolean).join(', ') : `${place.locationName(anchor.x, anchor.z)}, ${place.title}`;
@@ -958,7 +958,7 @@ async function start(where: CityId | GeoPlace) {
     if (!s.inside && s.agl > 4) { player.position.y += s.agl; player.mode = 'air'; player.vel.set(0, 0, 0); }
     dayNight.hour = s.hour;
     if (s.inside?.kind === 'hq') {
-      const site = siteByRepo.get(s.inside.repo);
+      const site = siteByRepo.get(s.inside.repo === 'OPEN WORLD TOWER' ? DEMO_COMPANY.name : s.inside.repo); // sessions saved before the rename
       if (site && sitesHere()) {
         await enterBuilding(site.repo);
         if (s.inside.floor) interior?.debugFloor?.(s.inside.floor);

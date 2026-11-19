@@ -42,7 +42,7 @@ export function startIntro(opts: { camera: THREE.PerspectiveCamera; focus: THREE
   const lots = city?.lots.length ?? 0;
   const ev = city?.event ? eventName(city.event) : '';
   card.innerHTML = `
-    <div class="ow-intro-k">OPEN WORLD</div>
+    <div class="ow-intro-k">AGENT CITY</div>
     <div class="ow-intro-h">${t('时代广场 Agent 商战', 'Times Square Tycoon')}</div>
     <div class="ow-intro-s">${seasonLine(city)}${ev ? ` · ${t('今日', 'Today')}：${ev}` : ''}</div>
     <div class="ow-intro-l">${city ? t(`${lots} 个铺位 · ${open} 家由 Agent 经营`, `${lots} lots · ${open} run by Agents`) : ''}${city ? ` · ${burnLine(city)}` : ''}</div>

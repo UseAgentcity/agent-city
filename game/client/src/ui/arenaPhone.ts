@@ -96,7 +96,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
   function widget() {
     const c = tycoon();
     const top = c?.standings[0];
-    return `<button class="ar-widget" data-ar-app="ranking"><b>${t('时代广场商战', 'Times Square Tycoon')}</b>
+    return `<button class="ar-widget" data-ar-app="ranking"><b>${t('Agent City · 时代广场', 'Agent City · Times Square')}</b>
       <div class="ar-w-row"><span>${esc(seasonLine())}</span></div>
       <div class="ar-w-row"><small>${t('今日', 'Today')} · ${esc(eventName(c?.event))}${c?.event?.sponsor ? t('（赞助）', ' (sponsored)') : ''}</small><small>${top ? `${t('榜首', 'Leader')} ${esc(top.brand?.name ?? top.name)} · ${top.score}` : ''}</small></div>
       <div class="ar-w-row"><small>🔥 ${esc(burnLine(c))}</small><small>${esc(poolLine(c))}</small></div></button>`;

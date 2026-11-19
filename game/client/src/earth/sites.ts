@@ -132,7 +132,7 @@ export function chooseEarthSites(
   const leftovers: Repo[] = [];
   for (const repo of big) {
     // Headquarters: a real street wall with room for a two-storey lobby, not the tallest glass needle.
-    if (repo.fullName === 'open-world/agent-tower') {
+    if (repo.fullName === 'agent-city/agent-tower') {
       if (pin) {
         // The nearest footprint is often a plaza shop. The headquarters takes the tallest tower at the pin.
         const around = fps
@@ -200,7 +200,7 @@ function makeSite(repo: Repo, fp: HostFp, d: Door): EarthSite {
 /** The HQ itself: the real building, untouched, with the project's logo high on its walls and a front door. */
 export async function buildEarthRepo(site: EarthSite): Promise<THREE.Group> {
   const { repo, fp } = site;
-  const towerDemo = repo.name === 'OPEN WORLD TOWER';
+  const towerDemo = repo.name === 'AGENT CITY TOWER';
   const group = new THREE.Group();
   group.name = `repo:${repo.name}`;
   const H = fp.top;
@@ -220,7 +220,7 @@ export async function buildEarthRepo(site: EarthSite): Promise<THREE.Group> {
     if (len >= 4) walls.push({ mx: (ax + bx) / 2, mz: (az + bz) / 2, ox: -(bz - az) / len, oz: (bx - ax) / len, len });
   }
   const out = site.doorOut;
-  // The generic initials tile is intentionally skipped for the Open World tower. Its true brand
+  // The generic initials tile is intentionally skipped for the Agent City tower. Its true brand
   // mark belongs on the entrance fascia; the enormous square tile obscures the real facade.
   if (!towerDemo && fp.h > 22 && walls.length) {
     const score = (w: typeof walls[0]) => (w.ox * out.x + w.oz * out.z) * Math.min(w.len, 30);
@@ -236,7 +236,7 @@ export async function buildEarthRepo(site: EarthSite): Promise<THREE.Group> {
       group.add(m);
     }
   }
-  // The Open World tower: its gold mark set into the crown on the street face and the face opposite, readable from
+  // The Agent City tower: its gold mark set into the crown on the street face and the face opposite, readable from
   // blocks away; mounted flush on the facade with no billboard behind it.
   if (towerDemo) {
     const up = new THREE.Vector3(0, 1, 0);

@@ -61,7 +61,7 @@ export function shots(earth: EarthApi, ground: (x: number, z: number) => number)
   const open = city?.lots.filter((l) => l.owner).length ?? 0;
   const south = earth.frame.toLocal(40.7566, -73.9864); // Broadway at 42nd Street
   const sx = south.x - c.x, sz = south.z - c.z;
-  out.push({ from: v(c.x + sx * 0.95, cy + 36, c.z + sz * 0.95), to: v(c.x + sx * 0.62, cy + 26, c.z + sz * 0.62), look: v(c.x, cy + 10, c.z), k: 'OPEN WORLD', title: t('时代广场 Agent 商战', 'Times Square Tycoon'), sub: city ? t(`${open} 家店由 Agent 经营 · 今日：${eventName(city.event)}`, `${open} shops run by Agents · today: ${eventName(city.event)}`) : '', dur: 7 });
+  out.push({ from: v(c.x + sx * 0.95, cy + 36, c.z + sz * 0.95), to: v(c.x + sx * 0.62, cy + 26, c.z + sz * 0.62), look: v(c.x, cy + 10, c.z), k: 'AGENT CITY', title: t('时代广场 Agent 商战', 'Times Square Tycoon'), sub: city ? t(`${open} 家店由 Agent 经营 · 今日：${eventName(city.event)}`, `${open} shops run by Agents · today: ${eventName(city.event)}`) : '', dur: 7 });
   /** A shot at a lot's door, the camera drifting across the sidewalk. */
   const used = new Set<string>();
   const atDoor = (lot: Lot, back: number, up: number, k: string, title: string, sub: string) => {

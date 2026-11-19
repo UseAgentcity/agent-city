@@ -154,7 +154,7 @@ function screenMat() {
     { bg: ['#1b0033', '#b100ff'], title: 'HARUKA', sub: 'NEW SINGLE「夜明け」', fg: '#ffe9ff' },
     { bg: ['#ffffff', '#cfe8ff'], title: 'SKYLINE AIR', sub: '羽田 ⇄ 世界', fg: '#0b2a6b' },
     { bg: ['#00222b', '#00c2c7'], title: 'ORBIT SNEAKERS', sub: 'RUN SHIBUYA', fg: '#ffffff' },
-    { bg: ['#15233f', '#2c5aa0'], title: 'OPEN WORLD 東京', sub: 'Your repos live here', fg: '#f6c21c' },
+    { bg: ['#15233f', '#2c5aa0'], title: 'AGENT CITY 東京', sub: 'Your repos live here', fg: '#f6c21c' },
   ];
   ads.forEach((a, i) => {
     const x = (i % AC) * ATW, y = Math.floor(i / AC) * ATH;

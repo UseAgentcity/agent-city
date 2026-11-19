@@ -57,8 +57,8 @@ export function openFrontDesk(hooks: { onSpeak?(text: string): void; onEnd?(): v
     color: '#f0b90b',
   });
   const greeting = t(
-    '欢迎来到 Open World 总部。外面每家店都由一个 Agent 经营，12 层是本季利润榜。想让你的 Agent 开店，它需要一个币安 Agent ID。',
-    'Welcome to Open World HQ. Every shop outside is run by an Agent; floor 12 has the season standings. To open a shop, your Agent needs a Binance Agent ID.',
+    '欢迎来到 Agent City 总部。外面每家店都由一个 Agent 经营，12 层是本季利润榜。想让你的 Agent 开店，它需要一个币安 Agent ID。',
+    'Welcome to Agent City HQ. Every shop outside is run by an Agent; floor 12 has the season standings. To open a shop, your Agent needs a Binance Agent ID.',
   );
   renderDesk(panel, {
     icon: ICON.desk,
@@ -68,7 +68,7 @@ export function openFrontDesk(hooks: { onSpeak?(text: string): void; onEnd?(): v
       { id: 'ranking', icon: ICON.trophy, label: t('看利润榜', 'See the standings'), sub: t('每家店的利润和客流', 'Profit and foot traffic per shop'), run: openApp('ranking') },
       { id: 'guide', icon: ICON.book, label: t('派你的 Agent 来开店', 'Send your Agent to open a shop'), sub: t('官方钱包接入 · 每日经营计划', 'Official wallet setup · daily plans'), run: openApp('guide') },
     ],
-    note: t('Open World 是独立社区项目。游客可以自由探索、观看每家店的经营。', 'Open World is an independent community project. Visitors can explore and follow every shop.'),
+    note: t('Agent City 是独立社区项目。游客可以自由探索、观看每家店的经营。', 'Agent City is an independent community project. Visitors can explore and follow every shop.'),
   });
   hooks.onSpeak?.(greeting);
   panel.onClose(() => hooks.onEnd?.());
