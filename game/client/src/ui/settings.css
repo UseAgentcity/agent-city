@@ -172,3 +172,51 @@ body:not(.show-location) .agent-call { top: 60px; }
 .ak-compat-btns { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
 .st-group > .ak-card { margin-top: 10px; }
 @media (max-width: 600px) { .ak-compat { grid-template-columns: 1fr; } }
+
+/* ---- Toy theme: the settings sheet matches the landing poster (paper, ink outlines, gold, offset shadows),
+   over the landing page and in the city alike. The variables re-tint everything above that uses them. */
+.panel.settings-panel {
+  --text: #16171b; --muted: rgba(22, 23, 27, .62); --line: rgba(22, 23, 27, .2); --accent: #f0b90b;
+  color: #16171b; background: #fbf6e9; border: 3px solid #16171b; border-radius: 24px; box-shadow: 8px 8px 0 #16171b;
+  backdrop-filter: none; -webkit-backdrop-filter: none; }
+.settings-panel .panel-header { border-bottom: 2.5px solid #16171b; background: #f0b90b;
+  background-image: radial-gradient(rgba(22, 23, 27, .16) 1.4px, transparent 1.6px); background-size: 12px 12px; }
+.settings-panel .panel-header .avatar { color: #f0b90b; background: #16171b !important; box-shadow: none; border-radius: 50%; }
+.settings-panel .panel-header h3 { font-size: 19px; font-weight: 900; color: #16171b; }
+.settings-panel .panel-header p { color: rgba(22, 23, 27, .72); font-weight: 600; }
+.settings-panel .panel-header .close { border: 2px solid #16171b; background: #fff; color: #16171b; border-radius: 50%; }
+.settings-panel .panel-header .close:hover { background: #16171b; color: #f0b90b; }
+.settings-panel .st-tabs { background: #fff; border: 2.5px solid #16171b; border-radius: 999px; box-shadow: 0 -15px 0 6px #fbf6e9, 3px 3px 0 #16171b; padding: 4px; }
+.settings-panel .st-tabs button { color: #16171b; font-weight: 800; border-radius: 999px; }
+.settings-panel .st-tabs button:hover { color: #16171b; background: rgba(240, 185, 11, .25); }
+.settings-panel .st-tabs button[aria-selected="true"] { background: #16171b; color: #f0b90b; box-shadow: none; }
+
+/* Rules: a plain card, no artwork behind the text. */
+.settings-panel .sr-hero { display: block; background: #fff; border: 2.5px solid #16171b; border-radius: 20px; box-shadow: 5px 5px 0 #16171b; padding: 22px 24px; }
+.settings-panel .sr-hero h3 { margin: 0 0 6px; font-size: 24px; font-weight: 900; color: #16171b; }
+.settings-panel .sr-hero h4 { display: flex; align-items: center; gap: 8px; margin: 22px 0 6px; font-size: 16px; font-weight: 900; color: #16171b; }
+.settings-panel .sr-hero h4::before { content: ''; width: 10px; height: 10px; background: #f0b90b; border: 2px solid #16171b; transform: rotate(45deg); flex: none; }
+.settings-panel .sr-hero p { max-width: none; font-size: 14px; line-height: 1.7; color: rgba(22, 23, 27, .8); }
+.settings-panel .sr-hero a { color: #16171b; font-weight: 800; text-decoration: underline; text-underline-offset: 3px; }
+
+/* Controls, display, location: white rows with ink outlines. */
+.settings-panel .st-group h4 { color: #16171b; font-weight: 900; letter-spacing: .06em; }
+.settings-panel .st-group h4::before { width: 10px; height: 10px; background: #f0b90b; border: 2px solid #16171b; border-radius: 0; transform: rotate(45deg); }
+.settings-panel .st-row, .settings-panel .st-loc { background: #fff; border: 2px solid #16171b; }
+.settings-panel .st-row + .st-row { margin-top: 6px; }
+.settings-panel .st-row.unbound { border-color: #d6455d; }
+.settings-panel .st-key { background: #fff; color: #16171b; border: 2px solid #16171b; border-bottom-width: 4px; }
+.settings-panel button.st-key:hover { background: #fff3c4; }
+.settings-panel .st-key.capturing { background: #f0b90b; border-color: #16171b; color: #16171b; }
+.settings-panel .st-btn { background: #fff; border: 2px solid #16171b; color: #16171b; font-weight: 800; border-radius: 999px; }
+.settings-panel .st-btn:hover { background: #16171b; color: #f0b90b; }
+.settings-panel .st-undo { border: 2px solid #16171b; color: #16171b; }
+.settings-panel .st-switch { background: rgba(22, 23, 27, .2); border: 2px solid #16171b; }
+.settings-panel .st-switch i { top: 2px; left: 2px; box-shadow: none; border: 1.5px solid #16171b; }
+.settings-panel .st-switch[aria-checked="true"] { background: #f0b90b; }
+.settings-panel .st-seg { background: #fff; border: 2px solid #16171b; border-radius: 999px; }
+.settings-panel .st-seg button { color: #16171b; font-weight: 700; border-radius: 999px; }
+.settings-panel .st-seg button[aria-checked="true"] { background: #16171b; color: #f0b90b; }
+.settings-panel .st-vol input { accent-color: #16171b; }
+.settings-panel .st-note { background: #fff3c4; border: 2px solid #16171b; color: #16171b; }
+.settings-panel .panel-body::-webkit-scrollbar-thumb { background: rgba(22, 23, 27, .3); }
