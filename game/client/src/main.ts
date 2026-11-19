@@ -53,6 +53,7 @@ import { installSettings, toggleSettings } from './ui/settings.ts';
 import { keymap } from './keymap.ts';
 import { burnLine, catName, districtName, eventName, installTycoon, lotTitle, onTycoon, poolLine, seasonLine, shopOf, tycoon, type Lot } from './ui/tycoon.ts';
 import { installTycoonWorld, lotByBuildingName, lotFrontOf, lotNear } from './ui/tycoonWorld.ts';
+import { installCityEvents } from './ui/cityEvents.ts';
 import { decorateShopInterior, shopPoi } from './ui/tycoonInterior.ts';
 import { installTileWarn } from './ui/tileWarn.ts';
 import { localizeCanvas, localizeDocument, t, tr } from './i18n.ts';
@@ -530,6 +531,8 @@ async function start(where: CityId | GeoPlace) {
     },
   });
   const tycoonWorld = earth && homeArena ? installTycoonWorld(cityScene, earth, place.world.groundY) : null;
+  // Today's city event, visible: rain on a downpour, searchlights on opening night, fuller or emptier sidewalks.
+  const cityEvents = earth && homeArena ? installCityEvents(cityScene, earth, dayNight, place.world.groundY) : null;
   const phone = installPhone(ctx, {
     arena: {
       goTo: (lat, lon, name) => {
@@ -769,6 +772,7 @@ async function start(where: CityId | GeoPlace) {
     xr.beforePlayer(dt);
     if (photo.active) { photo.update(dt); robot.update(dt); } else if (intro) intro.update(dt, () => player.update(dt)); else player.update(dt);
     const cityView = !interior && !generic && !photo.active;
+    cityEvents?.update(dt, earth?.atHome === true && cityView);
     tycoonWorld?.update(dt, earth?.atHome === true && cityView, engine.camera.position.y - place.world.groundY(engine.camera.position.x, engine.camera.position.z), player.position);
     if (!addedLots && earth?.atHome && cityView && tycoon()) {
       addedLots = true;

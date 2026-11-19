@@ -55,6 +55,8 @@ export interface EarthApi {
   missingTiles(): number;
   /** Retry the failed map tiles now. */
   retryTiles(): void;
+  /** How busy the sidewalks are, relative to normal (0.3-1.5): city events make the streets fuller or quieter. */
+  setCrowdLevel(k: number): void;
   /** Lighter streaming (smaller radius), for VR. */
   setLite(on: boolean): void;
   /**
@@ -232,11 +234,14 @@ export async function buildEarthPlace(place: GeoPlace, repos: Repo[], say: (m: s
     }
     return out;
   };
-  const peds = new EarthPedestrians(chunks.net, BOTS, solid, (x, z) => chunks.curbAt(x, z), benchesNear, heightAt);
+  // The pool has room for a busy day (a tourist wave); the budget says how many walk right now.
+  const PED_POOL = Math.round(BOTS * 1.5);
+  let crowdLevel = 1;
+  const peds = new EarthPedestrians(chunks.net, PED_POOL, solid, (x, z) => chunks.curbAt(x, z), benchesNear, heightAt);
   const crowdBudget = () => {
     const light = lite || quality.phone;
     traffic.budget = low ? 110 + Math.round(BIKES / 3) : light ? 140 + Math.round(BIKES / 3) : CARS + BIKES;
-    peds.budget = low ? 90 : light ? 120 : BOTS;
+    peds.budget = Math.min(PED_POOL, Math.round((low ? 90 : light ? 120 : BOTS) * crowdLevel));
   };
   crowdBudget();
   root.add(traffic.group, peds.group, ships.group);
@@ -432,6 +437,7 @@ export async function buildEarthPlace(place: GeoPlace, repos: Repo[], say: (m: s
     onShift: null,
     attach(camera, sky) { cam = camera; dn = sky; },
     setLite(on) { lite = on; tune(); crowdBudget(); },
+    setCrowdLevel(k) { crowdLevel = Math.max(0.3, Math.min(1.5, k)); crowdBudget(); },
     missingTiles: () => chunks.missingTiles,
     retryTiles: () => chunks.retryMissing(),
     lookingAt() {
