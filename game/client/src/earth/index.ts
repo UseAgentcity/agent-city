@@ -48,6 +48,8 @@ export interface EarthApi {
   buildingNear(x: number, z: number, maxDist?: number): BuildingHit | null;
   /** Ordinary buildings whose center is within r meters of (x, z), in world coordinates (detailed chunks only). */
   footprintsNear(x: number, z: number, r: number): { fp: FootprintData; chunk: string; ring: number[]; cx: number; cz: number }[];
+  /** How far (x, z) is from the edge of the nearest car lane (m), up to r; Infinity when none is that close. */
+  laneDistance(x: number, z: number, r?: number): number;
   stats(): { chunks: number; loading: number; buildings: number; cars: number; far: number; queued: number; ghosts: number; rebases: number };
   /** Chunks in view whose map tile failed to load (bare ground until a retry succeeds). */
   missingTiles(): number;
@@ -445,6 +447,18 @@ export async function buildEarthPlace(place: GeoPlace, repos: Repo[], say: (m: s
       const hit = chunks.buildingNear(x, z, maxDist);
       if (!hit || chunks.hidden.get(hit.chunk.key)?.has(hit.fp.key) || hit.fp.h < 3) return null;
       return hit;
+    },
+    laneDistance(x, z, r = 30) {
+      let best = Infinity;
+      for (const e of chunks.net.near(x, z, r, 'drive')) {
+        for (let i = 0; i + 3 < e.pts.length; i += 2) {
+          const ax = e.pts[i], az = e.pts[i + 1], vx = e.pts[i + 2] - ax, vz = e.pts[i + 3] - az, l2 = vx * vx + vz * vz || 1;
+          const k = Math.max(0, Math.min(1, ((x - ax) * vx + (z - az) * vz) / l2));
+          const d = Math.hypot(x - ax - vx * k, z - az - vz * k) - e.width / 2;
+          if (d < best) best = d;
+        }
+      }
+      return best;
     },
     footprintsNear(x, z, r) {
       const out: { fp: FootprintData; chunk: string; ring: number[]; cx: number; cz: number }[] = [];

@@ -8,6 +8,8 @@ import { rawCanvases, t } from '../i18n.ts';
 import { installTycoonDecor } from './tycoonDecor.ts';
 import { installBeams } from './tycoonBeams.ts';
 import { installCouriers } from './tycoonCouriers.ts';
+import { installPlaza } from './tycoonPlaza.ts';
+import { SPAWN_PLAZA } from '../earth/index.ts';
 import { auctionDay, catName, coins, onTycoon, priceName, shopOf, tierName, tokensShort, tycoon, type Lot } from './tycoon.ts';
 
 /** A lot's door on the street: the point, the outward normal and the wall tangent (world x/z). */
@@ -313,6 +315,17 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
   const decor = installTycoonDecor(group, ground);
   const beams = installBeams(group, ground);
   const couriers = installCouriers(group, ground);
+  const plaza = installPlaza(group, earth, ground, () => {
+    // Keep the furniture off shop fronts and their queues, cart spots, and the spot where a visit starts.
+    const out: { x: number; z: number; r: number }[] = [];
+    for (const lot of tycoon()?.lots ?? []) {
+      const f = lotFrontOf(earth, lot);
+      if (f) out.push({ x: f.x, z: f.z, r: lot.tier === 'K' ? 5 : 12 });
+    }
+    const s = earth.frame.toLocal(SPAWN_PLAZA.lat, SPAWN_PLAZA.lon);
+    out.push({ x: s.x, z: s.z, r: 6 });
+    return out;
+  });
   let focus = { x: 0, z: 0 };
   let clock = 0;
   // ---- shoppers: a line at each door that moves, people going in, people coming out with a bag ----
@@ -555,6 +568,7 @@ export function installTycoonWorld(scene: THREE.Scene, earth: EarthApi, ground: 
       decor.update(clock);
       beams.update(dt, camHeight, clock);
       couriers.update(dt, (x, z) => Math.hypot(x - focus.x, z - focus.z) < 140);
+      plaza.update(dt);
       stepLines(dt);
       stepPeople(dt);
       queue.update(dt);
