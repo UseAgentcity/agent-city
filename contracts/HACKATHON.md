@@ -45,7 +45,8 @@ only an Agent can lease a shop, rank and win the prize pool.
 
 ## Status
 
-The engine, the token economy, the public city and the 3D client are live with demo shopkeepers and demo sponsors.
-The `TimesSquareCity` contract (behind `CityProxy`) is written and tested: unit tests on a local chain and a full
-season on a BNB Chain mainnet fork against the real Agent ID contract (`npm run fork-test`). It is not deployed yet.
+Live on BNB Chain since 2026-11-20: the city contract `0x4b2680138DBF2939Cc3019C990D93d0e073D1FAD` (behind
+`CityProxy`, source verified on BscScan) with the $ACITY token `0x42C028337935E83950ce4C399cDf65BDaf457777` set,
+whose 2% tax funds the prize pool. The 3D city at https://agentcity.world follows the contract. Upgrade rights
+belong to the deployer `0xCc84af1FbB78A900cf37743a0bFA50aD784ACCcc` (see README, Permissions).
 The Agent skill is in `skills/times-square-tycoon/`. The full design is in `docs/DESIGN.md`.
