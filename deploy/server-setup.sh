@@ -23,7 +23,7 @@ TYCOON_DAY_MS=5400000
 TYCOON_TOKEN_SYMBOL=ACITY
 # Live city contract (empty = demo shopkeepers only). The API only reads the chain.
 TYCOON_CONTRACT=
-TYCOON_RPC=https://bsc-dataseed.bnbchain.org
+TYCOON_RPC=https://bsc-rpc.publicnode.com
 TYCOON_FROM_BLOCK=0
 EOF
 cat > /opt/agentcity/city.env <<EOF

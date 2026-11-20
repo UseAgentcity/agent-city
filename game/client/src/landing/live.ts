@@ -5,7 +5,7 @@ import { esc } from '../interact.ts';
 
 interface Ad { title: string; sub?: string; bg?: [string, string]; fg?: string }
 export interface LiveCity {
-  season: { id: number; day: number | null; days: number; settling?: boolean; endsAt?: number; nextSeasonAt?: number };
+  season: { id: number; day: number | null; days: number; settling?: boolean; endsAt?: number; nextSeasonAt?: number; opensAt?: number };
   now?: number;
   pool?: { bnbWei: string | null; note?: string };
   event: { zh: string; en: string } | null;
@@ -77,16 +77,17 @@ export function renderLive(c: LiveCity, lang: Lang, $: Get) {
     const m = Math.max(0, Math.round((at - (c.now ?? Date.now())) / 60_000)), h = Math.floor(m / 60);
     return zh ? (h ? `${h} 小时 ${m % 60} 分` : `${m} 分钟`) : (h ? `${h}h ${m % 60}m` : `${m} min`);
   };
-  const settling = c.season.settling || !c.season.day;
+  const opensAt = c.season.opensAt && c.season.opensAt > (c.now ?? Date.now()) ? c.season.opensAt : undefined;
+  const settling = !opensAt && (c.season.settling || !c.season.day);
   const left = until(settling ? c.season.nextSeasonAt : c.season.endsAt);
   const dayLine = zh
     ? `第 ${c.season.id} 季${settling ? ` · 结算发奖中${left ? ` · ${left}后开新季` : ''}` : ` · 第 ${c.season.day}/${c.season.days} 天${left ? ` · ${left}后结算发奖` : ''}`}`
     : `Season ${c.season.id}${settling ? ` · paying out${left ? ` · next in ${left}` : ''}` : ` · Day ${c.season.day}/${c.season.days}${left ? ` · pays out in ${left}` : ''}`}`;
   // The prize ticket on the poster: a live countdown to the payout (or the next season) and the pool.
-  const target = settling ? c.season.nextSeasonAt : c.season.endsAt;
+  const target = opensAt ?? (settling ? c.season.nextSeasonAt : c.season.endsAt);
   const skew = (c.now ?? Date.now()) - Date.now();
-  $('lp-tk-label').textContent = settling ? (zh ? '距新一季开始' : 'Next season in') : (zh ? '距本季发奖' : 'Next payout in');
-  $('lp-tk-season').textContent = zh
+  $('lp-tk-label').textContent = opensAt ? (zh ? '距城市开业' : 'City opens in') : settling ? (zh ? '距新一季开始' : 'Next season in') : (zh ? '距本季发奖' : 'Next payout in');
+  $('lp-tk-season').textContent = opensAt ? (zh ? `第 1 季即将开始 · 每 12 小时发一次奖 · ${open} 家店已就位` : `Season 1 starts soon · payouts every 12 hours · ${open} shops ready`) : zh
     ? `第 ${c.season.id} 季 · ${settling ? '结算发奖中' : `第 ${c.season.day}/${c.season.days} 天`} · ${open} 家店营业中`
     : `Season ${c.season.id} · ${settling ? 'paying out' : `Day ${c.season.day}/${c.season.days}`} · ${open} shops open`;
   const clockEl = $('lp-tk-clock');
@@ -98,7 +99,7 @@ export function renderLive(c: LiveCity, lang: Lang, $: Get) {
   };
   if (target) { draw(); tick = setInterval(draw, 1000); }
   const wei = c.pool?.bnbWei;
-  if (wei != null) {
+  if (wei != null && wei !== '0') {
     const bnb = Number(BigInt(wei) / 10n ** 12n) / 1e6;
     $('lp-tk-pool').textContent = `${bnb.toFixed(bnb < 10 ? 3 : 2)} BNB`;
     $('lp-tk-pay').textContent = zh ? `本季发 ≈ ${(bnb * 0.25).toFixed(3)} BNB` : `≈ ${(bnb * 0.25).toFixed(3)} BNB this season`;

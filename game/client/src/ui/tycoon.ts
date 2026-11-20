@@ -52,7 +52,7 @@ export interface FeedItem { day: number; agent: string; text: string; kind: stri
 export interface CityEventInfo { id: string; zh: string; en: string; mult?: Record<string, number>; cost?: number; sponsor?: { who: string; name: string; bid: number } | null }
 export interface Season {
   id: number; seed: string; start: number; resolved: number; settling: boolean; day: number | null; days: number; dayMs: number;
-  dayEndsAt: number; endsAt: number; nextSeasonAt: number;
+  dayEndsAt: number; endsAt: number; nextSeasonAt: number; opensAt?: number;
 }
 export interface TycoonCity {
   mode: string; now: number; season: Season; event: CityEventInfo | null; eventYesterday: CityEventInfo | null;
@@ -140,6 +140,7 @@ export const lotTitle = (lot: Lot) => {
 export function seasonLine(c = state) {
   if (!c) return t('正在连接城市…', 'Connecting to the city…');
   const s = c.season, left = (s.settling ? s.nextSeasonAt : s.dayEndsAt) - serverNow();
+  if (s.opensAt && s.opensAt > serverNow()) return t(`城市 ${clock(s.opensAt - serverNow())} 后开业 · 第 1 季`, `City opens in ${clock(s.opensAt - serverNow())} · Season 1`);
   return s.settling
     ? t(`第 ${s.id} 季结算中 · ${clock(left)} 后开新季`, `Season ${s.id} settling · next in ${clock(left)}`)
     : t(`第 ${s.id} 季 · 第 ${s.day}/${s.days} 天 · 今天还剩 ${clock(left)}`, `Season ${s.id} · Day ${s.day}/${s.days} · ${clock(left)} left today`);

@@ -17,6 +17,9 @@ export function createTycoon({ now = () => Date.now(), dayMs = 4 * 60_000, epoch
   const cache = new Map();
   const previous = new Map(); // finished season id -> summary
   function clock(t = now()) {
+    // Before the contract's first season the city shows season 1 as it will open, with `opensAt` to count down to.
+    const opensAt = t < epoch ? epoch : undefined;
+    if (opensAt) t = epoch;
     const index = Math.floor((t - epoch) / seasonMs);
     const start = epoch + index * seasonMs;
     const elapsed = t - start;
@@ -25,7 +28,7 @@ export function createTycoon({ now = () => Date.now(), dayMs = 4 * 60_000, epoch
     return {
       id: index + 1, seed: chain ? chainSeed(chain.address, index + 1) : `${source}-season-${index + 1}`, start, resolved, settling,
       day: settling ? null : resolved + 1, days: DAYS, dayMs,
-      dayEndsAt: settling ? start + seasonMs : start + (resolved + 1) * dayMs, endsAt: start + DAYS * dayMs, nextSeasonAt: start + seasonMs,
+      dayEndsAt: settling ? start + seasonMs : start + (resolved + 1) * dayMs, endsAt: start + DAYS * dayMs, nextSeasonAt: start + seasonMs, ...(opensAt ? { opensAt } : {}),
     };
   }
   function city(season) {
