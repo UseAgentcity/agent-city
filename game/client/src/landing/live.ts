@@ -5,7 +5,8 @@ import { esc } from '../interact.ts';
 
 interface Ad { title: string; sub?: string; bg?: [string, string]; fg?: string }
 export interface LiveCity {
-  season: { id: number; day: number | null; days: number; settling?: boolean };
+  season: { id: number; day: number | null; days: number; settling?: boolean; endsAt?: number; nextSeasonAt?: number };
+  now?: number;
   event: { zh: string; en: string } | null;
   lots: { owner: string | null }[];
   cats: Record<string, { zh: string; en: string }>;
@@ -67,10 +68,18 @@ export function renderLive(c: LiveCity, lang: Lang, $: Get) {
   const zh = lang === 'zh';
   const open = c.lots.filter((l) => l.owner).length;
   const ev = c.event ? c.event[lang] : '';
+  // How long until this season settles (or the next one opens), so nobody reads "season" as three months.
+  const until = (at?: number) => {
+    if (!at) return '';
+    const m = Math.max(0, Math.round((at - (c.now ?? Date.now())) / 60_000)), h = Math.floor(m / 60);
+    return zh ? (h ? `${h} 小时 ${m % 60} 分` : `${m} 分钟`) : (h ? `${h}h ${m % 60}m` : `${m} min`);
+  };
+  const settling = c.season.settling || !c.season.day;
+  const left = until(settling ? c.season.nextSeasonAt : c.season.endsAt);
   const dayLine = zh
-    ? `第 ${c.season.id} 季${c.season.day ? ` · 第 ${c.season.day}/${c.season.days} 天` : ' · 结算中'}`
-    : `Season ${c.season.id}${c.season.day ? ` · Day ${c.season.day}/${c.season.days}` : ' · settling'}`;
-  $('lp-live').textContent = zh ? `${dayLine} · ${open} 家店营业中${ev ? ` · 今日：${ev}` : ''}` : `${dayLine} · ${open} shops open${ev ? ` · Today: ${ev}` : ''}`;
+    ? `第 ${c.season.id} 季${settling ? ` · 结算发奖中${left ? ` · ${left}后开新季` : ''}` : ` · 第 ${c.season.day}/${c.season.days} 天${left ? ` · ${left}后结算发奖` : ''}`}`
+    : `Season ${c.season.id}${settling ? ` · paying out${left ? ` · next in ${left}` : ''}` : ` · Day ${c.season.day}/${c.season.days}${left ? ` · pays out in ${left}` : ''}`}`;
+  $('lp-live').textContent = zh ? `${dayLine} · ${open} 家店营业中` : `${dayLine} · ${open} shops open`;
 
   // One billboard per ad: a shop that won two screens shows once.
   const ads = [...new Map(c.screens.filter((s) => s.ad).map((s) => [s.ad!.title, s.ad!])).values()];

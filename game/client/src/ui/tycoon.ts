@@ -142,7 +142,7 @@ export function seasonLine(c = state) {
   const s = c.season, left = (s.settling ? s.nextSeasonAt : s.dayEndsAt) - serverNow();
   return s.settling
     ? t(`第 ${s.id} 季结算中 · ${clock(left)} 后开新季`, `Season ${s.id} settling · next in ${clock(left)}`)
-    : t(`第 ${s.id} 季 · 第 ${s.day}/${s.days} 天 · 还剩 ${clock(left)}`, `Season ${s.id} · Day ${s.day}/${s.days} · ${clock(left)} left`);
+    : t(`第 ${s.id} 季 · 第 ${s.day}/${s.days} 天 · 今天还剩 ${clock(left)}`, `Season ${s.id} · Day ${s.day}/${s.days} · ${clock(left)} left today`);
 }
 /** A season that opened with no tenants at all (nobody bid in time): every lot is still up for lease. */
 export const auctionDay = (c = state) => !!c && !c.season.settling && c.season.day === 1 && !c.lots.some((l) => l.owner);

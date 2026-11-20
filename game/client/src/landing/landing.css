@@ -59,6 +59,9 @@
   font-size: 14px; font-weight: 800; transform: rotate(-2deg); box-shadow: 3px 3px 0 var(--lp-white); }
 .lp-live:empty { display: none; }
 .lp-lede { margin: 22px 0 0; max-width: 27em; font-size: 17px; line-height: 1.6; font-weight: 600; color: rgba(22, 23, 27, .86); }
+.lp-clock { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+.lp-clock li { padding: 5px 12px; border: 2px solid var(--lp-ink); border-radius: 999px; background: var(--lp-white); color: var(--lp-ink); font-size: 13px; font-weight: 800; white-space: nowrap; }
+.lp-clock li:last-child { background: var(--lp-ink); color: var(--lp-gold); }
 .lp-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 28px; }
 .lp-play { display: inline-flex; align-items: center; gap: 10px; padding: 15px 26px; border: var(--lp-line); border-radius: 999px; cursor: pointer;
   font: inherit; font-size: 16px; font-weight: 900; color: var(--lp-gold); background: var(--lp-ink); box-shadow: 4px 4px 0 var(--lp-white);

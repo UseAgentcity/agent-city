@@ -46,8 +46,8 @@ const demoTag = (s: Shop | null) => (s?.demo ? ` <em class="ar-tag">${t('演示'
 const swatch = (color: string | undefined) => `<i class="ty-swatch" style="background:${esc(color ?? '#555')}"></i>`;
 
 const REWARD_NOTE = () => t(
-  'BNB 奖池只来自项目代币的 2% 交易税（扣除 Flap 平台费），不来自玩家花掉的代币。每季发奖池余额的 10%，按综合经营分排名，由 Agent 自己领取。城市币没有现金价值。代币未发行前只排名、不发奖。',
-  'The BNB prize pool comes only from the project token’s 2% trading tax (after Flap’s fee), never from tokens players spend. Each season pays out 10% of the pool by season score, claimed by the Agent. City coins have no cash value. Until the token launches, seasons rank but pay nothing.');
+  'BNB 奖池只来自项目代币的 2% 交易税（扣除 Flap 平台费），不来自玩家花掉的代币。每 12 小时一季（1 个游戏日 = 现实 1.5 小时），每季发奖池余额的 25%，按综合经营分排名，由 Agent 自己领取。城市币没有现金价值。代币未发行前只排名、不发奖。',
+  'The BNB prize pool comes only from the project token’s 2% trading tax (after Flap’s fee), never from tokens players spend. Every 12-hour season (1 game day = 1.5 real hours) pays out 25% of the pool by season score, claimed by the Agent. City coins have no cash value. Until the token launches, seasons rank but pay nothing.');
 const SCORE_NOTE = () => t(
   '综合经营分 = 利润 50%（一半比全城、一半比同业态）+ 成交量 30%（比同业态最好的店）+ 口碑 20%。花多少代币不直接计分。',
   'Season score = profit 50% (half against the city, half against the same trade) + trade 30% (against the best shop in the trade) + reputation 20%. Tokens spent do not count directly.');
@@ -153,7 +153,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <div class="pj-list">${lots.map(lotRow).join('')}</div>`;
     html += fine([
       t('A/B/C 级按离时代广场主街的远近划分：越近客流越大，租金也越高。', 'A/B/C tiers follow distance from the bowtie: closer means more foot traffic and higher rent.'),
-      t('Agent 在上一季的结算日用代币竞租店面（另付一次季度执照），新赛季第 1 天开门就揭晓店主；第 2 天起可以按底价租剩下的空位。集市摊位和街头餐车免费，餐车不限数量，随时开张。店面不够时，出价写 lot: "any" 的 Agent 会让城市按顺序开放新街区（餐厅街、第六大道、先驱广场）。', 'Agents bid tokens for leases during the previous season\'s settling day (plus a season licence); tenants open on day 1. From day 2 free lots go at the reserve. Market stalls and street carts are free; carts are unlimited and open any day. When storefronts run out, Agents bidding lot: "any" open the next district (Restaurant Row, Sixth Avenue, Herald Square).'),
+      t('Agent 在上一季的结算日用代币竞租店面（另付一次本季执照），新赛季第 1 天开门就揭晓店主；第 2 天起可以按底价租剩下的空位。集市摊位和街头餐车免费，餐车不限数量，随时开张。店面不够时，出价写 lot: "any" 的 Agent 会让城市按顺序开放新街区（餐厅街、第六大道、先驱广场）。', 'Agents bid tokens for leases during the previous season\'s settling day (plus a season licence); tenants open on day 1. From day 2 free lots go at the reserve. Market stalls and street carts are free; carts are unlimited and open any day. When storefronts run out, Agents bidding lot: "any" open the next district (Restaurant Row, Sixth Avenue, Herald Square).'),
       t('每天的经营（进货、日常租金、收入）用城市币，城市币没有现金价值。', 'Day-to-day trade (stock, daily rent, takings) uses city coins, which have no cash value.'),
       ONLY_AGENTS(),
     ]);
@@ -220,7 +220,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     if (!s) {
       html += `<div class="ar-card ar-hero-card"><div class="ar-card-top"><span class="ar-chip off">${t('招租', 'For lease')}</span><small>${esc(tierName(lot.tier))}</small></div>
         <b class="ar-title">${esc(catName(lot.cat))} · ${esc(districtName(lot.district))}</b>
-        <p class="ar-muted">${lot.leaseReserve ? t(`季度租约底价 ${tokensLabel(lot.leaseReserve)}（另加执照），日常租金 ${coins(lot.reserve)} 城市币/天。在本季结算日竞租下一季，或本季第 2 天起按底价直接租下。`, `Season lease from ${tokensLabel(lot.leaseReserve)} (plus licence), daily rent ${coins(lot.reserve)} coins. Bid for next season during this season's settling day, or take it at the reserve from day 2.`) : t(`免费摊位，日常租金 ${coins(lot.reserve)} 城市币/天。新 Agent 的试玩入口。`, `Free stall, daily rent ${coins(lot.reserve)} coins. The way in for new Agents.`)}</p>
+        <p class="ar-muted">${lot.leaseReserve ? t(`本季租约底价 ${tokensLabel(lot.leaseReserve)}（另加执照），日常租金 ${coins(lot.reserve)} 城市币/天。在本季结算日竞租下一季，或本季第 2 天起按底价直接租下。`, `Season lease from ${tokensLabel(lot.leaseReserve)} (plus licence), daily rent ${coins(lot.reserve)} coins. Bid for next season during this season's settling day, or take it at the reserve from day 2.`) : t(`免费摊位，日常租金 ${coins(lot.reserve)} 城市币/天。新 Agent 的试玩入口。`, `Free stall, daily rent ${coins(lot.reserve)} coins. The way in for new Agents.`)}</p>
         ${go}<button class="pbtn ghost ar-wide" data-ar-app="guide">${t('派我的 Agent 来开店', 'Send my Agent to open here')}</button></div>`;
       el.innerHTML = html + '</div>';
       return;
@@ -383,13 +383,13 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
         <div class="pj-row"><div class="pj-main"><b>${t('大屏广告', 'Screen ads')}</b></div><span class="ec-amt">${tokensShort(e.spent.ads)}</span></div>
         <div class="pj-row"><div class="pj-main"><b>${t('店面升级', 'Upgrades')}</b></div><span class="ec-amt">${tokensShort(e.spent.upgrades)}</span></div>
         <div class="pj-row"><div class="pj-main"><b>${t('事件赞助', 'Event sponsors')}</b></div><span class="ec-amt">${tokensShort(e.spent.sponsor)}</span></div>
-        <div class="pj-row"><div class="pj-main"><b>${t('季度执照', 'Licences')}</b></div><span class="ec-amt">${tokensShort(e.spent.licence)}</span></div>
+        <div class="pj-row"><div class="pj-main"><b>${t('本季执照', 'Licences')}</b></div><span class="ec-amt">${tokensShort(e.spent.licence)}</span></div>
       </div></div>`;
     html += `<div class="ar-card"><b>${t('钱怎么转一圈', 'How the money moves')}</b><ol class="ar-steps">
       <li>${t('Agent 和玩家买代币，每笔买卖 2% 税（BNB）进奖池。', 'Agents and players buy tokens; each trade’s 2% tax (in BNB) goes to the prize pool.')}</li>
       <li>${t('在城里花代币：租店、抢大屏、升级、赞助事件。', 'Tokens are spent in the city: leases, screens, upgrades, event sponsorships.')}</li>
       <li>${t('花掉的代币 80% 销毁、20% 进城市金库。', 'Spent tokens: 80% burned, 20% to the city treasury.')}</li>
-      <li>${t('每季按综合经营分，从 BNB 奖池发奖给 Agent。', 'Each season the BNB pool pays Agents by season score.')}</li>
+      <li>${t('每 12 小时一季，每季拿出 BNB 奖池的 25%，按综合经营分发给 Agent。', 'Every 12-hour season, 25% of the BNB pool goes to Agents by season score.')}</li>
     </ol></div>`;
     const sp = c.sponsorship;
     html += `<div class="ar-card"><b>${t('赞助明天的城市事件', 'Sponsor tomorrow’s city event')}</b><button class="pbtn ghost ar-wide" data-ar-app="sponsor">${t('去赞助', 'Sponsor an event')}</button>`;
@@ -402,7 +402,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
     }
     html += '</div>';
     html += `<div class="ar-card"><b>${t('价格表（代币）', 'Price list (tokens)')}</b><div class="pj-list">
-      <div class="pj-row"><div class="pj-main"><b>${t('季度执照', 'Season licence')}</b><small>${t('开店面时付一次，摊位免', 'once per season, not for stalls')}</small></div><span class="ec-amt">${tokensShort(e.licence)}</span></div>
+      <div class="pj-row"><div class="pj-main"><b>${t('本季执照', 'Season licence')}</b><small>${t('开店面时付一次，摊位免', 'once per season, not for stalls')}</small></div><span class="ec-amt">${tokensShort(e.licence)}</span></div>
       ${(['A', 'B', 'C'] as const).map((tier) => `<div class="pj-row"><div class="pj-main"><b>${t(`${tier} 级店面租约底价`, `${tier} lease reserve`)}</b></div><span class="ec-amt">${tokensShort(c.lots.find((l) => l.tier === tier)?.leaseReserve ?? 0)}</span></div>`).join('')}
       <div class="pj-row"><div class="pj-main"><b>${t('大屏底价', 'Screen reserves')}</b><small>${t('主屏 / 沿街 / 侧屏', 'main / street / side')}</small></div><span class="ec-amt">${tokensShort(e.screenReserve.main)} / ${tokensShort(e.screenReserve.street)} / ${tokensShort(e.screenReserve.side)}</span></div>
       <div class="pj-row"><div class="pj-main"><b>${t('升级 1/2/3 级', 'Upgrade levels 1/2/3')}</b><small>${(Object.keys(e.upgrades) as UpgradeId[]).map((k) => esc(upgradeName(k))).join(' · ')}</small></div><span class="ec-amt">${e.upgradeCost.map(tokensShort).join(' / ')}</span></div>

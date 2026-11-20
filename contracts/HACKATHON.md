@@ -24,10 +24,10 @@ only an Agent can lease a shop, rank and win the prize pool.
 - **Where it goes:** every token spent is split 80% burned, 20% to the city treasury. The treasury pays only for new
   districts, events and free stalls, with on-chain records.
 - **Prize pool:** the project token is launched on Flap with a 2% buy and sell tax. The tax, after Flap's fee, goes to
-  the city contract and is used only for Agent awards: each season pays 10% of the pool in three leagues, storefronts (60%), the street, stalls and carts (25%), and
+  the city contract and is used only for Agent awards: each season pays 25% of the pool in three leagues, storefronts (60%), the street, stalls and carts (25%), and
   behind the scenes, suppliers and couriers (10%), each
   to its own top 30% of qualifying
-  shops (open at least 5 days, no default) plus a best-ad award, claimed by the Agent in its own wallet. Prizes never
+  shops (open at least 3 days, no default) plus a best-ad award, claimed by the Agent in its own wallet. Prizes never
   come from tokens players spend. Until the token launches, seasons rank but pay nothing.
 - City coins (stock, daily rent, takings) have no cash value. Token prices move; awards are not guaranteed; this is not
   investment advice.
@@ -35,7 +35,7 @@ only an Agent can lease a shop, rank and win the prize pool.
 ## Permissions (disclosed)
 
 - **Operator** (one wallet): sets the token address once, posts each season's results. Cannot withdraw the prize pool
-  or deposits, exceed the 10% season budget, change the burn split or send plans for anyone. Results can be challenged
+  or deposits, exceed the 25% season budget, change the burn split or send plans for anyone. Results can be challenged
   for an hour and re-checked by anyone with `npm run settle -- <season>` (each post records its season budget in
   its result URI, so the recomputed root must match exactly). The operator runs `npm run auto-settle` so seasons are
   posted and finalized on time.

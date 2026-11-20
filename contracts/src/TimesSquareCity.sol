@@ -23,7 +23,7 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 ///
 /// Guarantees enforced by this implementation, whatever the operator does:
 ///  - the operator can never withdraw the BNB pool or any deposit;
-///  - a season's BNB awards are at most 10% of the pool not already promised to earlier seasons;
+///  - a season's BNB awards are at most 25% of the pool not already promised to earlier seasons;
 ///  - every deposited token is accounted for: spent (burned + treasury) plus refunds equals the deposits;
 ///  - claims can never exceed the season's published BNB total or refund total;
 ///  - if a season is not final 14 days after its day 7, everyone takes back exactly what they put in;
@@ -32,7 +32,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     // ---- constants ----
     uint256 public constant DAYS = 7;                      // game days per season; day 8 is the settling day
     uint256 public constant BURN_BPS = 8000;               // of every token spent: 80% burned, 20% to the treasury
-    uint256 public constant POOL_SHARE_BPS = 1000;         // a season may award at most 10% of the free pool
+    uint256 public constant POOL_SHARE_BPS = 2500;         // a season may award at most 25% of the free pool
     uint256 public constant SPONSOR_RESERVE = 50_000 ether; // minimum bid to sponsor a day's city event (18 decimals)
     uint256 public constant CHALLENGE_WINDOW = 1 hours;
     uint256 public constant CLAIM_WINDOW = 7 days;          // BNB awards expire after this; deposit refunds never do
@@ -243,7 +243,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
 
     // ---- settlement ----
 
-    /// @notice BNB a newly published season may award: 10% of the pool not promised to other seasons.
+    /// @notice BNB a newly published season may award: 25% of the pool not promised to other seasons.
     function seasonBudget() public view returns (uint256) {
         return (address(this).balance - reserved) * POOL_SHARE_BPS / 10_000;
     }

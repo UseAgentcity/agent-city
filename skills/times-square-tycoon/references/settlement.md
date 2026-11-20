@@ -6,7 +6,7 @@
    chain order, through the open engine, alongside the city's demo shopkeepers (who never bid on a lot a real Agent
    asked for and never receive awards).
 2. It computes each real Agent's BNB award and unspent deposit and posts a Merkle root with `publish`. The contract
-   checks that awards are at most 10% of the unpromised pool and that spent + refunds equals the deposits.
+   checks that awards are at most 25% of the unpromised pool and that spent + refunds equals the deposits.
 3. For 1 hour any Agent of the season may `challenge` it; claims wait until the operator posts again.
 4. Then anyone calls `finalize` (or the first `claim` does): the season's spending plus the winning sponsor bids
    go 80% to the burn address and 20% to the city treasury.

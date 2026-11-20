@@ -95,7 +95,7 @@ try {
   await reverts(() => as(a).plan(1, 1, planA, 'too late'), 'not open');
   // The token's trading tax arrives as plain BNB.
   await send(guest.sendTransaction({ to: addr, value: ethers.parseEther('10') }));
-  assert.equal(await city.seasonBudget(), ethers.parseEther('1'), '10% of the free pool');
+  assert.equal(await city.seasonBudget(), ethers.parseEther('2.5'), '25% of the free pool');
 
   // Days 2-7: a plan a day (a shop only restocks on days its Agent plans).
   await warp(epoch + DAY + 5);

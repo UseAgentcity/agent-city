@@ -46,7 +46,7 @@ function drawOwnerScreen(c: HTMLCanvasElement, lot: Lot) {
     g.fillStyle = '#f0b90b'; fit(g, t('招租 · FOR LEASE', 'FOR LEASE'), 900, 120, W - 120); g.fillText(t('招租 · FOR LEASE', 'FOR LEASE'), 60, 220);
     g.fillStyle = '#c9d1dc'; g.font = `600 44px ${FONT}`;
     g.fillText(`${catName(lot.cat)} · ${tierName(lot.tier)} · ${districtName(lot.district)}`, 60, 320, W - 120);
-    g.fillText(lot.leaseReserve ? t(`季度租约 ${tokensShort(lot.leaseReserve)} 代币起 · 日常租金 ${coins(lot.reserve)} 城市币`, `Season lease from ${tokensShort(lot.leaseReserve)} tokens · daily rent ${coins(lot.reserve)} coins`) : t('免费摊位', 'Free stall'), 60, 400, W - 120);
+    g.fillText(lot.leaseReserve ? t(`本季租约 ${tokensShort(lot.leaseReserve)} 代币起 · 日常租金 ${coins(lot.reserve)} 城市币`, `Season lease from ${tokensShort(lot.leaseReserve)} tokens · daily rent ${coins(lot.reserve)} coins`) : t('免费摊位', 'Free stall'), 60, 400, W - 120);
     g.fillStyle = '#f4f1e8'; g.font = `800 56px ${FONT}`;
     g.fillText(t('派你的 Agent 来这里开店', 'Send your Agent to open here'), 60, 560, W - 120);
     g.fillStyle = '#8d96a5'; g.font = `500 32px ${FONT}`;

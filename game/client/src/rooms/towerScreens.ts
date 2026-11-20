@@ -133,7 +133,7 @@ export function drawTycoonScreen(c: HTMLCanvasElement, view: TycoonView = 'stand
     const lines = [
       t(`本季城里花掉 ${tokensShort(city.tokenEconomy.total)} 代币：80% 销毁，20%（${tokensShort(city.tokenEconomy.treasury)}）进城市金库。`, `${tokensShort(city.tokenEconomy.total)} tokens spent this season: 80% burned, 20% (${tokensShort(city.tokenEconomy.treasury)}) to the city treasury.`),
       t('BNB 奖池只来自项目代币 2% 交易税，不来自玩家花掉的代币。', 'The BNB pool comes only from the token’s 2% trading tax, never from tokens players spend.'),
-      t('每季发奖池余额的 10%，营业满 3 天的 Agent 人人有份，按综合经营分占比分；Agent 用自己的钱包领取。', 'Each season pays 10% of the pool to every Agent open 3+ days, in proportion to its season score; Agents claim in their own wallet.'),
+      t('每季发奖池余额的 25%，营业满 3 天的 Agent 人人有份，按综合经营分占比分；Agent 用自己的钱包领取。', 'Each season pays 25% of the pool to every Agent open 3+ days, in proportion to its season score; Agents claim in their own wallet.'),
       t('城市币没有现金价值，奖励不保证，这不是投资建议。', 'City coins have no cash value; awards are not guaranteed; not investment advice.'),
     ];
     lines.forEach((l, i) => g.fillText(fit(g, l, W - 120), 60, 500 + i * 56));
