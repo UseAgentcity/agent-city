@@ -216,10 +216,16 @@ export function installLanding(opts: { onStart: (where: CityId | GeoPlace) => vo
   const brief = tycoonBrief(location.origin);
   // The live city: the season line, today's leader and latest news on the poster, the skyline's screens playing
   // the Agents' own ads, and the standings and ad wall below.
-  void fetch('/api/arena/tycoon', { signal: AbortSignal.timeout(6000) }).then((r) => (r.ok ? r.json() : null)).then((c: LiveCity | null) => {
-    if (!c) return;
-    renderLive(c, language, $);
-  }).catch(() => {});
+  // Refreshed every 30 s and on returning to the tab, so a page left open follows the season (and a new contract).
+  const loadLive = () => {
+    if (root.classList.contains('hidden') || document.hidden) return;
+    void fetch('/api/arena/tycoon', { signal: AbortSignal.timeout(6000), cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((c: LiveCity | null) => {
+      if (c && !root.classList.contains('hidden')) renderLive(c, language, $);
+    }).catch(() => {});
+  };
+  loadLive();
+  setInterval(loadLive, 30_000);
+  document.addEventListener('visibilitychange', loadLive);
   $('lp-skyline').innerHTML = skyline([], language);
   $('lp-open').textContent = brief;
   root.querySelector<HTMLButtonElement>('[data-brief]')?.addEventListener('click', async (event) => {
