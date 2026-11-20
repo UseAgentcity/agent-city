@@ -192,9 +192,11 @@ async function setToken() {
   if (!processor) fail('not a Flap tax token (no taxProcessor)');
   const p = new ethers.Contract(processor, ['function marketAddress() view returns (address)', 'function getQuoteToken() view returns (address)'], main);
   const [market, quote, rate] = await Promise.all([p.marketAddress(), p.getQuoteToken(), t.taxRate()]);
-  log(`  tax ${Number(rate) / 100}% · processor ${processor} · pays ${market} in ${quote === ethers.ZeroAddress ? 'native BNB' : quote}`);
+  // Flap's processor reports BNB-quoted tokens as WBNB (or zero on older versions); either way it unwraps and sends native BNB.
+  const native = quote === ethers.ZeroAddress || quote === WBNB;
+  log(`  tax ${Number(rate) / 100}% · processor ${processor} · pays ${market} in ${native ? 'native BNB' : quote}`);
   if (market.toLowerCase() !== rec.proxy.toLowerCase()) fail(`the tax goes to ${market}, not the city proxy ${rec.proxy}`);
-  if (quote !== ethers.ZeroAddress) fail(`the tax is paid in ${quote === WBNB ? 'WBNB' : quote}, not native BNB: the city could never use it`);
+  if (!native) fail(`the tax is paid in ${quote === WBNB ? 'WBNB' : quote}, not native BNB: the city could never use it`);
   if (Number(rate) !== 200) log(`! tax rate is ${Number(rate) / 100}%, the design says 2%`);
   ok('the token pays its tax to the city in native BNB');
   if (!flags.has('--send')) return log('Run again with --send to call setToken from OPERATOR_KEY.');
