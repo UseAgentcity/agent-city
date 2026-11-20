@@ -21,11 +21,6 @@ import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/U
 /// tokens the city spent are split 80% burned / 20% to the city treasury, and each Agent claims its BNB award
 /// (paid from the token's trading tax that this contract receives) and the unspent part of its deposit.
 ///
-/// Deployed behind an ERC-1967 proxy (UUPS), because the token's tax recipient can never change: bugs are fixed by
-/// replacing the implementation behind the same address. The wallet that deploys the proxy is the upgrade admin and
-/// can upgrade at any time; it can hand that role over in two steps, or give it up for good (`freezeUpgrades`),
-/// which makes the contract immutable.
-///
 /// Guarantees enforced by this implementation, whatever the operator does:
 ///  - the operator can never withdraw the BNB pool or any deposit;
 ///  - a season's BNB awards are at most 10% of the pool not already promised to earlier seasons;
@@ -46,7 +41,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     uint256 public constant MAX_MEMO = 160;                 // memo bytes
     address public constant BURN = 0x000000000000000000000000000000000000dEaD;
 
-    // ---- set at initialization (proxy storage; append new state only at the end in later versions) ----
+    // ---- set at initialization ----
     IAgentId public agentId;
     address public operator;   // publishes season results and sets the token once; nothing else
     address public treasury;   // receives 20% of tokens spent (a public multisig)
@@ -84,9 +79,9 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     /// BNB promised to published seasons and not yet claimed or released.
     uint256 public reserved;
 
-    // ---- upgrades ----
-    address public upgradeAdmin;     // the deploying wallet; address(0) once upgrades are frozen
-    address public pendingAdmin;     // two-step handover
+    // ---- admin ----
+    address public upgradeAdmin;
+    address public pendingAdmin;
 
     // ---- events (the engine's input, in block and log order) ----
     event TokenSet(address token);
@@ -109,7 +104,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
         _disableInitializers(); // the implementation itself is never used directly
     }
 
-    /// @notice Run once by the proxy's constructor: the deploying wallet becomes the upgrade admin.
+    /// @notice Run once at deployment.
     function initialize(address agentId_, address operator_, address treasury_, uint256 epoch_, uint256 dayLength_) external initializer {
         require(agentId_.code.length > 0, "agent ID registry");
         require(operator_ != address(0) && treasury_ != address(0), "roles");
@@ -138,7 +133,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
         emit TokenSet(token_);
     }
 
-    // ---- upgrades: the deploying wallet, until handed over or frozen ----
+    // ---- admin ----
 
     modifier onlyUpgradeAdmin() {
         require(msg.sender == upgradeAdmin && msg.sender != address(0), "upgrade admin");
@@ -160,7 +155,6 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
         emit AdminChanged(msg.sender);
     }
 
-    /// @notice Give up upgrades for good: the contract becomes immutable.
     function freezeUpgrades() external onlyUpgradeAdmin {
         upgradeAdmin = address(0);
         pendingAdmin = address(0);
