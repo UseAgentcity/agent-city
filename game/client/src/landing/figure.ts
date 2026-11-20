@@ -34,8 +34,8 @@ export function mountFigure(host: HTMLElement, gone: () => boolean): () => void 
   const robot = makeRobot();
   scene.add(robot.root);
   const camera = new THREE.PerspectiveCamera(26, 1, 0.1, 50);
-  camera.position.set(0, 0.95, 4.4);
-  camera.lookAt(0, 0.78, 0);
+  camera.position.set(0, 0.9, 3.7);
+  camera.lookAt(0, 0.74, 0);
 
   const resize = () => {
     const w = host.clientWidth, h = host.clientHeight;

@@ -7,6 +7,7 @@ interface Ad { title: string; sub?: string; bg?: [string, string]; fg?: string }
 export interface LiveCity {
   season: { id: number; day: number | null; days: number; settling?: boolean; endsAt?: number; nextSeasonAt?: number };
   now?: number;
+  pool?: { bnbWei: string | null; note?: string };
   event: { zh: string; en: string } | null;
   lots: { owner: string | null }[];
   cats: Record<string, { zh: string; en: string }>;
@@ -64,6 +65,8 @@ export function skyline(ads: Ad[], lang: Lang = 'zh'): string {
   return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg"><defs>${defs}</defs>${body}</svg>`;
 }
 
+let tick: ReturnType<typeof setInterval> | null = null;
+
 export function renderLive(c: LiveCity, lang: Lang, $: Get) {
   const zh = lang === 'zh';
   const open = c.lots.filter((l) => l.owner).length;
@@ -79,7 +82,30 @@ export function renderLive(c: LiveCity, lang: Lang, $: Get) {
   const dayLine = zh
     ? `第 ${c.season.id} 季${settling ? ` · 结算发奖中${left ? ` · ${left}后开新季` : ''}` : ` · 第 ${c.season.day}/${c.season.days} 天${left ? ` · ${left}后结算发奖` : ''}`}`
     : `Season ${c.season.id}${settling ? ` · paying out${left ? ` · next in ${left}` : ''}` : ` · Day ${c.season.day}/${c.season.days}${left ? ` · pays out in ${left}` : ''}`}`;
-  $('lp-live').textContent = zh ? `${dayLine} · ${open} 家店营业中` : `${dayLine} · ${open} shops open`;
+  // The prize ticket on the poster: a live countdown to the payout (or the next season) and the pool.
+  const target = settling ? c.season.nextSeasonAt : c.season.endsAt;
+  const skew = (c.now ?? Date.now()) - Date.now();
+  $('lp-tk-label').textContent = settling ? (zh ? '距新一季开始' : 'Next season in') : (zh ? '距本季发奖' : 'Next payout in');
+  $('lp-tk-season').textContent = zh
+    ? `第 ${c.season.id} 季 · ${settling ? '结算发奖中' : `第 ${c.season.day}/${c.season.days} 天`} · ${open} 家店营业中`
+    : `Season ${c.season.id} · ${settling ? 'paying out' : `Day ${c.season.day}/${c.season.days}`} · ${open} shops open`;
+  const clockEl = $('lp-tk-clock');
+  if (tick) clearInterval(tick);
+  const draw = () => {
+    if (!clockEl.isConnected) { if (tick) clearInterval(tick); return; }
+    const sec = Math.max(0, Math.floor(((target ?? 0) - (Date.now() + skew)) / 1000));
+    clockEl.textContent = [Math.floor(sec / 3600), Math.floor(sec / 60) % 60, sec % 60].map((n) => String(n).padStart(2, '0')).join(':');
+  };
+  if (target) { draw(); tick = setInterval(draw, 1000); }
+  const wei = c.pool?.bnbWei;
+  if (wei != null) {
+    const bnb = Number(BigInt(wei) / 10n ** 12n) / 1e6;
+    $('lp-tk-pool').textContent = `${bnb.toFixed(bnb < 10 ? 3 : 2)} BNB`;
+    $('lp-tk-pay').textContent = zh ? `本季发 ≈ ${(bnb * 0.25).toFixed(3)} BNB` : `≈ ${(bnb * 0.25).toFixed(3)} BNB this season`;
+  } else {
+    $('lp-tk-pool').textContent = zh ? '即将开启' : 'Opening soon';
+    $('lp-tk-pay').textContent = zh ? '来自 $ACITY 2% 交易税，每季发 25%' : 'From the $ACITY 2% tax, 25% each season';
+  }
 
   // One billboard per ad: a shop that won two screens shows once.
   const ads = [...new Map(c.screens.filter((s) => s.ad).map((s) => [s.ad!.title, s.ad!])).values()];
