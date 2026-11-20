@@ -23,9 +23,10 @@
 .lp-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 18px;
   padding: calc(14px + env(safe-area-inset-top, 0px)) var(--lp-gut) 14px; transition: background .2s, border-color .2s; border-bottom: 2.5px solid transparent; }
 .lp-nav.solid { background: var(--lp-gold); border-color: var(--lp-ink); }
-.lp-brand { display: flex; align-items: center; gap: 9px; margin-right: auto; }
-.lp-mark { width: 34px; height: 34px; flex: none; border-radius: 9px; border: 2px solid var(--lp-ink); }
-.lp-wordmark { font-size: 17px; font-weight: 900; font-style: italic; line-height: 1; letter-spacing: -.04em; white-space: nowrap; }
+.lp-brand { display: flex; align-items: center; gap: 8px; margin-right: auto; }
+.lp-mark { width: 34px; height: 34px; flex: none; border-radius: 8px; }
+.lp-wordmark { display: grid; gap: 1px; font-size: 17px; font-weight: 900; line-height: .88; letter-spacing: -.045em; white-space: nowrap; }
+.lp-wordmark > span { font-size: .73em; letter-spacing: .18em; }
 .lp-navlink { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 700; }
 .lp-navlink:hover { text-decoration: underline; text-underline-offset: 4px; }
 .lp-navlink .ico { width: 16px; height: 16px; }
