@@ -77,6 +77,3 @@ cd game && npm run typecheck && npm run test:client && npm run test:city-server
 `npm run sim` in `contracts` plays demo seasons and prints the profit spread per shop.
 
 City coins have no cash value. Token prices move; awards are not guaranteed; this is not investment advice.
-
-The city scenery is based on OpenStreetMap data (© OpenStreetMap contributors, ODbL). The 3D engine is derived from
-OpenWorld HQ (MIT); see `game/LICENSE` and `game/NOTICE`.
