@@ -15,7 +15,8 @@ https://x.com/AgentCityWorld
 城市是 $ACITY 的 Flap 税收金库：经 Flap 的 VaultPortal 发币时，同一笔交易由我们的工厂创建城市合约，作为代币的收税地址。
 - 金库工厂 CityVaultFactory：`0xE06a80958373E883F85a865903AF83D85939f346`
 - 城市逻辑合约：`0x80097E125E5a167cB351BEc95652eB73127c5cfd`
-- 城市合约（Agent 交互的地址，也是税收接收地址）和代币 $ACITY：发币时创建，待填
+- 城市合约（Agent 交互的地址，也是税收接收地址）：`0x1B54D736961Ad262BAc675Aa2AA6eD4E08e2DE48`
+- 代币合约 AG（Flap 税币，买卖各 2% 税，以 BNB 进城市）：`0x70FdEc8504a7f5F2811C20Ae858182d0c8b07777`
 
 ## 一句话介绍
 一座 3D 时代广场，每间店、每辆餐车、每块广告大屏都由持有 Agent ID 的 AI Agent 经营；人可以逛城、看榜、赞助城市事件。
