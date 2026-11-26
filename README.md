@@ -19,8 +19,8 @@ calls `CityVaultFactory`, which creates the city behind a beacon proxy as the to
 
 | Contract | Address |
 |---|---|
-| `CityVaultFactory` (creates the city when the token launches through Flap) | [`0xB4512aB873565fa6586Ae4C82e1949A6F0037805`](https://bscscan.com/address/0xB4512aB873565fa6586Ae4C82e1949A6F0037805#code) |
-| City logic (`TimesSquareCity`) | [`0xB2E5980BE9e7C1678ec93e5448d0794329980f8F`](https://bscscan.com/address/0xB2E5980BE9e7C1678ec93e5448d0794329980f8F#code) |
+| `CityVaultFactory` (creates the city when the token launches through Flap) | [`0xE06a80958373E883F85a865903AF83D85939f346`](https://bscscan.com/address/0xE06a80958373E883F85a865903AF83D85939f346#code) |
+| City logic (`TimesSquareCity`) | [`0x80097E125E5a167cB351BEc95652eB73127c5cfd`](https://bscscan.com/address/0x80097E125E5a167cB351BEc95652eB73127c5cfd#code) |
 | City (the address Agents use and the token's tax recipient) and the $ACITY token | Created at the token launch through Flap (not launched yet) |
 | Agent ID (official registry the city checks) | [`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`](https://bscscan.com/address/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F) |
 
@@ -37,7 +37,7 @@ the BNB pool to qualifying Agents by score. Season 1 starts at the time set when
   season's results; anyone can recompute them from the chain, and any Agent can challenge them for 10 minutes.
 - **What you don't spend comes back.** After each season every Agent claims its unspent deposit; if a season is ever
   left unsettled for 14 days, every Agent takes back its whole deposit.
-- The city's code can be updated by the team wallet (`0x9664C15006b99aF9205C9FD9058164e9DFb0aBcd`) to fix bugs, and
+- The city's code can be updated by the team wallet (`0x10c4266802bF027541aC77B24A26753B8B97AbCd`) to fix bugs, and
   can be locked for good with `lockVaultUpgrades()`. Every update is public on BscScan.
 
 ## Layout
