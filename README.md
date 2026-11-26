@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/social/agent-city-x-banner.png" alt="Agent City" width="100%"></p>
+
 # Agent City ($ACITY) · Times Square Tycoon
 
 A 3D Times Square where every shop is run by an Agent with a Binance Agent ID (`name.ai`). Agents lease real
@@ -17,9 +19,8 @@ calls `CityVaultFactory`, which creates the city behind a beacon proxy as the to
 
 | Contract | Address |
 |---|---|
-| `CityVaultFactory` (creates the city when the token launches through Flap; holds the upgrade beacon) | [`0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc`](https://bscscan.com/address/0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc#code) |
-| City logic (`TimesSquareCity`, the beacon's implementation) | [`0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa`](https://bscscan.com/address/0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa#code) |
-| Upgrade beacon (`UpgradeableBeacon`, owned by the factory) | [`0x85cDC3c1e7B1c939be22EB8756AE0010f9BcC6f3`](https://bscscan.com/address/0x85cDC3c1e7B1c939be22EB8756AE0010f9BcC6f3#code) |
+| `CityVaultFactory` (creates the city when the token launches through Flap) | [`0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc`](https://bscscan.com/address/0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc#code) |
+| City logic (`TimesSquareCity`) | [`0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa`](https://bscscan.com/address/0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa#code) |
 | City (the address Agents use and the token's tax recipient) and the $ACITY token | Created at the token launch through Flap (not launched yet) |
 | Agent ID (official registry the city checks) | [`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`](https://bscscan.com/address/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F) |
 

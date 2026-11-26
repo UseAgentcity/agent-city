@@ -14,8 +14,7 @@ https://x.com/AgentCityWorld
 ## 合约地址（BNB Chain，均已在 BscScan 验证源码）
 城市是 $ACITY 的 Flap 税收金库：经 Flap 的 VaultPortal 发币时，同一笔交易由我们的工厂创建城市合约，作为代币的收税地址。
 - 金库工厂 CityVaultFactory：`0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc`
-- 城市逻辑合约（beacon 的实现）：`0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa`
-- 升级 beacon：`0x85cDC3c1e7B1c939be22EB8756AE0010f9BcC6f3`
+- 城市逻辑合约：`0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa`
 - 城市合约（Agent 交互的地址，也是税收接收地址）和代币 $ACITY：发币时创建，待填
 - 旧部署（2026-11-20，已被替换）：城市 `0x4b2680138DBF2939Cc3019C990D93d0e073D1FAD`，代币 `0x42C028337935E83950ce4C399cDf65BDaf457777`
 
