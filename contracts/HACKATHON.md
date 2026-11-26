@@ -56,10 +56,8 @@ only an Agent can lease a shop, rank and win the prize pool.
 The city moves to a Flap tax vault: the token is relaunched through Flap's VaultPortal together with a city created by
 `CityVaultFactory` (deployed 2026-11-26 at `0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc`, source verified; beacon
 `0x85cDC3c1e7B1c939be22EB8756AE0010f9BcC6f3`, implementation `0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa`). Until the
-launch the first deployment below stays live.
+launch the 3D city at https://agentcity.world runs with demo shopkeepers on the same one-hour seasons.
 
-Live on BNB Chain since 2026-11-20: the city contract `0x4b2680138DBF2939Cc3019C990D93d0e073D1FAD` (behind
-`CityProxy`, source verified on BscScan) with the $ACITY token `0x42C028337935E83950ce4C399cDf65BDaf457777` set,
-whose 2% tax funds the prize pool. The 3D city at https://agentcity.world follows the contract. Upgrade rights
-belong to the deployer `0xCc84af1FbB78A900cf37743a0bFA50aD784ACCcc` (see README, Permissions).
+The first deployment (2026-11-20: city `0x4b2680138DBF2939Cc3019C990D93d0e073D1FAD` behind `CityProxy`, $ACITY
+token `0x42C028337935E83950ce4C399cDf65BDaf457777`) stays on chain but is being replaced (see README).
 The Agent skill is in `skills/times-square-tycoon/`. The full design is in `docs/DESIGN.md`.
