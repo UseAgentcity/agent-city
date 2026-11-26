@@ -8,6 +8,7 @@ import path from 'node:path';
 import ganache from 'ganache';
 import { ethers } from 'ethers';
 import { compile } from '../scripts/compile.mjs';
+import { createCity, FLAP_UNLOCKED } from './city-local.mjs';
 import { DAYS } from '../service/tycoon/engine.mjs';
 import { LOTS } from '../service/tycoon/lots.mjs';
 import { encodePlan } from '../service/tycoon/chain.mjs';
@@ -25,7 +26,7 @@ const builds = compile({
 });
 const DAY = 60;
 const T = 10n ** 18n;
-const chain = ganache.provider({ logging: { quiet: true }, wallet: { totalAccounts: 5, defaultBalance: 1000 }, chain: { vmErrorsOnRPCResponse: true } });
+const chain = ganache.provider({ logging: { quiet: true }, wallet: { totalAccounts: 5, defaultBalance: 1000, unlockedAccounts: FLAP_UNLOCKED }, chain: { vmErrorsOnRPCResponse: true } });
 const provider = new ethers.BrowserProvider(chain, undefined, { cacheTimeout: -1 });
 provider.pollingInterval = 10;
 const now = async () => (await provider.getBlock('latest')).timestamp;
@@ -40,13 +41,8 @@ try {
   const registry = await deploy(builds['TestAgentId.sol'].TestAgentId, [[a.address, b.address, guest.address]]);
   const token = await deploy(builds['TestToken.sol'].TestToken, []);
   const epoch = (await now()) + 600;
-  const City = builds['src/TimesSquareCity.sol'].TimesSquareCity;
-  const impl = await deploy(City, []);
-  const init = new ethers.Interface(City.abi).encodeFunctionData('initialize', [await registry.getAddress(), operator.address, treasury.address, epoch, DAY]);
-  const proxy = await deploy(builds['src/CityProxy.sol'].CityProxy, [await impl.getAddress(), init]);
-  const city = new ethers.Contract(await proxy.getAddress(), City.abi, operator);
+  const { city } = await createCity({ provider, builds, deployer: operator, registry: await registry.getAddress(), token: await token.getAddress(), operator, treasury: treasury.address, epoch, day: DAY });
   const addr = await city.getAddress();
-  await send(city.setToken(token.getAddress()));
   for (const s of [a, b, guest]) {
     await send(token.mint(s.address, 2_000_000n * T));
     await send(token.connect(s).approve(addr, ethers.MaxUint256));
@@ -95,7 +91,7 @@ try {
   assert.ok(fs.existsSync(file1) && said.some((m) => m.includes('rebuilt the claims file')), 'claims file rebuilt');
 
   // The window passes: it finalizes, and an Agent claims with the file it wrote.
-  await warp(Number(x1.publishedAt) + 3600 + 1);
+  await warp(Number(x1.publishedAt) + 600 + 1);
   assert.deepEqual(await settler.tick(), ['finalize 1']);
   assert.ok((await info(1)).finalized, 'final');
   const mine = JSON.parse(fs.readFileSync(file1, 'utf8')).claims.find((c) => c.agent === a.address.toLowerCase());
@@ -112,7 +108,7 @@ try {
   assert.deepEqual(await settler.tick(), ['repost 2']);
   const x2 = await info(2);
   assert.ok(!x2.challenged && !x2.finalized, 're-posted');
-  await warp(Number(x2.publishedAt) + 3600 + 1);
+  await warp(Number(x2.publishedAt) + 600 + 1);
   assert.deepEqual(await settler.tick(), ['finalize 2']);
 
   // After the claim window, season 1's unclaimed BNB (Agent b never claimed) goes back to the pool.

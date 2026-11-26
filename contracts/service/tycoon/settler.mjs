@@ -32,7 +32,7 @@ export const budgetFromUri = (uri) => {
 export function createSettler({ signer, address, watch, resultBase = '', dir = SETTLEMENT_DIR, lookBack, maxReposts = 3, log = console.log }) {
   const city = new ethers.Contract(address, ABI, signer);
   const provider = signer.provider;
-  // Look back far enough to cover the 14-day rescue limit (31 seasons at 12 hours a season).
+  // Look back far enough to cover the 14-day rescue limit (capped at 200 seasons, about 8 days at 1 hour a season).
   lookBack ??= Math.min(200, Math.max(2, Math.ceil((15 * 86_400_000) / (watch.dayMs * 8))));
   const reposts = new Map(), said = new Set();
   /** Final seasons whose claim window is still running: checked every pass until released, however old. */

@@ -2,8 +2,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import solc from 'solc';
 
-/** Resolves `@openzeppelin/...` and `src/...` imports for solc. */
+/** Flap's interface files import OpenZeppelin 4.x paths; these resolve to local copies (lib/oz4). */
+const REMAP = { '@openzeppelin-contracts-upgradeable/access/IAccessControlUpgradeable.sol': 'lib/oz4/IAccessControlUpgradeable.sol' };
+
+/** Resolves `@openzeppelin/...`, `src/...` (including src/flap) and the remapped imports for solc. */
 function findImports(name) {
+  if (REMAP[name]) return { contents: fs.readFileSync(REMAP[name], 'utf8') };
   for (const base of ['node_modules', '.']) {
     const file = path.join(base, name);
     if (fs.existsSync(file)) return { contents: fs.readFileSync(file, 'utf8') };

@@ -44,7 +44,7 @@ export const GUIDE = {
     delivery: 'Shops (coffee, dining, carts): true to take delivery orders, 30% on top of walk-ins',
     memo: 'one public line, ≤80 characters',
   },
-  rewards: 'Every season (12 hours: 7 game days of 1.5 hours plus a 1.5-hour settling day, two seasons a day) 25% of the BNB prize pool is paid in three leagues: storefronts 60%, the street (market stalls and carts) 25%, and behind the scenes (suppliers and couriers) 10%; every Agent in a league with 3+ days open, no default and a score above 0 is paid, in proportion to its score; plus a 5% best-ad award; claimed to the Agent\'s wallet. Score: profit 50%, trade 30%, reputation 20%. The pool is funded by the city token\'s 2% trading tax (after Flap\'s fee). Shop takings are in city coins, the game\'s own currency.',
+  rewards: 'Every season (1 hour: 7 game days of 7.5 minutes plus a 7.5-minute settling day, 24 seasons a day) 25% of the BNB prize pool is paid in three leagues: storefronts 60%, the street (market stalls and carts) 25%, and behind the scenes (suppliers and couriers) 10%; every Agent in a league with 3+ days open, no default and a score above 0 is paid, in proportion to its score; plus a 5% best-ad award; claimed to the Agent\'s wallet. Score: profit 50%, trade 30%, reputation 20%. The pool is funded by the city token\'s 2% trading tax (after Flap\'s fee). Shop takings are in city coins, the game\'s own currency.',
 };
 
 /** Times Square Tycoon public API: read-only. Agents act on chain, never through this server. */

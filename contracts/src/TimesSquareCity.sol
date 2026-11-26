@@ -12,29 +12,39 @@ interface IERC20 {
 }
 
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {UUPSUpgradeable} from "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/ReentrancyGuardUpgradeable.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {VaultBaseV3} from "./flap/VaultBaseV3.sol";
+import {VaultUISchema, VaultMethodSchema, FieldDescriptor, ApproveAction} from "./flap/IVaultSchemasV1.sol";
 
-/// @title Times Square Tycoon — the city contract
+/// @title Times Square Tycoon — the city contract, and the Flap tax vault of the city token
 /// @notice Agents with a Binance Agent ID enter a season with a token deposit and send one business plan per game
 /// day. The contract records every plan as an event; an open, deterministic engine replays those events into the
 /// season's results. The operator publishes the results as a Merkle root; after a public challenge window the
 /// tokens the city spent are split 80% burned / 20% to the city treasury, and each Agent claims its BNB award
 /// (paid from the token's trading tax that this contract receives) and the unspent part of its deposit.
 ///
+/// The city is the token's Flap tax vault: CityVaultFactory creates it behind a beacon proxy when the token is
+/// launched through Flap's VaultPortal, and the token's tax (BNB) arrives at receive(). Only the factory's upgrade
+/// admin (the deploying wallet) can upgrade it, through the factory's beacon. The Flap Guardian can do everything the
+/// operator can.
+///
 /// Guarantees enforced by this implementation, whatever the operator does:
-///  - the operator can never withdraw the BNB pool or any deposit;
+///  - nobody can withdraw the BNB pool or any deposit: BNB leaves only as claimed awards, tokens only as claims,
+///    refunds, outbid sponsor bids and the 80/20 split of what a season spent;
+///  - no commission: every BNB of tax is prize pool;
 ///  - a season's BNB awards are at most 25% of the pool not already promised to earlier seasons;
 ///  - every deposited token is accounted for: spent (burned + treasury) plus refunds equals the deposits;
 ///  - claims can never exceed the season's published BNB total or refund total;
 ///  - if a season is not final 14 days after its day 7, everyone takes back exactly what they put in;
-///  - no pause, no owner withdrawal.
-contract TimesSquareCity is Initializable, UUPSUpgradeable {
+///  - no pause.
+contract TimesSquareCity is Initializable, ReentrancyGuardUpgradeable, VaultBaseV3 {
     // ---- constants ----
     uint256 public constant DAYS = 7;                      // game days per season; day 8 is the settling day
     uint256 public constant BURN_BPS = 8000;               // of every token spent: 80% burned, 20% to the treasury
     uint256 public constant POOL_SHARE_BPS = 2500;         // a season may award at most 25% of the free pool
     uint256 public constant SPONSOR_RESERVE = 50_000 ether; // minimum bid to sponsor a day's city event (18 decimals)
-    uint256 public constant CHALLENGE_WINDOW = 1 hours;
+    uint256 public constant CHALLENGE_WINDOW = 10 minutes;
     uint256 public constant CLAIM_WINDOW = 7 days;          // BNB awards expire after this; deposit refunds never do
     uint256 public constant RESCUE_AFTER = 14 days;         // a season not final this long after day 7 refunds everyone
     uint256 public constant MAX_ACTIONS = 1024;             // plan bytes (UTF-8 JSON, decoded by the engine)
@@ -43,11 +53,12 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
 
     // ---- set at initialization ----
     IAgentId public agentId;
-    address public operator;   // publishes season results and sets the token once; nothing else
+    IERC20 public token;       // the city token (the Flap tax token this vault belongs to)
+    address public creator;    // the wallet that launched the token through VaultPortal
+    address public operator;   // publishes season results; the Flap Guardian can do the same
     address public treasury;   // receives 20% of tokens spent (a public multisig)
     uint256 public epoch;      // start of season 1
     uint256 public dayLength;  // seconds per game day
-    IERC20 public token;       // the city token; set once by the operator after it is launched
 
     // ---- seasons ----
     struct Season {
@@ -78,10 +89,10 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     mapping(uint256 => mapping(address => bool)) public challengedBy;
     /// BNB promised to published seasons and not yet claimed or released.
     uint256 public reserved;
-
-    // ---- admin ----
-    address public upgradeAdmin;
-    address public pendingAdmin;
+    /// BNB this vault has recognized as received and not yet paid out (Flap's balance-delta accounting).
+    uint256 public accountedQuote;
+    /// Every BNB of tax ever recognized.
+    uint256 public totalFunded;
 
     // ---- events (the engine's input, in block and log order) ----
     event TokenSet(address token);
@@ -95,70 +106,207 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     event Claimed(uint256 indexed season, address indexed agent, uint256 bnb, uint256 tokens);
     event Released(uint256 indexed season, uint256 bnb);
     event Rescued(uint256 indexed season, address indexed who, uint256 tokens);
-    event AdminProposed(address indexed admin);
-    event AdminChanged(address indexed admin);
-    event UpgradesFrozen();
+    event OperatorChanged(address indexed operator);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers(); // the implementation itself is never used directly
     }
 
-    /// @notice Run once at deployment.
-    function initialize(address agentId_, address operator_, address treasury_, uint256 epoch_, uint256 dayLength_) external initializer {
+    /// @notice Run once, by CityVaultFactory, when VaultPortal launches the token. `token_` is the token's predicted
+    /// address: it has no code yet, so it is not called here.
+    function initialize(
+        address token_,
+        address agentId_,
+        address creator_,
+        address operator_,
+        address treasury_,
+        uint256 epoch_,
+        uint256 dayLength_
+    ) external initializer {
+        require(token_ != address(0), "token");
         require(agentId_.code.length > 0, "agent ID registry");
         require(operator_ != address(0) && treasury_ != address(0), "roles");
         require(dayLength_ >= 60, "day length");
-        __UUPSUpgradeable_init();
+        __ReentrancyGuard_init();
+        token = IERC20(token_);
         agentId = IAgentId(agentId_);
+        creator = creator_;
         operator = operator_;
         treasury = treasury_;
-        upgradeAdmin = msg.sender;
         epoch = epoch_;
         dayLength = dayLength_;
-        emit AdminChanged(msg.sender);
-    }
-
-    /// @notice The token's trading tax (BNB) arrives here and only grows the prize pool. Flap may also "ping" with
-    /// zero value; that is a no-op.
-    receive() external payable {
-        if (msg.value > 0) emit Funded(msg.sender, msg.value);
-    }
-
-    /// @notice Set the city token once, after it is launched with this contract as its tax recipient.
-    function setToken(address token_) external {
-        require(msg.sender == operator, "operator");
-        require(address(token) == address(0) && token_.code.length > 0, "token");
-        token = IERC20(token_);
         emit TokenSet(token_);
+        emit OperatorChanged(operator_);
     }
 
-    // ---- admin ----
+    // ---- the Flap vault surface ----
 
-    modifier onlyUpgradeAdmin() {
-        require(msg.sender == upgradeAdmin && msg.sender != address(0), "upgrade admin");
+    /// @notice The token's trading tax (BNB) arrives here and only grows the prize pool. Light on purpose: it only
+    /// recognizes the new balance. A wake with nothing new (Flap may call with zero value) is a no-op.
+    receive() external payable {
+        _sync();
+    }
+
+    /// @notice Anyone: recognizes BNB that arrived without a call to receive().
+    function sync() external {
+        _sync();
+    }
+
+    function _sync() internal {
+        uint256 bal = address(this).balance;
+        if (bal <= accountedQuote) return;
+        uint256 revenue = bal - accountedQuote;
+        accountedQuote = bal;
+        totalFunded += revenue;
+        emit Funded(msg.sender, revenue);
+    }
+
+    /// @notice The tax arrives in native BNB (the factory only accepts BNB-quoted launches).
+    function vaultQuoteToken() public pure override returns (address) {
+        return address(0);
+    }
+
+    /// @notice The vault's tax token, for Flap's UI ("taxToken" approvals).
+    function taxToken() external view returns (address) {
+        return address(token);
+    }
+
+    /// @notice The city's state in plain words, with its fees (none).
+    function description() public view override returns (string memory) {
+        (uint256 s, uint256 d) = clock();
+        string memory when = d == 0
+            ? "Season 1 has not started yet."
+            : d > DAYS
+                ? string.concat("Season ", Strings.toString(s), " is settling (day 8 of 8).")
+                : string.concat("Season ", Strings.toString(s), ", game day ", Strings.toString(d), " of 7.");
+        return string.concat(
+            "Agent City prize pool. ", when,
+            " Pool: ", _bnb(accountedQuote), " BNB, of which ", _bnb(reserved),
+            " BNB is promised to published seasons; the next season can award up to ", _bnb(seasonBudget()),
+            " BNB (25% of the free pool). Every BNB of tax goes to the prize pool: no commission and no withdrawal by",
+            " anyone. Spent city tokens: 80% burned, 20% to the city treasury."
+        );
+    }
+
+    /// @dev `wei` as BNB with 4 decimals.
+    function _bnb(uint256 amount) internal pure returns (string memory) {
+        uint256 frac = (amount % 1 ether) / 1e14;
+        string memory f = Strings.toString(frac);
+        while (bytes(f).length < 4) f = string.concat("0", f);
+        return string.concat(Strings.toString(amount / 1 ether), ".", f);
+    }
+
+    /// @notice The methods Flap's generic vault page shows.
+    function vaultUISchema() public pure override returns (VaultUISchema memory schema) {
+        schema.vaultType = "AgentCityVault";
+        schema.description = "Agent City: Agents with a Binance Agent ID run shops in a Times Square business game. "
+            "This vault is the BNB prize pool. Each 8-day season (7 trading days and a settling day) pays up to 25% "
+            "of the free pool to Agents by season score; Agents claim their awards here.";
+        schema.methods = new VaultMethodSchema[](14);
+        FieldDescriptor[] memory none = new FieldDescriptor[](0);
+        ApproveAction[] memory noApprovals = new ApproveAction[](0);
+
+        FieldDescriptor[] memory out = new FieldDescriptor[](2);
+        out[0] = _field("season", "uint256", "Current season", 0);
+        out[1] = _field("day", "uint256", "Game day: 0 before season 1, 1-7 trading, 8 settling", 0);
+        schema.methods[0] = _method("clock", "The current season and game day", none, out, noApprovals, false);
+
+        out = new FieldDescriptor[](1);
+        out[0] = _field("budget", "uint256", "BNB", 18);
+        schema.methods[1] = _method("seasonBudget", "BNB the next published season can award (25% of the free pool)", none, out, noApprovals, false);
+        out = new FieldDescriptor[](1);
+        out[0] = _field("reserved", "uint256", "BNB", 18);
+        schema.methods[2] = _method("reserved", "BNB promised to published seasons and not yet claimed", none, out, noApprovals, false);
+
+        FieldDescriptor[] memory sa = new FieldDescriptor[](2);
+        sa[0] = _field("season", "uint256", "Season", 0);
+        sa[1] = _field("agent", "address", "Agent wallet", 0);
+        out = new FieldDescriptor[](1);
+        out[0] = _field("deposit", "uint256", "City tokens", 18);
+        schema.methods[3] = _method("depositOf", "An Agent's token deposit in a season", sa, out, noApprovals, false);
+
+        FieldDescriptor[] memory inp = new FieldDescriptor[](2);
+        inp[0] = _field("season", "uint256", "Season to join", 0);
+        inp[1] = _field("deposit", "uint256", "City tokens to deposit (0 for a free market stall)", 18);
+        ApproveAction[] memory ap = new ApproveAction[](1);
+        ap[0] = ApproveAction("taxToken", "deposit");
+        schema.methods[4] = _method("enter", "Join a season (Agent ID holders only). Unspent tokens come back after the season", inp, none, ap, true);
+
+        inp = new FieldDescriptor[](4);
+        inp[0] = _field("season", "uint256", "Season", 0);
+        inp[1] = _field("day", "uint256", "Game day 1-7", 0);
+        inp[2] = _field("actions", "bytes", "The day's plan, UTF-8 JSON (see the Agent City skill)", 0);
+        inp[3] = _field("memo", "string", "A short note (160 bytes at most)", 0);
+        schema.methods[5] = _method("plan", "Send one business plan for a game day", inp, none, noApprovals, true);
+
+        inp = new FieldDescriptor[](4);
+        inp[0] = _field("season", "uint256", "Season", 0);
+        inp[1] = _field("day", "uint256", "Game day 1-7 (bids for a day are taken the day before)", 0);
+        inp[2] = _field("eventId", "uint8", "The city event to run that day", 0);
+        inp[3] = _field("bid", "uint256", "City tokens, at least 50,000 and above the leading bid", 18);
+        ap = new ApproveAction[](1);
+        ap[0] = ApproveAction("taxToken", "bid");
+        schema.methods[6] = _method("sponsor", "Bid to choose a day's city event; an outbid sponsor is refunded at once", inp, none, ap, true);
+
+        inp = new FieldDescriptor[](2);
+        inp[0] = _field("season", "uint256", "Season", 0);
+        inp[1] = _field("reason", "string", "What is wrong with the posted results", 0);
+        schema.methods[7] = _method("challenge", "Dispute a season's posted results within 10 minutes (Agents of that season)", inp, none, noApprovals, true);
+
+        FieldDescriptor[] memory one = new FieldDescriptor[](1);
+        one[0] = _field("season", "uint256", "Season", 0);
+        schema.methods[8] = _method("finalize", "Close a season after its challenge window: burn 80% and treasury 20% of what it spent", one, none, noApprovals, true);
+
+        inp = new FieldDescriptor[](4);
+        inp[0] = _field("season", "uint256", "Season", 0);
+        inp[1] = _field("bnb", "uint256", "Your BNB award, from the published results", 18);
+        inp[2] = _field("tokens", "uint256", "Your unspent deposit, from the published results", 18);
+        inp[3] = _field("proof", "bytes32[]", "Your Merkle proof, from the published results", 0);
+        schema.methods[9] = _method("claim", "Collect your BNB award (within 7 days) and your unspent deposit", inp, none, noApprovals, true);
+
+        schema.methods[10] = _method("release", "After the 7-day claim window, return a season's unclaimed BNB to the pool", one, none, noApprovals, true);
+        schema.methods[11] = _method("rescue", "14 days after day 7 of a season that never became final, take back your deposit and bids", one, none, noApprovals, true);
+        schema.methods[12] = _method("sync", "Count BNB that reached the vault without a call", none, none, noApprovals, true);
+
+        FieldDescriptor[] memory op = new FieldDescriptor[](1);
+        op[0] = _field("operator", "address", "The new operator", 0);
+        schema.methods[13] = _method("setOperator", "Operator or Flap Guardian only: hand the results-posting role to another wallet", op, none, noApprovals, true);
+    }
+
+    function _field(string memory name, string memory fieldType, string memory desc, uint8 decimals) internal pure returns (FieldDescriptor memory) {
+        return FieldDescriptor(name, fieldType, desc, decimals);
+    }
+
+    function _method(
+        string memory name,
+        string memory desc,
+        FieldDescriptor[] memory inputs,
+        FieldDescriptor[] memory outputs,
+        ApproveAction[] memory approvals,
+        bool write
+    ) internal pure returns (VaultMethodSchema memory) {
+        return VaultMethodSchema(name, desc, inputs, outputs, approvals, false, false, write);
+    }
+
+    // ---- roles ----
+
+    /// @dev The operator, and always the Flap Guardian, which no one can remove.
+    modifier onlyOperator() {
+        require(msg.sender == operator || msg.sender == _getGuardian(), "operator");
         _;
     }
 
-    /// @dev Called by upgradeToAndCall.
-    function _authorizeUpgrade(address) internal override onlyUpgradeAdmin {}
-
-    function transferUpgradeAdmin(address admin) external onlyUpgradeAdmin {
-        pendingAdmin = admin;
-        emit AdminProposed(admin);
+    /// @notice Hand the operator role to another wallet. The Guardian keeps its own access whatever this is set to.
+    function setOperator(address operator_) external onlyOperator {
+        require(operator_ != address(0), "operator");
+        operator = operator_;
+        emit OperatorChanged(operator_);
     }
 
-    function acceptUpgradeAdmin() external {
-        require(msg.sender == pendingAdmin && msg.sender != address(0), "not proposed");
-        upgradeAdmin = msg.sender;
-        pendingAdmin = address(0);
-        emit AdminChanged(msg.sender);
-    }
-
-    function freezeUpgrades() external onlyUpgradeAdmin {
-        upgradeAdmin = address(0);
-        pendingAdmin = address(0);
-        emit UpgradesFrozen();
+    /// @notice The Flap Guardian: a backup operator that no one can remove.
+    function guardian() external view returns (address) {
+        return _getGuardian();
     }
 
     /// @notice Everything about a season's books and settlement.
@@ -203,7 +351,6 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
         require((season == s && d >= 1 && d <= DAYS) || _open(season, 1), "not open");
         entered[season][msg.sender] = true;
         if (deposit > 0) {
-            require(address(token) != address(0), "no token yet");
             _pull(msg.sender, deposit);
             depositOf[season][msg.sender] = deposit;
             seasons[season].deposits += deposit;
@@ -226,7 +373,6 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     /// @notice Bid tokens to choose a day's city event. Bids for day d are taken on day d-1 (day 1: the settling
     /// day before). The leading bid is held; an outbid sponsor is refunded at once. Only the winner pays.
     function sponsor(uint256 season, uint256 day, uint8 eventId, uint256 bid) external {
-        require(address(token) != address(0), "no token yet");
         require(day >= 1 && day <= DAYS, "day");
         (uint256 s, uint256 d) = clock();
         bool open = day == 1 ? (season == s + 1 && d == DAYS + 1) || (season == 1 && d == 0) : (season == s && d == day - 1);
@@ -245,19 +391,19 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
 
     /// @notice BNB a newly published season may award: 25% of the pool not promised to other seasons.
     function seasonBudget() public view returns (uint256) {
-        return (address(this).balance - reserved) * POOL_SHARE_BPS / 10_000;
+        return (accountedQuote - reserved) * POOL_SHARE_BPS / 10_000;
     }
 
     /// @notice The operator posts a season's results once its day 7 is over, and may re-post while unfinalized
     /// (after a challenge). `tokensSpent` covers what Agents spent from their deposits; winning sponsor bids are
     /// added on chain. Spent plus refunds must equal the deposits exactly.
-    function publish(uint256 season, bytes32 root, uint256 bnbTotal, uint256 tokensSpent, uint256 refunds, string calldata resultUri) external {
-        require(msg.sender == operator, "operator");
+    function publish(uint256 season, bytes32 root, uint256 bnbTotal, uint256 tokensSpent, uint256 refunds, string calldata resultUri) external onlyOperator {
         require(block.timestamp >= seasonEnd(season), "season running");
         Season storage x = seasons[season];
         require(!x.finalized && !x.abandoned, "final");
         require(root != bytes32(0), "root");
         require(tokensSpent + refunds == x.deposits, "deposits");
+        _sync(); // recognize before acting: the budget counts every BNB that has arrived
         reserved -= x.bnbTotal; // a re-post replaces the earlier promise
         require(bnbTotal <= seasonBudget(), "over budget");
         reserved += bnbTotal;
@@ -271,7 +417,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
         emit Published(season, root, bnbTotal, tokensSpent, refunds, resultUri);
     }
 
-    /// @notice Within an hour of a post, any Agent of that season may dispute it; claims wait for a re-post.
+    /// @notice Within the challenge window after a post, any Agent of that season may dispute it; claims wait for a re-post.
     function challenge(uint256 season, string calldata reason) external {
         Season storage x = seasons[season];
         require(x.publishedAt != 0 && !x.finalized && block.timestamp < x.publishedAt + CHALLENGE_WINDOW, "window");
@@ -296,7 +442,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
     }
 
     /// @notice An Agent collects its BNB award (until the claim window closes) and its unspent deposit (any time).
-    function claim(uint256 season, uint256 bnb, uint256 tokens, bytes32[] calldata proof) external {
+    function claim(uint256 season, uint256 bnb, uint256 tokens, bytes32[] calldata proof) external nonReentrant {
         Season storage x = seasons[season];
         if (!x.finalized) finalize(season);
         require(!claimed[season][msg.sender], "claimed");
@@ -310,6 +456,7 @@ contract TimesSquareCity is Initializable, UUPSUpgradeable {
         if (pay > 0) {
             x.bnbClaimed += pay;
             reserved -= pay;
+            accountedQuote -= pay; // every outflow lowers the baseline, or later tax would go unseen
         }
         if (tokens > 0) _push(msg.sender, tokens);
         if (pay > 0) {

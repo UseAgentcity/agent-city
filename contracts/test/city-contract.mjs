@@ -7,6 +7,7 @@ import { compile } from '../scripts/compile.mjs';
 import { DAYS } from '../service/tycoon/engine.mjs';
 import { LOTS } from '../service/tycoon/lots.mjs';
 import { depositsFromLogs, encodePlan, eventsFromLogs, leafOf, replaySeason, settleSeason } from '../service/tycoon/chain.mjs';
+import { createCity, FLAP_UNLOCKED } from './city-local.mjs';
 
 const builds = compile({
   'TestAgentId.sol': { content: 'pragma solidity ^0.8.24; contract TestAgentId { mapping(address=>uint) public balanceOf; constructor(address[] memory a) { for (uint i; i < a.length; i++) balanceOf[a[i]] = 1; } }' },
@@ -20,7 +21,7 @@ const builds = compile({
 });
 const DAY = 60;
 const T = 10n ** 18n;
-const chain = ganache.provider({ logging: { quiet: true }, wallet: { totalAccounts: 6, defaultBalance: 1000 }, chain: { vmErrorsOnRPCResponse: true } });
+const chain = ganache.provider({ logging: { quiet: true }, wallet: { totalAccounts: 6, defaultBalance: 1000, unlockedAccounts: FLAP_UNLOCKED }, chain: { vmErrorsOnRPCResponse: true } });
 const provider = new ethers.BrowserProvider(chain, undefined, { cacheTimeout: -1 });
 provider.pollingInterval = 10;
 const now = async () => (await provider.getBlock('latest')).timestamp;
@@ -42,15 +43,21 @@ try {
   const registry = await deploy(builds['TestAgentId.sol'].TestAgentId, [[a.address, b.address]]);
   const token = await deploy(builds['TestToken.sol'].TestToken, []);
   const epoch = (await now()) + 600;
-  // Behind a proxy: the implementation, then CityProxy(implementation, initialize(...)); the city is the proxy.
+  // Created as Flap does it: VaultPortal calls CityVaultFactory.newVault while it launches the token; the city is a
+  // beacon proxy whose implementation only the Flap Guardian can change.
   const City = builds['src/TimesSquareCity.sol'].TimesSquareCity;
-  const impl = await deploy(City, []);
-  const init = new ethers.Interface(City.abi).encodeFunctionData('initialize', [await registry.getAddress(), operator.address, treasury.address, epoch, DAY]);
-  const proxy = await deploy(builds['src/CityProxy.sol'].CityProxy, [await impl.getAddress(), init]);
-  const city = new ethers.Contract(await proxy.getAddress(), City.abi, operator);
-  // The implementation can never be initialized or used on its own, and the proxy only once.
-  await assert.rejects(() => impl.initialize(registry.getAddress(), operator.address, treasury.address, epoch, DAY));
-  await assert.rejects(() => city.initialize(registry.getAddress(), guest.address, guest.address, epoch, DAY));
+  const { factory, city, portal, guardian, vaultData } = await createCity({ provider, builds, deployer: operator, registry: await registry.getAddress(), token: await token.getAddress(), operator, treasury: treasury.address, epoch, day: DAY });
+  const impl = new ethers.Contract(await factory.beaconImplementation(), City.abi, operator);
+  // The implementation can never be initialized or used on its own, and the city only once.
+  const initArgs = (who) => [token.getAddress(), registry.getAddress(), who, who, who, epoch, DAY];
+  await assert.rejects(() => impl.initialize(...initArgs(guest.address)));
+  await assert.rejects(() => city.initialize(...initArgs(guest.address)));
+  // Only VaultPortal creates cities, and only BNB-quoted ones.
+  await reverts(() => factory.connect(guest).newVault(token.getAddress(), ethers.ZeroAddress, guest.address, vaultData), 'Only VaultPortal');
+  await reverts(() => factory.connect(portal).newVault(token.getAddress(), guest.address, guest.address, vaultData), 'BNB quote only');
+  assert.equal(await factory.isQuoteTokenSupported(ethers.ZeroAddress), true);
+  assert.equal(await factory.isQuoteTokenSupported(guest.address), false);
+  assert.equal(await factory.factorySpecVersion(), 'v2.4');
   const addr = await city.getAddress();
   const as = (s) => city.connect(s);
   for (const s of [a, b, guest, sponsorAcc]) {
@@ -58,11 +65,16 @@ try {
     await send(token.connect(s).approve(addr, ethers.MaxUint256));
   }
 
-  // Only the operator sets the token, and only once.
-  await assert.rejects(() => as(guest).setToken(token.getAddress()));
-  await reverts(() => as(a).enter(1, 1n * T), 'no token yet');
-  await send(city.setToken(token.getAddress()));
-  await assert.rejects(() => city.setToken(token.getAddress()));
+  // The city knows its token, operator, treasury and clock from the launch; there is no setter for any of them.
+  assert.equal(await city.token(), await token.getAddress());
+  assert.equal(await city.taxToken(), await token.getAddress());
+  assert.equal(await city.operator(), operator.address);
+  assert.equal(await city.treasury(), treasury.address);
+  assert.equal(await city.creator(), operator.address);
+  assert.equal(await city.vaultQuoteToken(), ethers.ZeroAddress);
+  assert.equal(await city.vaultSpecVersion(), 'v3');
+  assert.equal(await city.guardian(), await guardian.getAddress());
+  for (const f of ['setToken', 'withdrawBnb', 'upgradeToAndCall', 'upgradeAdmin']) assert.equal(city.interface.getFunction(f), null, `no ${f}`);
 
   // Before season 1: entries, day 1 plans and day 1 sponsorship are open; nothing else is.
   assert.deepEqual((await city.clock()).map(Number), [1, 0]);
@@ -138,7 +150,7 @@ try {
   // A challenge holds claims until the operator re-posts.
   await reverts(() => as(guest).challenge(1, 'not mine'), 'challenger');
   await send(as(b).challenge(1, 'my stall is missing'));
-  await warp(epoch + DAYS * DAY + 3600 + 10);
+  await warp(epoch + DAYS * DAY + 600 + 10);
   const claimOf = (s) => settled.claims.find((c) => c.agent === s.address.toLowerCase());
   const ca = claimOf(a);
   await reverts(() => as(a).claim(1, ca.bnb, ca.tokens, ca.proof), 'not ready');
@@ -188,14 +200,60 @@ try {
   await reverts(() => city.publish(s2, ethers.id('late'), 0, 0, 123_000n * T, ''), 'final');
   assert.equal(leafOf(1, a.address, ca.bnb, ca.tokens), ca.leaf);
 
-  // ---- upgrades: the deploying wallet, at any time; handover in two steps; freezing ends them ----
+  // ---- the Flap vault surface ----
+  // receive() only recognizes the new balance: cheap, never reverts, and a zero-value wake is a no-op.
+  const pool0 = await city.accountedQuote();
+  const r1 = await send(guest.sendTransaction({ to: addr, value: ethers.parseEther('1') }));
+  assert.ok(r1.gasUsed < 100_000n, `receive() used ${r1.gasUsed} gas`);
+  assert.equal(await city.accountedQuote(), pool0 + ethers.parseEther('1'));
+  const r0 = await send(guest.sendTransaction({ to: addr, value: 0n }));
+  assert.equal(r0.logs.length, 0, 'a wake with nothing new does nothing');
+  assert.equal(await city.accountedQuote(), await provider.getBalance(addr), 'books match the balance');
+  // BNB that arrives without a call (here: written straight into the balance) is picked up by sync().
+  await provider.send('evm_setAccountBalance', [addr, ethers.toQuantity((await provider.getBalance(addr)) + ethers.parseEther('2'))]);
+  const unseen = await city.accountedQuote();
+  await send(as(guest).sync());
+  assert.equal(await city.accountedQuote(), unseen + ethers.parseEther('2'), 'sync recognizes it');
+  const desc = await city.description();
+  assert.ok(desc.includes('Agent City prize pool') && desc.includes('no commission'), desc);
+  assert.ok(desc.includes(`Pool: ${Number(ethers.formatEther(await city.accountedQuote())).toFixed(4)} BNB`), desc);
+  const ui = await city.vaultUISchema();
+  assert.equal(ui.methods.length, 14);
+  const writes = ui.methods.filter((m) => m.isWriteMethod).map((m) => m.name);
+  assert.deepEqual(writes, ['enter', 'plan', 'sponsor', 'challenge', 'finalize', 'claim', 'release', 'rescue', 'sync', 'setOperator']);
+  for (const m of ui.methods) assert.ok(city.interface.getFunction(m.name), `schema method ${m.name} exists`);
+  assert.deepEqual(ui.methods.find((m) => m.name === 'enter').approvals.map((x) => [x.tokenType, x.amountFieldName]), [['taxToken', 'deposit']]);
+  const vds = await factory.vaultDataSchema();
+  assert.deepEqual(vds.fields.map((f) => [f.name, f.fieldType]), [['operator', 'address'], ['treasury', 'address'], ['epoch', 'time'], ['dayLength', 'uint256']]);
+  assert.equal((await factory.tokenCreationPolicies()).length, 3);
+
+  // The Flap Guardian holds the operator's powers, and keeps them whatever the operator does.
+  await reverts(() => as(guest).setOperator(guest.address), 'operator');
+  await send(city.setOperator(b.address));
+  assert.equal(await city.operator(), b.address);
+  await reverts(() => city.setOperator(operator.address), 'operator'); // the old operator is out
+  await send(city.connect(guardian).setOperator(operator.address));
+  assert.equal(await city.operator(), operator.address, 'the Guardian can hand the role back');
+  const s3 = Number((await city.clock())[0]);
+  await warp(Math.max(await now(), Number(await city.seasonEnd(s3))) + 5);
+  await send(city.connect(guardian).publish(s3, ethers.id('guardian post'), 0, 0, 0, ''));
+  assert.equal((await city.seasonInfo(s3)).root, ethers.id('guardian post'), 'the Guardian can post results');
+
+  // ---- upgrades: the deploying wallet (the factory's upgrade admin) only, through the beacon; handover in two steps;
+  // locking ends them ----
   const V2 = builds['TestCityV2.sol'].TestCityV2;
   const v2 = await deploy(V2, []);
   const other = await deploy(V2, []);
-  assert.equal(await city.upgradeAdmin(), operator.address, 'the deployer is the upgrade admin');
-  await reverts(() => as(guest).upgradeToAndCall(v2.getAddress(), '0x'), 'upgrade admin');
-  const poolBefore = await provider.getBalance(addr), reservedNow = await city.reserved();
-  await send(city.upgradeToAndCall(v2.getAddress(), '0x'));
+  const beacon = new ethers.Contract(await factory.beacon(), ['function owner() view returns (address)', 'function upgradeTo(address)'], operator);
+  assert.equal(await beacon.owner(), await factory.getAddress(), 'the factory owns the beacon');
+  assert.equal(await factory.upgradeAdmin(), operator.address, 'the deploying wallet is the upgrade admin');
+  await assert.rejects(() => beacon.upgradeTo(v2.getAddress()), 'nobody calls the beacon directly');
+  for (const s of [guest, portal, guardian]) await reverts(() => factory.connect(s).upgradeVaultImplementation(v2.getAddress()), 'upgrade admin');
+  await reverts(() => factory.connect(guest).lockVaultUpgrades(), 'upgrade admin');
+  const poolBefore = await provider.getBalance(addr);
+  const reservedNow = await city.reserved();
+  await send(factory.upgradeVaultImplementation(v2.getAddress()));
+  assert.equal(await factory.beaconImplementation(), await v2.getAddress());
   const upgraded = new ethers.Contract(addr, V2.abi, operator);
   assert.equal(await upgraded.version(), 'v2');
   assert.equal(await provider.getBalance(addr), poolBefore, 'the pool is where it was');
@@ -203,15 +261,17 @@ try {
   assert.ok((await upgraded.seasonInfo(1)).finalized, 'past seasons intact');
   assert.equal(await upgraded.entered(1, a.address), true);
   await send(guest.sendTransaction({ to: addr, value: ethers.parseEther('1') }));
-  assert.equal(await provider.getBalance(addr), poolBefore + ethers.parseEther('1'), 'tax still arrives at the same address');
-  await send(upgraded.transferUpgradeAdmin(guest.address));
-  await reverts(() => as(b).acceptUpgradeAdmin(), 'not proposed');
-  await send(upgraded.connect(guest).acceptUpgradeAdmin());
-  assert.equal(await upgraded.upgradeAdmin(), guest.address);
-  await reverts(() => upgraded.upgradeToAndCall(other.getAddress(), '0x'), 'upgrade admin');
-  await send(upgraded.connect(guest).freezeUpgrades());
-  assert.equal(await upgraded.upgradeAdmin(), ethers.ZeroAddress);
-  await reverts(() => upgraded.connect(guest).upgradeToAndCall(other.getAddress(), '0x'), 'upgrade admin');
+  assert.equal(await upgraded.accountedQuote(), poolBefore + ethers.parseEther('1'), 'tax still arrives at the same address');
+  await send(factory.transferUpgradeAdmin(guest.address));
+  await reverts(() => factory.connect(b).acceptUpgradeAdmin(), 'not proposed');
+  await send(factory.connect(guest).acceptUpgradeAdmin());
+  assert.equal(await factory.upgradeAdmin(), guest.address);
+  await reverts(() => factory.upgradeVaultImplementation(other.getAddress()), 'upgrade admin');
+  assert.equal(await factory.isVaultUpgradesLocked(), false);
+  await send(factory.connect(guest).lockVaultUpgrades());
+  assert.equal(await factory.isVaultUpgradesLocked(), true);
+  assert.equal(await factory.upgradeAdmin(), ethers.ZeroAddress);
+  await reverts(() => factory.connect(guest).upgradeVaultImplementation(other.getAddress()), 'upgrade admin');
 
-  console.log(`PASS: city contract — Agent ID entry, deposits, one plan per day (${planGas} gas), sponsorship refunds, engine replay from logs, books check, budget cap, challenge and re-post, claims with 80/20 split, expiry, rescue; proxy upgradable by the deployer with state and pool intact, admin handover, freeze`);
+  console.log(`PASS: city contract — Agent ID entry, deposits, one plan per day (${planGas} gas), sponsorship refunds, engine replay from logs, books check, budget cap, challenge and re-post, claims with 80/20 split, expiry, rescue; created by the factory for VaultPortal only, Flap vault surface (cheap receive, sync, description, UI schemas), Guardian as operator, beacon upgrades by the deploying wallet only with state and pool intact, admin handover, lock`);
 } finally { await chain.disconnect(); }

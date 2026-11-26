@@ -1,12 +1,12 @@
-// Verifies the deployed city on BscScan (Etherscan API v2, chain 56) from deployments/bsc-mainnet.json:
-// the implementation, then the proxy with its constructor arguments, then marks the proxy as a proxy.
+// Verifies Agent City on BscScan (Etherscan API v2, chain 56) from deployments/bsc-mainnet-flap.json: the vault
+// factory, the city implementation, the beacon and the city (a beacon proxy), then marks the city as a proxy.
 //   node --env-file=.env.game scripts/verify.mjs      (needs ETHERSCAN_API_KEY)
 import fs from 'node:fs';
 
 const API = 'https://api.etherscan.io/v2/api?chainid=56';
 const key = process.env.ETHERSCAN_API_KEY;
 if (!key) { console.error('Set ETHERSCAN_API_KEY in .env.game'); process.exit(1); }
-const rec = JSON.parse(fs.readFileSync('deployments/bsc-mainnet.json', 'utf8'));
+const rec = JSON.parse(fs.readFileSync('deployments/bsc-mainnet-flap.json', 'utf8'));
 const input = fs.readFileSync(rec.verify.input, 'utf8');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -40,18 +40,24 @@ async function verify(label, address, contractname, args = '') {
   throw new Error(`${label}: BscScan has not indexed ${address} yet; try again in a minute`);
 }
 
-await verify('implementation', rec.implementation, rec.verify.contracts.implementation);
-await verify('proxy', rec.proxy, rec.verify.contracts.proxy, rec.verify.proxyConstructorArgs);
+const v = rec.verify;
+await verify('factory', rec.factory.address, v.contracts.factory, v.args.factory);
+await verify('implementation', rec.factory.implementation, v.contracts.implementation);
+await verify('beacon', rec.factory.beacon, v.contracts.beacon, v.args.beacon);
+if (rec.city) await verify('city', rec.city.address, v.contracts.city, v.args.city);
+else console.log('! no city yet: run `deploy.mjs launch --send`, then verify again');
 
-// Link the proxy to its implementation, so BscScan shows "Read/Write as Proxy".
-const px = await call({ module: 'contract', action: 'verifyproxycontract', address: rec.proxy, expectedimplementation: rec.implementation });
-if (px.status === '1') {
-  for (;;) {
-    await sleep(5_000);
-    const st = await call({ module: 'contract', action: 'checkproxyverification', guid: px.result }, false);
-    if (/pending|in progress/i.test(st.result)) continue;
-    console.log(`${st.status === '1' ? '✓' : '!'} proxy link: ${st.result}`);
-    break;
-  }
-} else console.log(`! proxy link: ${px.result}`);
-console.log(`https://bscscan.com/address/${rec.proxy}#code`);
+// Link the city to its implementation, so BscScan shows "Read/Write as Proxy".
+if (rec.city) {
+  const px = await call({ module: 'contract', action: 'verifyproxycontract', address: rec.city.address, expectedimplementation: rec.factory.implementation });
+  if (px.status === '1') {
+    for (;;) {
+      await sleep(5_000);
+      const st = await call({ module: 'contract', action: 'checkproxyverification', guid: px.result }, false);
+      if (/pending|in progress/i.test(st.result)) continue;
+      console.log(`${st.status === '1' ? '✓' : '!'} proxy link: ${st.result}`);
+      break;
+    }
+  } else console.log(`! proxy link: ${px.result}`);
+  console.log(`https://bscscan.com/address/${rec.city.address}#code`);
+}

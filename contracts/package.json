@@ -9,6 +9,7 @@
     "settle": "node --env-file-if-exists=.env.game scripts/settle.mjs",
     "auto-settle": "node --env-file-if-exists=.env.game scripts/auto-settle.mjs",
     "fork-test": "node scripts/fork-test.mjs",
+    "flap-fork-test": "node scripts/flap-fork-test.mjs",
     "deploy": "node --env-file-if-exists=.env.game scripts/deploy.mjs",
     "test": "node test/rate-limit.mjs && node test/tycoon.mjs && node test/city-contract.mjs && node test/auto-settle.mjs && node test/sponsor-web.mjs && node test/skill-encode.mjs"
   },

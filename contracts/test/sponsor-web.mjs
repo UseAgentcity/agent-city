@@ -6,10 +6,12 @@ import assert from 'node:assert/strict';
 import ganache from 'ganache';
 import { ethers } from 'ethers';
 import { compile } from '../scripts/compile.mjs';
+import { createCity, FLAP_UNLOCKED } from './city-local.mjs';
 import { sponsorEvent, topBid, SponsorError } from '../../game/client/src/ui/sponsorTx.ts';
 
 const builds = compile({
   'TestAgentId.sol': { content: 'pragma solidity ^0.8.24; contract TestAgentId { mapping(address=>uint) public balanceOf; constructor(address[] memory a) { for (uint i; i < a.length; i++) balanceOf[a[i]] = 1; } }' },
+  'TestNoToken.sol': { content: 'pragma solidity ^0.8.24; contract TestNoToken { address public token; }' },
   'TestToken.sol': { content: `pragma solidity ^0.8.24; contract TestToken {
     mapping(address=>uint) public balanceOf; mapping(address=>mapping(address=>uint)) public allowance;
     function mint(address to, uint v) external { balanceOf[to] += v; }
@@ -18,7 +20,7 @@ const builds = compile({
     function transferFrom(address f, address to, uint v) external returns (bool) { allowance[f][msg.sender] -= v; balanceOf[f] -= v; balanceOf[to] += v; return true; } }` },
 });
 const DAY = 60, T = 10n ** 18n;
-const chain = ganache.provider({ logging: { quiet: true }, wallet: { totalAccounts: 4, defaultBalance: 1000 }, chain: { vmErrorsOnRPCResponse: true } });
+const chain = ganache.provider({ logging: { quiet: true }, wallet: { totalAccounts: 4, defaultBalance: 1000, unlockedAccounts: FLAP_UNLOCKED }, chain: { vmErrorsOnRPCResponse: true } });
 const provider = new ethers.BrowserProvider(chain, undefined, { cacheTimeout: -1 });
 provider.pollingInterval = 10;
 const now = async () => (await provider.getBlock('latest')).timestamp;
@@ -44,19 +46,16 @@ try {
   const registry = await deploy(builds['TestAgentId.sol'].TestAgentId, [[agent.address]]); // alice and bob hold no Agent ID
   const token = await deploy(builds['TestToken.sol'].TestToken, []);
   const epoch = (await now()) + 600;
-  const City = builds['src/TimesSquareCity.sol'].TimesSquareCity;
-  const impl = await deploy(City, []);
-  const init = new ethers.Interface(City.abi).encodeFunctionData('initialize', [await registry.getAddress(), operator.address, operator.address, epoch, DAY]);
-  const proxy = await deploy(builds['src/CityProxy.sol'].CityProxy, [await impl.getAddress(), init]);
-  const city = new ethers.Contract(await proxy.getAddress(), City.abi, operator);
+  const { city } = await createCity({ provider, builds, deployer: operator, registry: await registry.getAddress(), token: await token.getAddress(), operator, treasury: operator.address, epoch, day: DAY });
   const addr = (await city.getAddress()).toLowerCase();
   await warp(epoch + 5); // day 1 of season 1: day 2's event is up for bids
   const A = walletOf(alice.address), B = walletOf(bob.address);
   const bid = { city: addr, season: 1, day: 2, eventId: 4 }; // 4 = rain
 
-  // No token yet: stops before the wallet is asked for anything.
-  await assert.rejects(() => sponsorEvent(A, { ...bid, tokens: 60_000 }), (e) => e instanceof SponsorError && e.message === 'no-token');
-  await send(city.setToken(token.getAddress()));
+  // A city whose token is not set (none is, since a city is created with its token): stops before the wallet.
+  const Bare = builds['TestNoToken.sol'].TestNoToken;
+  const bare = (await (await deploy(Bare, [])).getAddress()).toLowerCase();
+  await assert.rejects(() => sponsorEvent(A, { ...bid, city: bare, tokens: 60_000 }), (e) => e instanceof SponsorError && e.message === 'no-token');
   await send(token.mint(alice.address, 100_000n * T));
   await send(token.mint(bob.address, 1_000_000n * T));
 

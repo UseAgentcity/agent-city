@@ -16,6 +16,7 @@ import { depositsFromLogs, encodePlan, eventsFromLogs, replaySeason, settleSeaso
 const RPC = process.env.FORK_RPC || 'https://bsc-mainnet.public.blastapi.io';
 const LOG_RPC = process.env.LOG_RPC || 'https://bsc-rpc.publicnode.com';
 const AGENT_ID = '0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F'; // SPACE ID Agent ID (symbol AI), BNB Chain
+const VAULT_PORTAL = '0x90497450f2a706f1951b5bdda52B4E5d16f34C06'; // Flap VaultPortal, BNB Chain
 const TOKEN = process.env.FORK_TOKEN || '0xb27d4b9361c2Eb84A6F8537C6F852115E0F77777'; // a live Flap tax token
 // Where that token keeps balances (mapping at storage slot 51), found by matching a known balance on mainnet.
 // The fork writes test balances there; every deposit and refund afterwards runs the token's real transfer code.
@@ -56,7 +57,7 @@ log(`token ${await tok.symbol()} ${TOKEN}`);
 const chain = ganache.provider({
   fork: { url: RPC, blockNumber: head - 2 },
   chain: { chainId: 56, hardfork: 'shanghai', vmErrorsOnRPCResponse: true },
-  wallet: { totalAccounts: 3, defaultBalance: 100, unlockedAccounts: holders },
+  wallet: { totalAccounts: 3, defaultBalance: 100, unlockedAccounts: [...holders, VAULT_PORTAL] },
   logging: { quiet: true },
 });
 const provider = new ethers.BrowserProvider(chain, undefined, { cacheTimeout: -1 });
@@ -96,15 +97,16 @@ try {
   const build = compile();
   const art = build['src/TimesSquareCity.sol'].TimesSquareCity;
   const epoch = (await now()) + 3600;
-  // Deployed as on mainnet: the implementation, then CityProxy(implementation, initialize(...)).
-  const impl = await (await new ethers.ContractFactory(art.abi, art.evm.bytecode.object, operator).deploy()).waitForDeployment();
-  const proxyArt = build['src/CityProxy.sol'].CityProxy;
-  const init = new ethers.Interface(art.abi).encodeFunctionData('initialize', [AGENT_ID, operator.address, treasury.address, epoch, DAY]);
-  const proxy = await (await new ethers.ContractFactory(proxyArt.abi, proxyArt.evm.bytecode.object, operator).deploy(await impl.getAddress(), init)).waitForDeployment();
-  const addr = await proxy.getAddress();
+  // Created as on mainnet: CityVaultFactory.newVault, called by Flap's VaultPortal (impersonated here: the real launch
+  // through VaultPortal is scripts/flap-fork-test.mjs). The live Flap token stands in for the city token.
+  const F = build['src/CityVaultFactory.sol'].CityVaultFactory;
+  const factory = await (await new ethers.ContractFactory(F.abi, F.evm.bytecode.object, operator).deploy(AGENT_ID)).waitForDeployment();
+  await provider.send('evm_setAccountBalance', [VAULT_PORTAL, ethers.toQuantity(10n * T)]);
+  const vaultData = coder.encode(['address', 'address', 'uint256', 'uint256'], [operator.address, treasury.address, epoch, DAY]);
+  const made = await send(factory.connect(await provider.getSigner(VAULT_PORTAL)).newVault(TOKEN, ethers.ZeroAddress, operator.address, vaultData));
+  const addr = made.logs.map((l) => { try { return factory.interface.parseLog(l); } catch { return null; } }).find((x) => x?.name === 'CityCreated').args.city;
   const city = new ethers.Contract(addr, art.abi, operator);
-  const deployGas = (await impl.deploymentTransaction().wait()).gasUsed + (await proxy.deploymentTransaction().wait()).gasUsed;
-  await send(city.setToken(TOKEN));
+  const deployGas = (await factory.deploymentTransaction().wait()).gasUsed + made.gasUsed;
 
   // The real Agent ID contract gates entry.
   await reverts(() => city.connect(stranger).enter(1, 0), 'agent ID');
