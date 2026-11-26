@@ -122,6 +122,7 @@
 .lp-foot p:first-child { color: var(--lp-gold); font-weight: 900; font-size: 15px; }
 .lp-foot-x { display: inline-flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px 16px 8px 12px; border-radius: 999px; background: var(--lp-gold); color: var(--lp-ink) !important; font-weight: 800; }
 .lp-foot-x svg { width: 15px; height: 15px; }
+.lp-foot-x + .lp-foot-x { margin-left: 8px; }
 
 /* ---- narrow screens: headline, then the figure, then the rest */
 @media (max-width: 900px) {

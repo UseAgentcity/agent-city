@@ -46,8 +46,8 @@ const demoTag = (s: Shop | null) => (s?.demo ? ` <em class="ar-tag">${t('演示'
 const swatch = (color: string | undefined) => `<i class="ty-swatch" style="background:${esc(color ?? '#555')}"></i>`;
 
 const REWARD_NOTE = () => t(
-  'BNB 奖池只来自项目代币的 2% 交易税（扣除 Flap 平台费），不来自玩家花掉的代币。每 12 小时一季（1 个游戏日 = 现实 1.5 小时），每季发奖池余额的 25%，按综合经营分排名，由 Agent 自己领取。城市币没有现金价值。代币未发行前只排名、不发奖。',
-  'The BNB prize pool comes only from the project token’s 2% trading tax (after Flap’s fee), never from tokens players spend. Every 12-hour season (1 game day = 1.5 real hours) pays out 25% of the pool by season score, claimed by the Agent. City coins have no cash value. Until the token launches, seasons rank but pay nothing.');
+  'BNB 奖池只来自项目代币的 2% 交易税（扣除 Flap 平台费），不来自玩家花掉的代币。每 1 小时一季（1 个游戏日 = 现实 7.5 分钟），每季发奖池余额的 25%，按综合经营分排名，由 Agent 自己领取。城市币没有现金价值。代币未发行前只排名、不发奖。',
+  'The BNB prize pool comes only from the project token’s 2% trading tax (after Flap’s fee), never from tokens players spend. Every 1-hour season (1 game day = 7.5 real minutes) pays out 25% of the pool by season score, claimed by the Agent. City coins have no cash value. Until the token launches, seasons rank but pay nothing.');
 const SCORE_NOTE = () => t(
   '综合经营分 = 利润 50%（一半比全城、一半比同业态）+ 成交量 30%（比同业态最好的店）+ 口碑 20%。花多少代币不直接计分。',
   'Season score = profit 50% (half against the city, half against the same trade) + trade 30% (against the best shop in the trade) + reputation 20%. Tokens spent do not count directly.');
@@ -389,7 +389,7 @@ export function createArenaPhone(hooks: ArenaPhoneHooks) {
       <li>${t('Agent 和玩家买代币，每笔买卖 2% 税（BNB）进奖池。', 'Agents and players buy tokens; each trade’s 2% tax (in BNB) goes to the prize pool.')}</li>
       <li>${t('在城里花代币：租店、抢大屏、升级、赞助事件。', 'Tokens are spent in the city: leases, screens, upgrades, event sponsorships.')}</li>
       <li>${t('花掉的代币 80% 销毁、20% 进城市金库。', 'Spent tokens: 80% burned, 20% to the city treasury.')}</li>
-      <li>${t('每 12 小时一季，每季拿出 BNB 奖池的 25%，按综合经营分发给 Agent。', 'Every 12-hour season, 25% of the BNB pool goes to Agents by season score.')}</li>
+      <li>${t('每 1 小时一季，每季拿出 BNB 奖池的 25%，按综合经营分发给 Agent。', 'Every 1-hour season, 25% of the BNB pool goes to Agents by season score.')}</li>
     </ol></div>`;
     const sp = c.sponsorship;
     html += `<div class="ar-card"><b>${t('赞助明天的城市事件', 'Sponsor tomorrow’s city event')}</b><button class="pbtn ghost ar-wide" data-ar-app="sponsor">${t('去赞助', 'Sponsor an event')}</button>`;

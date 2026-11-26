@@ -18,8 +18,8 @@ SCHEME=http; [ -d "/etc/letsencrypt/live/$DOMAIN" ] && SCHEME=https
 [ -f /opt/agentcity/arena.env ] || cat > /opt/agentcity/arena.env <<EOF
 ARENA_PORT=5320
 ARENA_PUBLIC_ORIGIN=$SCHEME://$DOMAIN
-# One game day: 1.5 hours, the live pace (a season is 12 hours).
-TYCOON_DAY_MS=5400000
+# One game day: 7.5 minutes, the live pace (a season is 1 hour).
+TYCOON_DAY_MS=450000
 TYCOON_TOKEN_SYMBOL=ACITY
 # Live city contract (empty = demo shopkeepers only). The API only reads the chain.
 TYCOON_CONTRACT=

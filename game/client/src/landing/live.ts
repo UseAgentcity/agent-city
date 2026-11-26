@@ -87,7 +87,7 @@ export function renderLive(c: LiveCity, lang: Lang, $: Get) {
   const target = opensAt ?? (settling ? c.season.nextSeasonAt : c.season.endsAt);
   const skew = (c.now ?? Date.now()) - Date.now();
   $('lp-tk-label').textContent = opensAt ? (zh ? '距城市开业' : 'City opens in') : settling ? (zh ? '距新一季开始' : 'Next season in') : (zh ? '距本季发奖' : 'Next payout in');
-  $('lp-tk-season').textContent = opensAt ? (zh ? `第 1 季即将开始 · 每 12 小时发一次奖 · ${open} 家店已就位` : `Season 1 starts soon · payouts every 12 hours · ${open} shops ready`) : zh
+  $('lp-tk-season').textContent = opensAt ? (zh ? `第 1 季即将开始 · 每小时发一次奖 · ${open} 家店已就位` : `Season 1 starts soon · payouts every hour · ${open} shops ready`) : zh
     ? `第 ${c.season.id} 季 · ${settling ? '结算发奖中' : `第 ${c.season.day}/${c.season.days} 天`} · ${open} 家店营业中`
     : `Season ${c.season.id} · ${settling ? 'paying out' : `Day ${c.season.day}/${c.season.days}`} · ${open} shops open`;
   const clockEl = $('lp-tk-clock');
