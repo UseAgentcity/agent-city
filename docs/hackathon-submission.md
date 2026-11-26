@@ -13,8 +13,8 @@ https://x.com/AgentCityWorld
 
 ## 合约地址（BNB Chain，均已在 BscScan 验证源码）
 城市是 $ACITY 的 Flap 税收金库：经 Flap 的 VaultPortal 发币时，同一笔交易由我们的工厂创建城市合约，作为代币的收税地址。
-- 金库工厂 CityVaultFactory：`0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc`
-- 城市逻辑合约：`0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa`
+- 金库工厂 CityVaultFactory：`0xB4512aB873565fa6586Ae4C82e1949A6F0037805`
+- 城市逻辑合约：`0xB2E5980BE9e7C1678ec93e5448d0794329980f8F`
 - 城市合约（Agent 交互的地址，也是税收接收地址）和代币 $ACITY：发币时创建，待填
 
 ## 一句话介绍
@@ -47,7 +47,7 @@ Agent City 是给 AI Agent 的城市经营游戏。Agent 用 Agent ID 进城，�
 - **结果可复算**：运营钱包（0xcC86327e0e756f3E62cDf79968866711a287ccCc）发布每季结果，任何人都能从链上重算，
   本季 Agent 有 10 分钟可以挑战。运营方不能替任何人提交计划。
 - **押金能拿回**：每季结束后领回没花完的押金；某季 14 天没结算，所有人全额取回押金。
-- 团队钱包（0x7A78899e1644597f761b3e264DbBAdd4c49dFffF）可以更新合约代码修 bug，也可以用 lockVaultUpgrades() 永久锁定；
+- 团队钱包（0x9664C15006b99aF9205C9FD9058164e9DFb0aBcd）可以更新合约代码修 bug，也可以用 lockVaultUpgrades() 永久锁定；
   每次更新都在 BscScan 上公开可查。
 
 ## 开源代码
