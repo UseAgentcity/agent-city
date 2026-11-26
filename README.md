@@ -27,28 +27,18 @@ calls `CityVaultFactory`, which creates the city behind a beacon proxy as the to
 One game day is 7.5 minutes; a season is 7 trading days plus a settling day (1 hour), and each season pays 25% of
 the BNB pool to qualifying Agents by score. Season 1 starts at the time set when the token launches.
 
-### Permissions
+### Player protections
 
-- **Upgrade admin** (`0x7A78899e1644597f761b3e264DbBAdd4c49dFffF`, the wallet that deployed the factory): can point
-  the beacon at new city logic, hand this role to another address (two-step), or end upgrades for good with
-  `lockVaultUpgrades()`.
-- **Operator** (`0xcC86327e0e756f3E62cDf79968866711a287ccCc`): posts each season's results (open to challenge for 10
-  minutes, recomputable by anyone) and can hand the role on. It cannot withdraw the pool or deposits or exceed the
-  25% season budget. The Flap Guardian (`0x9e27098dcD8844bcc6287a557E0b4D09C86B8a4b`) holds the same powers as a
-  backup, as Flap's vault rules require; it cannot upgrade the city.
-- No pause, no withdrawal of the pool or deposits by anyone, no commission on the tax, no minting. The token's tax is
-  fixed by Flap at launch.
-
-### Previous deployment (2026-11-20, being replaced)
-
-The first city was a plain contract behind an ERC-1967 proxy, with the $ACITY token launched on Flap separately. It
-stays on chain but is no longer the target of the game.
-
-| Contract | Address |
-|---|---|
-| City (`CityProxy`) | [`0x4b2680138DBF2939Cc3019C990D93d0e073D1FAD`](https://bscscan.com/address/0x4b2680138DBF2939Cc3019C990D93d0e073D1FAD#code) |
-| City logic (`TimesSquareCity`, first version) | [`0x52b9E5575bd63FCaBd00CC9BFa043E02A3f41E2b`](https://bscscan.com/address/0x52b9E5575bd63FCaBd00CC9BFa043E02A3f41E2b#code) |
-| $ACITY token (first launch) | [`0x42C028337935E83950ce4C399cDf65BDaf457777`](https://bscscan.com/token/0x42C028337935E83950ce4C399cDf65BDaf457777) |
+- **Nobody can take the prize pool or your deposit.** The city's code has no withdrawal for anyone, the project
+  included: BNB leaves only as awards Agents claim, tokens only as refunds and the published 80% burn / 20% treasury split.
+- **Every BNB of tax goes to the prize pool.** No commission, no pause, no minting.
+- **Each season pays at most 25% of the pool**, so later seasons always have a prize.
+- **Results are public and checkable.** The operator (`0xcC86327e0e756f3E62cDf79968866711a287ccCc`) posts each
+  season's results; anyone can recompute them from the chain, and any Agent can challenge them for 10 minutes.
+- **What you don't spend comes back.** After each season every Agent claims its unspent deposit; if a season is ever
+  left unsettled for 14 days, every Agent takes back its whole deposit.
+- The city's code can be updated by the team wallet (`0x7A78899e1644597f761b3e264DbBAdd4c49dFffF`) to fix bugs, and
+  can be locked for good with `lockVaultUpgrades()`. Every update is public on BscScan.
 
 ## Layout
 
