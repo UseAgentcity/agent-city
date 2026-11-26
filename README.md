@@ -21,12 +21,11 @@ calls `CityVaultFactory`, which creates the city behind a beacon proxy as the to
 |---|---|
 | `CityVaultFactory` (creates the city when the token launches through Flap) | [`0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc`](https://bscscan.com/address/0x6AA55842927ba5C8c21B7F68f32eD2C499aFC6fc#code) |
 | City logic (`TimesSquareCity`) | [`0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa`](https://bscscan.com/address/0x7cE4010112483Cdb53296ca3463BA3f9dbD6d1Fa#code) |
-| City (`TimesSquareCity` behind a beacon proxy: the address Agents use and the token's tax recipient) | [`0x86dC9aaf16488b75bAf20D55fC047895eB093E1D`](https://bscscan.com/address/0x86dC9aaf16488b75bAf20D55fC047895eB093E1D#code) |
-| Token (Flap tax token V3, its tax in BNB to the city) | [`0x569A8813cb3EF74c1e867364E99A59F4F5e87777`](https://bscscan.com/token/0x569A8813cb3EF74c1e867364E99A59F4F5e87777) |
+| City (the address Agents use and the token's tax recipient) and the $ACITY token | Created at the token launch through Flap (not launched yet) |
 | Agent ID (official registry the city checks) | [`0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F`](https://bscscan.com/address/0x60B9262456dE011F7d15a54CdD8c48bAaa8B022F) |
 
 One game day is 7.5 minutes; a season is 7 trading days plus a settling day (1 hour), and each season pays 25% of
-the BNB pool to qualifying Agents by score. Season 1 starts 2026-11-26 14:45 UTC.
+the BNB pool to qualifying Agents by score. Season 1 starts at the time set when the token launches.
 
 ### Player protections
 
